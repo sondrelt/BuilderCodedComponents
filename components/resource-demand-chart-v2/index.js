@@ -683,17 +683,19 @@ function onPointerDown(e) {
         if (!rec) return;
         const handle = e.target.closest('.rp-handle');
         activeDrag = {
-            mode:      handle ? (handle.dataset.edge === 'l' ? 'resize-l' : 'resize-r') : 'move',
+            mode:        handle ? (handle.dataset.edge === 'l' ? 'resize-l' : 'resize-r') : 'move',
             bar,
-            reqId:     rec._id,
-            projectId: track.dataset.projectId,
-            source:    toInt(track.dataset.source),
-            workType:  toInt(track.dataset.workType),
-            origFrom:  startOfDay(new Date(rec.dateFrom)),
-            origTo:    endOfDay(new Date(rec.dateTo)),
-            origQty:   rec.quantity || 0,
-            startX:    e.clientX,
-            moved:     false
+            reqId:       rec._id,
+            projectId:   track.dataset.projectId,
+            source:      toInt(track.dataset.source),
+            workType:    toInt(track.dataset.workType),
+            origFrom:    startOfDay(new Date(rec.dateFrom)),
+            origTo:      endOfDay(new Date(rec.dateTo)),
+            origQty:     rec.quantity || 0,
+            trackRect,
+            startColIdx: colIdxFromClientX(e.clientX, trackRect),
+            startX:      e.clientX,
+            moved:       false
         };
         bar.style.zIndex = '5';
     } else {
@@ -742,8 +744,10 @@ function onPointerMove(e) {
         return;
     }
 
-    // Move / resize — snap to whole weeks
-    const deltaWeeks = Math.round((e.clientX - activeDrag.startX) / COL_W);
+    // Move / resize — snap to whole weeks.
+    // Column-index delta avoids the jump caused by Math.round when the cursor
+    // lands mid-column at mousedown (pixel offset would round to ±1 immediately).
+    const deltaWeeks = colIdxFromClientX(e.clientX, activeDrag.trackRect) - activeDrag.startColIdx;
     let from = activeDrag.origFrom, to = activeDrag.origTo;
 
     if (activeDrag.mode === 'move') {
