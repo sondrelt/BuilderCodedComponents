@@ -268,9 +268,9 @@
 /* Faint band (gridlines stay visible above this background-color) */
 .rp-row-source-header .rp-track-agg { background-color: var(--sum-tint); }
 
-/* Soft marker line: translucent black reads as a slightly darker shade of the
-   band tint behind it — visible but not harsh (currentColor was too strong). */
-.rp-row-source-header { --sum-line: rgba(0,0,0,0.22); }
+/* Soft marker line: the band tint darkened ~20% toward black, so it's a darker
+   shade of the SAME hue (not a grey/black line) — visible but not harsh. */
+.rp-row-source-header { --sum-line: color-mix(in srgb, var(--sum-tint), #000 20%); }
 
 /* Sum value as an underlined-number marker, not a filled box. */
 .rp-row-source-header .rp-bar-agg {
