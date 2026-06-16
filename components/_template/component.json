@@ -1,0 +1,9 @@
+{
+  "name": "component-name",
+  "version": "1.0.0",
+  "description": "What this component does",
+  "appfarmApp": "AppName",
+  "environment": "Development",
+  "inputs": [],
+  "lastSynced": null
+}
