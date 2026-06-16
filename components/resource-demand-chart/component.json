@@ -1,0 +1,18 @@
+{
+  "name": "resource-demand-chart",
+  "version": "1.0.0",
+  "description": "Stacked bar + line chart showing weekly resource demand by category: own employees, hired, leased out, unmet demand, surplus, and total need.",
+  "appfarmApp": "",
+  "environment": "Development",
+  "inputs": [
+    "calendarWeeks",
+    "perProjectData",
+    "projects",
+    "workTypes"
+  ],
+  "actions": [],
+  "externalResources": [
+    "https://cdn.jsdelivr.net/npm/chart.js"
+  ],
+  "lastSynced": null
+}
