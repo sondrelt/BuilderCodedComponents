@@ -1,0 +1,29 @@
+{
+  "name": "resource-planning-grid",
+  "version": "1.0.0",
+  "description": "Multi-project editable resource planning grid. Shows aggregated header rows per source type with expandable work-type detail rows. Inline editing with optimistic local aggregation.",
+  "appfarmApp": "",
+  "environment": "Development",
+  "inputs": [
+    "weeks",
+    "source",
+    "projects",
+    "projectWorkType",
+    "resourceReq",
+    "resourceAggregated",
+    "calendarWeekWidthPixel",
+    "workTypeEnum"
+  ],
+  "actions": [
+    "toggleDetails",
+    "editProject",
+    "openGraph",
+    "viewBuilderAds",
+    "updateResourceReq",
+    "startSaveTimer"
+  ],
+  "externalResources": [
+    "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
+  ],
+  "lastSynced": null
+}

@@ -1,0 +1,134 @@
+/* MDI icons — add as Stylesheet URL in Appfarm Create Resources:
+   https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css */
+@import url('https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:host { display: block; width: 100%; font-family: 'Lato', 'Hind Madurai', sans-serif; font-size: 14px; color: rgb(31,41,46); }
+
+/* --- Project Header --- */
+.project-header-row { display: flex; align-items: center; justify-content: space-between; min-width: 160px; padding: 4px 8px; background: rgb(254,246,229); border-bottom: 1px solid rgb(157,178,189); border-left: 1px solid rgb(157,178,189); border-right: 1px solid rgb(157,178,189); }
+.project-header-row:first-child { border-top: 1px solid rgb(157,178,189); }
+.project-actions { display: flex; align-items: center; gap: 4px; }
+.project-action-btn { cursor: pointer; font-size: 20px; padding: 2px; border: none; background: none; color: rgb(45,59,67); line-height: 1; border-radius: 4px; transition: background 0.15s; }
+.project-action-btn:hover { background: rgba(0,0,0,0.06); }
+.project-header-name { font-weight: 700; font-size: 16px; margin-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* --- Edit Section --- */
+.edit-fields-section { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; background: rgb(254,246,229); border-left: 1px solid rgb(157,178,189); border-right: 1px solid rgb(157,178,189); border-bottom: 1px solid rgb(157,178,189); }
+.edit-fields-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.edit-field { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 160px; }
+.edit-field label { font-size: 11px; font-weight: 600; color: rgb(77,100,112); text-transform: uppercase; letter-spacing: 0.5px; }
+.edit-field input, .edit-field select { border: 1px solid rgb(157,178,189); border-radius: 4px; padding: 6px 8px; font-size: 14px; font-family: inherit; background: rgb(251,251,250); outline: none; transition: border-color 0.15s; }
+.edit-field input:focus, .edit-field select:focus { border-color: rgb(250,175,82); background: rgba(250,175,82,0.05); }
+
+/* --- Source Groups & Labels --- */
+.source-group { display: flex; flex-direction: column; }
+.source-header-row { display: flex; flex-direction: row; align-items: stretch; }
+
+.source-label {
+    min-width: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 12px;
+    font-weight: 600;
+    font-size: 14px;
+    border-left: 1px solid rgb(157,178,189);
+    border-right: 1px solid rgb(157,178,189);
+    border-bottom: 1px solid rgb(157,178,189);
+}
+
+.source-label-behov    { background: rgb(228,233,237); }
+.source-label-egne     { background: rgb(232,240,229); }
+.source-label-innleide { background: rgb(220,239,250); }
+.source-label-utleide  { background: rgb(254,239,220); }
+.source-label-udekt    { background: rgb(239,201,200); }
+.source-label-overskudd { background: rgb(209,226,203); }
+
+/* --- Aggregated Grid Cells --- */
+.ag-weeks-row { display: flex; }
+.ag-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-right: 1px solid rgb(157,178,189);
+    border-bottom: 1px solid rgb(157,178,189);
+    font-weight: 600;
+    height: 32px;
+}
+
+.ag-magnify {
+    position: absolute;
+    right: 2px;
+    cursor: pointer;
+    font-size: 14px;
+    border: none;
+    background: none;
+    color: rgb(45,59,67);
+}
+
+.ag-cell-behov     { background: rgb(228,233,237); }
+.ag-cell-egne      { background: rgb(232,240,229); }
+.ag-cell-innleide  { background: rgb(220,239,250); }
+.ag-cell-utleide   { background: rgb(254,239,220); }
+.ag-cell-udekt     { background: rgb(239,201,200); }
+.ag-cell-overskudd { background: rgb(209,226,203); }
+
+/* --- Work Type (Input) Rows --- */
+.wt-row { display: flex; flex-direction: row; align-items: stretch; }
+
+.wt-label {
+    min-width: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 24px;
+    font-size: 13px;
+    border-left: 1px solid rgb(157,178,189);
+    border-right: 1px solid rgb(157,178,189);
+    border-bottom: 1px solid rgb(157,178,189);
+    background: white;
+}
+
+.wt-weeks-row { display: flex; }
+.wt-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid rgb(157,178,189);
+    border-bottom: 1px solid rgb(157,178,189);
+    height: 32px;
+    background: white;
+}
+
+/* --- Input Styling --- */
+.cell-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    text-align: center;
+    font-size: 14px;
+    font-family: inherit;
+    padding: 0;
+}
+
+.cell-input:focus {
+    background: rgba(250,175,82,0.15);
+    box-shadow: inset 0 0 0 2px rgb(250,175,82);
+}
+
+.cell-input.is-readonly {
+    background: rgb(245,247,248);
+    color: rgb(110,130,140);
+    cursor: default;
+}
+
+.cell-input.is-readonly:focus {
+    background: rgb(245,247,248);
+    box-shadow: none;
+}
+
+.cell-input::placeholder { color: rgb(200,210,215); }
