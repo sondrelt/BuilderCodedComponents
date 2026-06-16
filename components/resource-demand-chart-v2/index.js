@@ -670,13 +670,17 @@ function promoteGhost(ghost, srcEnum, qty) {
 
 function onPointerDown(e) {
     if (e.button !== 0) return;
-    removePopover(); // closing a stale popover may flush a queued rebuild first
 
     const track = e.target.closest('.rp-track-editable');
     if (!track || !track.dataset.projectId) return;
 
+    // Capture geometry and target refs before removePopover(), which may trigger
+    // flushQueuedRebuild → buildAll → innerHTML='', detaching the track element.
+    // getBoundingClientRect() on a detached element returns all zeros.
     const trackRect = track.getBoundingClientRect();
     const bar = e.target.closest('.rp-bar');
+
+    removePopover();
 
     if (bar) {
         const rec = reqById.get(bar.dataset.reqId);
