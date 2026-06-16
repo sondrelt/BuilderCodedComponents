@@ -10,10 +10,10 @@
 //    toggleDetails / editProject / openGraph / viewBuilderAds (unchanged)
 //
 //  Changes vs v1 (no functionality or UX removed):
-//    • Ghost bar now STAYS VISIBLE while the quantity popover is open, and is
+//    • Ghost bar now STAYS VISIBLE while the count popover is open, and is
 //      promoted to a real-looking bar instantly on confirm (optimistic UI).
 //      The datasource change then rebuilds and swaps in the persisted bar.
-//    • Click-editing an existing bar updates its quantity optimistically too,
+//    • Click-editing an existing bar updates its count optimistically too,
 //      and the popover gains a "Slett" button (wired to deleteProjectRequirement,
 //      shown only when that action exists).
 //    • activeEdit guard is actually wired: rebuilds are QUEUED (not dropped)
@@ -343,44 +343,49 @@ function makeEditableTrack(projectId, srcEnum, srcClass, workType, srcName) {
     return track;
 }
 
-function makeDerivedTrack(agg, srcEnum, workType) {
+// Aggregate rows render as bars: collapse adjacent equal, non-zero values into
+// one read-only bar (no handles) with the value shown once; 0 columns are gaps.
+// The source class already carries the colour (rp-bar-udekt = red etc.).
+function makeRunBarTrack(values, srcClass) {
     const track = document.createElement('div');
-    track.className = 'rp-track rp-track-derived';
-    track.style.width = gridWidth + 'px';
-    columns.forEach((_, ci) => {
-        const cell = document.createElement('div');
-        cell.className = 'rp-derived-cell';
-        cell.style.width = COL_W + 'px';
-        const val = agg.detail(srcEnum, workType, ci);
-        cell.textContent = val || '';
-        if (srcEnum === SRC.UDEKT     && val > 0) cell.classList.add('rp-neg');
-        if (srcEnum === SRC.OVERSKUDD && val > 0) cell.classList.add('rp-pos');
-        track.appendChild(cell);
-    });
+    track.className = 'rp-track rp-track-agg';
+    track.style.width          = gridWidth + 'px';
+    track.style.backgroundSize = COL_W + 'px 100%';
+    let i = 0;
+    while (i < values.length) {
+        const v = values[i];
+        if (!v) { i++; continue; }                                   // 0 → gap
+        let j = i;
+        while (j + 1 < values.length && values[j + 1] === v) j++;    // extend run
+        const left = columns[i].left;
+        const bar = document.createElement('div');
+        bar.className = 'rp-bar rp-bar-agg rp-bar-' + srcClass;
+        bar.style.left  = left + 'px';
+        bar.style.width = (columns[j].left + columns[j].width - left) + 'px';
+        bar.innerHTML = '<span class="rp-bar-count">' + v + '</span>';
+        track.appendChild(bar);
+        i = j + 1;
+    }
     return track;
 }
 
+function makeDerivedTrack(agg, srcEnum, workType) {
+    const values = columns.map((_, ci) => agg.detail(srcEnum, workType, ci));
+    return makeRunBarTrack(values, SOURCE_CLASS[srcEnum] || 'behov');
+}
+
 function makeSummaryTrack(agg, projectId, srcEnum, srcClass) {
-    const track = document.createElement('div');
-    track.className = 'rp-track rp-track-summary';
-    track.style.width = gridWidth + 'px';
-    const last = columns.length - 1;
-    columns.forEach((_, ci) => {
-        const cell = document.createElement('div');
-        cell.className = 'rp-summary-cell rp-summary-cell-' + srcClass;
-        cell.style.width = COL_W + 'px';
-        cell.textContent = agg.header(srcEnum, ci) || '';
-        if (ci === last && POPOVER_SOURCES.has(srcEnum)) {
-            const btn = document.createElement('button');
-            btn.className = 'rp-popover-btn';
-            btn.innerHTML = ICONS.search;
-            btn.title = 'Se detaljer';
-            btn.addEventListener('click', e =>
-                appfarm.actions?.viewBuilderAds?.({ source: srcEnum, projectId }, { event: e }));
-            cell.appendChild(btn);
-        }
-        track.appendChild(cell);
-    });
+    const values = columns.map((_, ci) => agg.header(srcEnum, ci));
+    const track = makeRunBarTrack(values, srcClass);
+    if (POPOVER_SOURCES.has(srcEnum)) {
+        const btn = document.createElement('button');
+        btn.className = 'rp-popover-btn';
+        btn.innerHTML = ICONS.search;
+        btn.title = 'Se detaljer';
+        btn.addEventListener('click', e =>
+            appfarm.actions?.viewBuilderAds?.({ source: srcEnum, projectId }, { event: e }));
+        track.appendChild(btn);
+    }
     return track;
 }
 
@@ -565,7 +570,7 @@ function flushQueuedRebuild() {
     }
 }
 
-// ═══ 8. QUANTITY POPOVER ════════════════════════════════════════════════════
+// ═══ 8. count POPOVER ════════════════════════════════════════════════════
 //  Anchored to the cursor, input focused immediately.
 //  Enter = confirm · Esc / click-outside = cancel · optional Slett = delete.
 //  While open, activeEdit blocks rebuilds so the pending ghost survives.
@@ -662,7 +667,7 @@ function hideTooltip() { if (tooltipEl) tooltipEl.style.display = 'none'; }
 // periods are legal input — the createProjectRequirement action in Appfarm
 // splits, trims, and merges existing periods server-side.
 
-/** Turn the dashed ghost into a real-looking bar with the confirmed quantity
+/** Turn the dashed ghost into a real-looking bar with the confirmed count
  *  (optimistic UI — the rebuild after save swaps in the persisted bar). */
 function promoteGhost(ghost, srcEnum, count) {
     ghost.className = 'rp-bar rp-bar-' + (SOURCE_CLASS[srcEnum] || 'behov');
@@ -787,7 +792,7 @@ function onPointerUp(e) {
     activeDrag = null;
     if (!d) { flushQueuedRebuild(); return; }
 
-    // ── CREATE: ghost stays visible while the quantity popover is open ──────
+    // ── CREATE: ghost stays visible while the count popover is open ──────
     if (d.mode === 'create') {
         if (!d.moved) { d.bar.remove(); flushQueuedRebuild(); return; }
 
@@ -818,7 +823,7 @@ function onPointerUp(e) {
 
     d.bar.style.zIndex = '';
 
-    // ── CLICK (no movement): edit quantity / delete ─────────────────────────
+    // ── CLICK (no movement): edit count / delete ─────────────────────────
     if (!d.moved) {
         const rec = reqById.get(d.reqId);
         if (!rec) { flushQueuedRebuild(); return; }

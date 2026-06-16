@@ -251,70 +251,25 @@
   background-color: rgba(var(--rp-blue-rgb), 0.04);
 }
 
-/* Summary track — aggregate numbers per column */
-.rp-track-summary {
-  display: flex;
-  align-items: center;
-}
+/* Aggregate track (summary + derived rows) — read-only run-bars, no editing.
+   Base .rp-track supplies position:relative and the column gridlines. */
+.rp-track-agg { cursor: default; }
 
-.rp-summary-cell {
-  flex: 0 0 auto;
-  text-align: center;
-  font-weight: 700;
-  font-size: 12px;
-  border-left: 1px solid rgba(0,0,0,0.05);
-  box-sizing: border-box;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-/* Summary cells tinted by source category */
-.rp-summary-cell-behov     { background: var(--rp-behov-bg);     color: var(--rp-behov-text); }
-.rp-summary-cell-egne      { background: var(--rp-egne-bg);      color: var(--rp-egne-text); }
-.rp-summary-cell-innleide  { background: var(--rp-innleide-bg);  color: var(--rp-innleide-text); }
-.rp-summary-cell-utleide   { background: var(--rp-utleide-bg);   color: var(--rp-utleide-text); }
-.rp-summary-cell-udekt     { background: var(--rp-udekt-bg);     color: var(--rp-udekt-text); }
-.rp-summary-cell-overskudd { background: var(--rp-overskudd-bg); color: var(--rp-overskudd-text); }
-
-/* Derived / read-only cells (work-type level) */
-.rp-track-derived {
-  display: flex;
-  align-items: center;
-  cursor: default;
-}
-
-.rp-derived-cell {
-  flex: 0 0 auto;
-  text-align: center;
-  font-size: 12px;
-  color: var(--rp-text-muted);
-  border-left: 1px solid #f1f5f9;
-  box-sizing: border-box;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.rp-derived-cell.rp-neg { color: var(--rp-red-700);  font-weight: 700; }
-.rp-derived-cell.rp-pos { color: #166534;             font-weight: 700; }
-
-/* Popover trigger button on last summary cell */
+/* Popover trigger button — pinned to the track's right edge (last column) */
 .rp-popover-btn {
   position: absolute;
   right: 3px; top: 50%;
   transform: translateY(-50%);
+  z-index: 4;
   background: none;
   border: none;
   cursor: pointer;
   opacity: 0;
-  color: inherit;
+  color: var(--rp-text-muted);
   padding: 2px;
   transition: opacity .15s;
 }
-.rp-summary-cell:hover .rp-popover-btn { opacity: 0.7; }
+.rp-track-agg:hover .rp-popover-btn { opacity: 0.7; }
 .rp-popover-btn:hover { opacity: 1 !important; }
 
 /* ── 7. BARS ──────────────────────────────────────────────────────────────── */
@@ -345,6 +300,14 @@
 .rp-bar-utleide   { background-color: var(--rp-utleide-bar);   color: var(--rp-utleide-text); }
 .rp-bar-udekt     { background-color: var(--rp-udekt-bar);     color: var(--rp-udekt-text); }
 .rp-bar-overskudd { background-color: var(--rp-overskudd-bar); color: var(--rp-overskudd-text); }
+
+/* Aggregate (derived) bars — read-only, flatter than editable bars */
+.rp-bar-agg {
+  cursor: default;
+  pointer-events: none;
+  box-shadow: none;
+  border-color: rgba(0,0,0,0.06);
+}
 
 /* Quantity label centred in bar — absolute overlay so it stays centred
    regardless of handle widths; handles are pinned to the edges below. */

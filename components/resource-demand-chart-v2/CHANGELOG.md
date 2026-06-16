@@ -1,5 +1,32 @@
 # Changelog — resource-demand-chart-v2
 
+## 1.2.0 — 2026-06-16
+
+Aggregate rows as bars:
+- Source-header rows (Behov/Egne/Innleide/Utleide/Udekt/Overskudd) and derived
+  work-type rows (Egne/Udekt/Overskudd) now render as bars instead of a number-
+  per-column strip. Adjacent columns with the same value collapse into one
+  read-only bar with the value shown once; zero columns are gaps.
+- New makeRunBarTrack helper does the run-collapse; makeSummaryTrack and
+  makeDerivedTrack route through it. Aggregate bars are pointer-events:none
+  (not draggable); only the "Se detaljer" popover button stays interactive,
+  now pinned to the track's right edge.
+- Removed the per-column summary/derived cell rendering and its dead CSS
+  (.rp-summary-cell*, .rp-derived-cell*, .rp-track-summary, .rp-track-derived).
+
+## 1.1.1 — 2026-06-16
+
+Bug fixes:
+- buildColumns: normalize the week cursor to startOfDay so each column's start
+  is midnight instead of 23:59:59.999. The old end-of-day starts opened a ~24h
+  dead zone per week where colIndexForDate found no column and bars snapped to
+  the right edge (gridWidth).
+- Removed a leftover debug console.log from makeBar.
+- Bar resize handles pinned absolutely to the bar edges; count centred as an
+  absolute overlay so it stays centred at any bar width.
+- Renamed quantity/qty fields and action params to resourceCount/count to match
+  the Appfarm data source and action interface.
+
 ## 1.1.0 — 2026-06-16
 
 Bug fixes:
