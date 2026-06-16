@@ -89,15 +89,39 @@ To revert a component to a previous version:
 ```
 git checkout date-picker@1.1.0 -- components/date-picker/index.js
 ```
-Then paste the restored `index.js` into Appfarm Create.
+Then paste the restored `index.js` into Appfarm Create and update `lastSynced`.
+
+## Branch convention
+
+`master` is the source of truth for what is live in Appfarm Create — only commits that have been pasted go here. All in-progress work lives on a feature branch until it is ready to sync.
+
+```
+master                        ← tagged, synced versions only
+feat/<component-name>         ← active development, not yet pasted
+```
 
 ## Workflow for every change
 
-1. Edit `index.js`, `styles.css`, and/or `template.html` locally
-2. Update `version` in `component.json` and log the change in `CHANGELOG.md`
-3. `git add` + `git commit` + `git tag <name>@<version>`
-4. Paste each file into the corresponding tab in Appfarm Create
-5. Update `lastSynced` in `component.json` and commit
+**Starting a change:**
+```bash
+git checkout -b feat/<component-name>
+# edit index.js, styles.css, template.html
+git commit -m "<component-name>: <version> — <short description>"
+```
+
+**When ready to paste into Appfarm:**
+```bash
+git checkout master
+git merge feat/<component-name>
+git tag <component-name>@<version>
+# paste each file into Appfarm Create
+# update lastSynced in component.json to current ISO timestamp
+git commit -m "<component-name>: set lastSynced <date>"
+git branch -d feat/<component-name>
+```
+
+Commit message format: `<component-name>: <version> — <short description>`
+Example: `resource-demand-chart: 1.1.0 — add filter persistence across re-renders`
 
 ## Platform context
 
