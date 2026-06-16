@@ -5,8 +5,8 @@
 //  Appfarm actions called (all via optional chaining — a missing action is a
 //  silent no-op instead of a thrown TypeError):
 //    createProjectRequirement { projectId, source, workType, dateFrom, dateTo, quantity }
-//    updateProjectRequirement { requirementId, dateFrom, dateTo, quantity }
-//    deleteProjectRequirement { requirementId }
+//    updateProjectRequirement { projectRequirementId, dateFrom, dateTo, quantity }  (project/source/workType never change after create — not passed)
+//    deleteProjectRequirement { projectRequirementId }
 //    toggleDetails / editProject / openGraph / viewBuilderAds (unchanged)
 //
 //  Changes vs v1 (no functionality or UX removed):
@@ -59,8 +59,7 @@ const SOURCE_CLASS = {
     [SRC.OVERSKUDD]: 'overskudd'
 };
 
-const EDITABLE_SOURCES = new Set([SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE]); // user draws bars
-const BAR_SOURCES      = [SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE];          // sources stored as spans
+const EDITABLE_SOURCES = new Set([SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE]); // user draws bars / sources stored as spans
 const POPOVER_SOURCES  = new Set([SRC.INNLEIDE, SRC.UTLEIDE, SRC.UDEKT, SRC.OVERSKUDD]);
 
 const STICKY_W          = 280;   // left panel width (px) — keep in sync with CSS --rp-sticky-w
@@ -68,7 +67,6 @@ const DEFAULT_COL_W     = 60;
 const FALLBACK_WEEKS    = 20;    // window when viewFrom/viewTo are unset
 const DAY_MS            = 86400000;
 const DRAG_THRESHOLD_PX = 4;     // movement below this = click, not drag
-const MONTHS_NB = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
 
 const ICONS = {
     chevronDown: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
@@ -154,13 +152,12 @@ function buildColumns() {
     while (+cur <= +rangeEnd) {
         const wEnd = endOfWeekMon(cur);
         columns.push({
-            index:    columns.length,
             start:    new Date(cur),
             end:      wEnd,
             left:     gridWidth,
             width:    COL_W,
             label:    String(getISOWeek(cur)),
-            topLabel: MONTHS_NB[cur.getMonth()],
+            topLabel: new Date(2000, cur.getMonth()).toLocaleString('nb-NO', { month: 'short' }),
             topYear:  getISOWeekYear(cur)
         });
         gridWidth += COL_W;
@@ -262,7 +259,7 @@ function computeAggregates(projectId, workTypes) {
 
     // Requirement bars (Behov / Innleide / Utleide)
     workTypes.forEach(wt => {
-        BAR_SOURCES.forEach(src => {
+        [...EDITABLE_SOURCES].forEach(src => {
             (reqsByKey.get(reqKey(projectId, src, wt)) || []).forEach(r =>
                 paint(detailArr(src, wt), r.dateFrom, r.dateTo, r.quantity || 0));
         });
@@ -597,7 +594,7 @@ function showQuantityPopover(opts) {
     popoverEl.style.left = left + 'px';
     popoverEl.style.top  = (opts.anchorY - 16) + 'px';
 
-    const input = popoverEl.querySelector('.rp-popover-input');
+    const input = /** @type {HTMLInputElement} */ (popoverEl.querySelector('.rp-popover-input'));
     input.focus();
     input.select();
 
@@ -829,10 +826,7 @@ function onPointerUp(e) {
                 const qtyEl = d.bar.querySelector('.rp-bar-qty'); // optimistic
                 if (qtyEl) qtyEl.textContent = qty;
                 appfarm.actions?.updateProjectRequirement?.({
-                    requirementId: rec._id,
-                    projectId:     d.projectId,
-                    source:        d.source,
-                    workType:      d.workType,
+                    projectRequirementId: rec._id,
                     dateFrom:      rec.dateFrom,
                     dateTo:        rec.dateTo,
                     quantity:      qty
@@ -840,12 +834,7 @@ function onPointerUp(e) {
             },
             onDelete: () => {
                 d.bar.remove();                                   // optimistic
-                appfarm.actions?.deleteProjectRequirement?.({
-                    requirementId: rec._id,
-                    projectId:     d.projectId,
-                    source:        d.source,
-                    workType:      d.workType
-                });
+                appfarm.actions?.deleteProjectRequirement?.({ projectRequirementId: rec._id });
             }
         });
         return;
@@ -857,10 +846,7 @@ function onPointerUp(e) {
     if (+to < +from) to = endOfWeekMon(from);
 
     appfarm.actions?.updateProjectRequirement?.({
-        requirementId: d.reqId,
-        projectId:     d.projectId,
-        source:        d.source,
-        workType:      d.workType,
+        projectRequirementId: d.reqId,
         dateFrom:      from.toISOString(),
         dateTo:        to.toISOString(),
         quantity:      d.origQty
@@ -871,8 +857,7 @@ function onPointerUp(e) {
 // ═══ 10. LIFECYCLE ══════════════════════════════════════════════════════════
 function ensureSkeleton() {
     const root = document.getElementById('req-planner');
-    if (!root || root.dataset.ready) return;
-    root.dataset.ready = '1';
+    if (!root) return;
     root.innerHTML =
         '<div id="rp-scroll" class="rp-scroll">' +
             '<div id="rp-inner" class="rp-inner"></div>' +

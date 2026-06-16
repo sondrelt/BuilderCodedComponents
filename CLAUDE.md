@@ -64,6 +64,10 @@ Add Script URL / Stylesheet URL in the component's **Resources** section. Librar
 - Cannot write to data sources directly — always go through Actions.
 - CSS must be scoped to the component's Element ID to avoid side effects.
 - External library domains require CSP whitelisting per environment.
+- `querySelector` and similar DOM methods return `Element | null`, which lacks element-specific properties (`.value`, `.checked`, `.src`, etc.). Always cast to the concrete type with a JSDoc annotation:
+  ```js
+  const input = /** @type {HTMLInputElement} */ (el.querySelector('input'));
+  ```
 
 ---
 
