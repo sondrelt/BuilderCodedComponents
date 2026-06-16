@@ -1,11 +1,11 @@
 // =============================================================================
 //  Project Requirements Planner — v2 (optimized rewrite)
 //
-//  Data source:  projectRequirements { project, source, workType, dateFrom, dateTo, quantity }
+//  Data source:  projectRequirements { project, source, workType, dateFrom, dateTo, resourceCount }
 //  Appfarm actions called (all via optional chaining — a missing action is a
 //  silent no-op instead of a thrown TypeError):
-//    createProjectRequirement { projectId, source, workType, dateFrom, dateTo, quantity }
-//    updateProjectRequirement { projectRequirementId, dateFrom, dateTo, quantity }  (project/source/workType never change after create — not passed)
+//    createProjectRequirement { projectId, source, workType, dateFrom, dateTo, count }
+//    updateProjectRequirement { projectRequirementId, dateFrom, dateTo, count }  (project/source/workType never change after create — not passed)
 //    deleteProjectRequirement { projectRequirementId }
 //    toggleDetails / editProject / openGraph / viewBuilderAds (unchanged)
 //
@@ -161,7 +161,10 @@ function buildColumns() {
             topYear:  getISOWeekYear(cur)
         });
         gridWidth += COL_W;
-        cur = addDays(wEnd, 1);
+        // startOfDay: addDays(wEnd,1) inherits wEnd's 23:59:59.999 time; using it
+        // as the next column's start opens a ~24h dead zone where colIndexForDate
+        // finds no column and bars snap to gridWidth. Normalize to midnight.
+        cur = startOfDay(addDays(wEnd, 1));
     }
 }
 
@@ -261,7 +264,7 @@ function computeAggregates(projectId, workTypes) {
     workTypes.forEach(wt => {
         [...EDITABLE_SOURCES].forEach(src => {
             (reqsByKey.get(reqKey(projectId, src, wt)) || []).forEach(r =>
-                paint(detailArr(src, wt), r.dateFrom, r.dateTo, r.quantity || 0));
+                paint(detailArr(src, wt), r.dateFrom, r.dateTo, r.resourceCount || 0));
         });
     });
 
@@ -321,7 +324,7 @@ function makeBar(rec, srcClass) {
     bar.dataset.reqId = rec._id;
     bar.innerHTML =
         (clipL ? '' : '<span class="rp-handle" data-edge="l"></span>') +
-        '<span class="rp-bar-qty">' + (rec.quantity ?? 0) + '</span>' +
+        '<span class="rp-bar-count">' + (rec.resourceCount ?? 0) + '</span>' +
         (clipR ? '' : '<span class="rp-handle" data-edge="r"></span>');
     return bar;
 }
@@ -566,8 +569,8 @@ function flushQueuedRebuild() {
 //  Anchored to the cursor, input focused immediately.
 //  Enter = confirm · Esc / click-outside = cancel · optional Slett = delete.
 //  While open, activeEdit blocks rebuilds so the pending ghost survives.
-function showQuantityPopover(opts) {
-    // opts: { anchorX, anchorY, defaultQty, onConfirm, onCancel?, onDelete? }
+function showCountPopover(opts) {
+    // opts: { anchorX, anchorY, defaultCount, onConfirm, onCancel?, onDelete? }
     removePopover();
     activeEdit = true;
 
@@ -578,7 +581,7 @@ function showQuantityPopover(opts) {
     popoverEl.className = 'rp-popover';
     popoverEl.innerHTML =
         '<div class="rp-popover-title">Antall ressurser</div>' +
-        '<input class="rp-popover-input" type="number" min="0" step="1" value="' + (opts.defaultQty ?? 1) + '" />' +
+        '<input class="rp-popover-input" type="number" min="0" step="1" value="' + (opts.defaultCount ?? 1) + '" />' +
         '<div class="rp-popover-hint">Enter for å lagre &nbsp;·&nbsp; Esc for å avbryte</div>' +
         '<div class="rp-popover-actions">' +
             '<button class="rp-popover-cancel">Avbryt</button>' +
@@ -595,13 +598,14 @@ function showQuantityPopover(opts) {
     popoverEl.style.top  = (opts.anchorY - 16) + 'px';
 
     const input = /** @type {HTMLInputElement} */ (popoverEl.querySelector('.rp-popover-input'));
+
     input.focus();
     input.select();
 
     function confirm() {
-        const qty = Math.max(0, parseInt(input.value, 10) || 0);
+        const count = Math.max(0, parseInt(input.value, 10) || 0);
         removeOutsideHandler();
-        opts.onConfirm(qty);
+        opts.onConfirm(count);
         removePopover();
     }
     function cancel() {
@@ -660,9 +664,9 @@ function hideTooltip() { if (tooltipEl) tooltipEl.style.display = 'none'; }
 
 /** Turn the dashed ghost into a real-looking bar with the confirmed quantity
  *  (optimistic UI — the rebuild after save swaps in the persisted bar). */
-function promoteGhost(ghost, srcEnum, qty) {
+function promoteGhost(ghost, srcEnum, count) {
     ghost.className = 'rp-bar rp-bar-' + (SOURCE_CLASS[srcEnum] || 'behov');
-    ghost.innerHTML = '<span class="rp-bar-qty">' + qty + '</span>';
+    ghost.innerHTML = '<span class="rp-bar-count">' + count + '</span>';
 }
 
 function onPointerDown(e) {
@@ -692,7 +696,7 @@ function onPointerDown(e) {
             workType:    toInt(track.dataset.workType),
             origFrom:    startOfDay(new Date(rec.dateFrom)),
             origTo:      endOfDay(new Date(rec.dateTo)),
-            origQty:     rec.quantity || 0,
+            origCount:   rec.resourceCount || 0,
             trackRect,
             startColIdx: colIdxFromClientX(e.clientX, trackRect),
             startX:      e.clientX,
@@ -792,19 +796,19 @@ function onPointerUp(e) {
         const dateFrom = columns[s].start;
         const dateTo   = columns[ed].end;
 
-        showQuantityPopover({
+        showCountPopover({
             anchorX:    e.clientX,
             anchorY:    e.clientY,
-            defaultQty: 1,
-            onConfirm:  qty => {
-                promoteGhost(d.bar, d.source, qty);
+            defaultCount: 1,
+            onConfirm:  count => {
+                promoteGhost(d.bar, d.source, count);
                 appfarm.actions?.createProjectRequirement?.({
                     projectId: d.projectId,
                     source:    d.source,
                     workType:  d.workType,
                     dateFrom:  dateFrom.toISOString(),
                     dateTo:    dateTo.toISOString(),
-                    quantity:  qty
+                    count
                 });
             },
             onCancel: () => d.bar.remove()
@@ -818,23 +822,25 @@ function onPointerUp(e) {
     if (!d.moved) {
         const rec = reqById.get(d.reqId);
         if (!rec) { flushQueuedRebuild(); return; }
-        showQuantityPopover({
+        showCountPopover({
             anchorX:    e.clientX,
             anchorY:    e.clientY,
-            defaultQty: rec.quantity || 0,
-            onConfirm:  qty => {
-                const qtyEl = d.bar.querySelector('.rp-bar-qty'); // optimistic
-                if (qtyEl) qtyEl.textContent = qty;
+            defaultCount: rec.resourceCount || 0,
+            onConfirm:  count => {
+                const countEl = /** @type {HTMLElement} */ (d.bar.querySelector('.rp-bar-count'));
+                if (countEl) countEl.textContent = count;
                 appfarm.actions?.updateProjectRequirement?.({
                     projectRequirementId: rec._id,
                     dateFrom:      rec.dateFrom,
                     dateTo:        rec.dateTo,
-                    quantity:      qty
+                    count
                 });
             },
             onDelete: () => {
                 d.bar.remove();                                   // optimistic
-                appfarm.actions?.deleteProjectRequirement?.({ projectRequirementId: rec._id });
+                appfarm.actions?.deleteProjectRequirement?.({
+                    projectRequirementId: rec._id
+                });
             }
         });
         return;
@@ -849,7 +855,7 @@ function onPointerUp(e) {
         projectRequirementId: d.reqId,
         dateFrom:      from.toISOString(),
         dateTo:        to.toISOString(),
-        quantity:      d.origQty
+        count:      d.origCount
     });
     flushQueuedRebuild();
 }

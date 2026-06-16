@@ -58,6 +58,10 @@ appfarm.actions.updateAnimal({ id: '...', age: 10 })
 
 Add Script URL / Stylesheet URL in the component's **Resources** section. Libraries load into global scope (e.g. `mapbox`, `rive`, `dayjs`). The domain must be whitelisted in the environment's Content Security settings. Load order matters when there are dependencies between libraries.
 
+### Naming — always confirm before editing
+
+Appfarm attribute names (fields on data source objects) and action input parameter names are defined separately in the platform and can differ from each other and from what the code currently uses. **Never assume a name — always ask the user to confirm the exact attribute name and action parameter name before making changes.**
+
 ### Key constraints
 
 - No `import` statements in Script.

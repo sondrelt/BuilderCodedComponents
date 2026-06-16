@@ -346,10 +346,14 @@
 .rp-bar-udekt     { background-color: var(--rp-udekt-bar);     color: var(--rp-udekt-text); }
 .rp-bar-overskudd { background-color: var(--rp-overskudd-bar); color: var(--rp-overskudd-text); }
 
-/* Quantity label centred in bar */
-.rp-bar-qty {
-  flex: 1;
-  text-align: center;
+/* Quantity label centred in bar — absolute overlay so it stays centred
+   regardless of handle widths; handles are pinned to the edges below. */
+.rp-bar-count {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
   font-size: 12px;
   pointer-events: none;
@@ -357,14 +361,16 @@
   white-space: nowrap;
 }
 
-/* Resize handles */
+/* Resize handles — pinned to the bar's left/right edges */
 .rp-handle {
-  position: relative;
-  z-index: 2;
-  flex: 0 0 6px;
-  align-self: stretch;
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 6px;
+  z-index: 3;
   cursor: ew-resize;
 }
+.rp-handle[data-edge="l"] { left: 0; }
+.rp-handle[data-edge="r"] { right: 0; }
 .rp-bar:hover .rp-handle {
   background: rgba(255,255,255,0.35);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
