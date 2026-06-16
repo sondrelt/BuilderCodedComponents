@@ -256,27 +256,41 @@
 .rp-track-agg { cursor: default; }
 
 /* Sum-of-worktypes rows are a secondary readout — they recede behind the
-   editable worktype bars. Per source they expose a faint band tint (--sum-tint)
-   and an underline colour (--sum-color); two generic rules below consume them. */
-.rp-row-source-header-behov     { --sum-tint: var(--rp-behov-bg);     --sum-color: var(--rp-behov-bar); }
-.rp-row-source-header-egne      { --sum-tint: var(--rp-egne-bg);      --sum-color: var(--rp-egne-bar); }
-.rp-row-source-header-innleide  { --sum-tint: var(--rp-innleide-bg);  --sum-color: var(--rp-innleide-bar); }
-.rp-row-source-header-utleide   { --sum-tint: var(--rp-utleide-bg);   --sum-color: var(--rp-utleide-bar); }
-.rp-row-source-header-udekt     { --sum-tint: var(--rp-udekt-bg);     --sum-color: var(--rp-udekt-bar); }
-.rp-row-source-header-overskudd { --sum-tint: var(--rp-overskudd-bg); --sum-color: var(--rp-overskudd-bar); }
+   editable worktype bars. Per source they expose a faint band tint (--sum-tint);
+   the marker line/ticks use currentColor (the category text colour). */
+.rp-row-source-header-behov     { --sum-tint: var(--rp-behov-bg); }
+.rp-row-source-header-egne      { --sum-tint: var(--rp-egne-bg); }
+.rp-row-source-header-innleide  { --sum-tint: var(--rp-innleide-bg); }
+.rp-row-source-header-utleide   { --sum-tint: var(--rp-utleide-bg); }
+.rp-row-source-header-udekt     { --sum-tint: var(--rp-udekt-bg); }
+.rp-row-source-header-overskudd { --sum-tint: var(--rp-overskudd-bg); }
 
 /* Faint band (gridlines stay visible above this background-color) */
 .rp-row-source-header .rp-track-agg { background-color: var(--sum-tint); }
 
-/* Sum value as an underlined-number marker, not a filled box */
+/* Sum value as an underlined-number marker, not a filled box.
+   currentColor (the category text colour) keeps the line legible on the band. */
 .rp-row-source-header .rp-bar-agg {
   background: transparent;
   border: none;
-  border-bottom: 2px solid var(--sum-color);
+  border-bottom: 2px solid currentColor;
   border-radius: 0;
   box-shadow: none;
 }
 .rp-row-source-header .rp-bar-count { font-weight: 600; }   /* de-bold */
+
+/* Short vertical end ticks mark where each run starts and stops */
+.rp-row-source-header .rp-bar-agg::before,
+.rp-row-source-header .rp-bar-agg::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  height: 6px;
+  background: currentColor;
+}
+.rp-row-source-header .rp-bar-agg::before { left: 0; }
+.rp-row-source-header .rp-bar-agg::after  { right: 0; }
 .rp-row-source-header .rp-bar-alt   { filter: none; }       /* no shade on markers */
 
 /* Popover trigger button — pinned to the track's right edge (last column) */

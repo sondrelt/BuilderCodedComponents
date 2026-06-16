@@ -1,5 +1,14 @@
 # Changelog — resource-demand-chart-v2
 
+## 1.3.2 — 2026-06-16
+
+Sum markers now show run boundaries:
+- The underline uses currentColor (the category text colour) instead of the pale
+  --sum-color, so it's legible on the faint band.
+- Short 6px vertical end ticks (::before/::after) cap each run's start and stop,
+  so it's clear where each sum value begins and ends; gaps stay blank.
+- Dropped the now-unused --sum-color custom property (--sum-tint kept for the band).
+
 ## 1.3.1 — 2026-06-16
 
 Rebalanced prominence (the editable worktype bars are what users interact with,
