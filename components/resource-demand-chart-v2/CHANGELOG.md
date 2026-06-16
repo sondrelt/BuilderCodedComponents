@@ -1,5 +1,19 @@
 # Changelog — resource-demand-chart-v2
 
+## 1.3.1 — 2026-06-16
+
+Rebalanced prominence (the editable worktype bars are what users interact with,
+so the sums should recede):
+- Sum (source-header) rows now render the value as an underlined-number marker
+  — no fill/box/shadow/bold, a 2px category-coloured underline spanning each run
+  on a faint band — instead of the heavier "total" bars from 1.3.0. Worktype
+  rows (editable + derived) stay the prominent solid bars.
+- Alternate-span shade changed from a muddy darken (brightness 0.92) to vivid +
+  slightly lighter (saturate 1.5, brightness 1.05); applied to worktype spans
+  only — sum markers no longer alternate.
+- Per-source band tint and underline colour now driven by --sum-tint/--sum-color
+  custom properties (CSS-only change; index.js untouched).
+
 ## 1.3.0 — 2026-06-16
 
 Readability of the bar rows:

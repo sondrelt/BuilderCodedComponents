@@ -1,6 +1,6 @@
 {
   "name": "resource-demand-chart-v2",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Interactive Gantt-style project requirements planner. Drag to create/resize/move requirement bars per work type, with quantity popovers, optimistic UI, and per-week aggregate summaries per source category.",
   "appfarmApp": "",
   "environment": "Development",
