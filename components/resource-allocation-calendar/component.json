@@ -1,0 +1,26 @@
+{
+  "name": "resource-allocation-calendar",
+  "version": "1.0.0",
+  "description": "Span-native resource planning timeline with day/week granularity. Drag to create, move, and resize allocations and absences.",
+  "appfarmApp": "",
+  "environment": "Development",
+  "inputs": [
+    "viewFrom",
+    "viewTo",
+    "viewGranularity",
+    "sortByProjects",
+    "resources",
+    "projects",
+    "allocation",
+    "absence",
+    "workTypeEnum",
+    "absenceColors"
+  ],
+  "actions": [
+    "openAllocationAbsenceEditor",
+    "saveAllocationDates",
+    "saveAbsenceDates",
+    "openResourceEdit"
+  ],
+  "lastSynced": null
+}

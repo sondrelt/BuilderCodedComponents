@@ -1,0 +1,433 @@
+/* ==========================================================================
+   1. ROOT VARIABLES
+   ========================================================================== */
+:root {
+  --bg-main: #fcf6e8;
+  --border-color: #d1d5db;
+  --text-dark: #374151;
+  --sticky-header-bg: #fdfbf7;
+
+  --blue-50:  #eef6fc; --blue-100: #d6eaf6; --blue-500: #1e86c4; --blue-600: #1a72a8; --blue-700: #155d89;
+  --blue-rgb: 30, 134, 196;
+  --green-50: #f0f6ec; --green-100: #dcebd3; --green-500: #6ea15a; --green-600: #5e8b4d; --green-700: #4d7340;
+  --green-rgb: 110, 161, 90;
+  --amber-50: #fef6ea; --amber-100: #fde9c9; --amber-500: #faaf52; --amber-600: #e89a3a; --amber-700: #c8821e; --amber-800: #9a5f12;
+  --amber-rgb: 250, 175, 82;
+  --slate-50: #eef1f2; --slate-500: #4d6470; --slate-600: #415560; --slate-700: #34454e;
+  --red-500: #a2332f;
+
+  --row-h: 48px;
+}
+
+/* ==========================================================================
+   2. ROOT + CONTROLS
+   ========================================================================== */
+#planner {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-main);
+  padding: 16px;
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.pl-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+#search-input {
+  flex: 0 0 320px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 15px;
+  background-color: var(--bg-main);
+}
+
+.pl-gran { display: inline-flex; border: 1px solid var(--border-color); border-radius: 20px; overflow: hidden; }
+.pl-gran button {
+  border: none;
+  background: #fff;
+  color: var(--text-dark);
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pl-gran button.active { background: var(--amber-500); color: #fff; font-weight: 600; }
+
+.planner-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.btn-secondary  { background: var(--slate-600); color: #fff; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; }
+.date-range     { display: flex; align-items: center; gap: 12px; font-weight: 500; color: var(--text-dark); }
+
+/* ==========================================================================
+   3. SCROLL FRAME
+   ========================================================================== */
+.pl-scroll {
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  background: #fff;
+  max-height: 85vh;
+}
+.pl-inner {
+  position: relative;
+  display: inline-block;
+  min-width: 100%;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+/* ==========================================================================
+   4. STICKY HEADER (month groups + column labels)
+   ========================================================================== */
+.pl-header { display: flex; position: sticky; top: 0; z-index: 30; }
+.pl-corner {
+  flex: 0 0 380px;
+  position: sticky; left: 0; z-index: 31;
+  background: var(--sticky-header-bg);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+.pl-axis { flex: 0 0 auto; background: var(--sticky-header-bg); }
+
+.pl-months, .pl-cols { display: flex; }
+.pl-month {
+  flex: 0 0 auto;
+  text-align: center;
+  font-weight: 700;
+  padding: 5px 0;
+  background: var(--sticky-header-bg);
+  border-left: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+.pl-col {
+  flex: 0 0 auto;
+  text-align: center;
+  padding: 4px 0;
+  border-left: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+.pl-col.current {
+  background: var(--amber-50);
+  color: var(--amber-800);
+  font-weight: 800;
+  box-shadow: inset 0 0 0 2px var(--amber-600);
+}
+
+/* ==========================================================================
+   5. ROWS + STICKY RESOURCE COLUMN
+   ========================================================================== */
+.pl-row { display: flex; height: var(--row-h); }
+
+.pl-resource {
+  flex: 0 0 380px;
+  min-width: 380px;
+  position: sticky; left: 0; z-index: 10;
+  background: #fff;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.resource-info {
+  display: grid;
+  grid-template-columns: 150px 100px 1fr 36px;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+.resource-name, .resource-worktype, .resource-position {
+  cursor: default;
+  padding: 0 12px;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  display: block; align-content: center;
+  min-width: 0; height: 100%;
+}
+.resource-name, .resource-worktype { border-right: 1px solid var(--border-color); }
+.resource-name { color: var(--text-dark); font-weight: 600; }
+.resource-worktype, .resource-position { color: #6b7280; }
+.resource-edit-wrapper { display: flex; justify-content: center; align-items: center; cursor: pointer; }
+
+.pl-row.role-pm .pl-resource { box-shadow: inset 4px 0 0 var(--blue-500);  background: var(--blue-50); }
+.pl-row.role-sm .pl-resource { box-shadow: inset 4px 0 0 var(--green-500); background: var(--green-50); }
+
+.role-tag {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 1px 6px; margin-right: 6px; border-radius: 4px;
+  vertical-align: middle; white-space: nowrap; color: #fff;
+}
+.role-tag-pm { background: var(--blue-600); }
+.role-tag-sm { background: var(--green-600); }
+
+/* ==========================================================================
+   6. TIMELINE TRACK + GRIDLINES
+   ========================================================================== */
+.pl-track {
+  flex: 0 0 auto;
+  position: relative;
+  border-bottom: 1px solid var(--border-color);
+  background-image: linear-gradient(to right, var(--border-color) 0 1px, transparent 1px);
+  background-repeat: repeat-x;
+  background-position: left top;
+  opacity: 1;
+}
+
+.pl-row:not(.pl-summary) .pl-track { cursor: cell; }
+
+.pl-row:not(.pl-summary) .pl-track:not(:has(.pl-bar))::before {
+  content: "Klikk og dra for å tildele prosjekt";
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px; font-style: italic; color: #aab0b8;
+  pointer-events: none; white-space: nowrap;
+  transition: color .15s;
+}
+.pl-inner:not(.pl-dragging) .pl-row:not(.pl-summary):hover .pl-track:not(:has(.pl-bar)) {
+  background-color: rgba(var(--blue-rgb), 0.05);
+}
+.pl-inner:not(.pl-dragging) .pl-row:not(.pl-summary):hover .pl-track:not(:has(.pl-bar))::before {
+  color: var(--slate-500);
+}
+
+/* ==========================================================================
+   7. ALLOCATION + ABSENCE BARS
+   ========================================================================== */
+
+/* ── 7a. Base bar ───────────────────────────────────────────────────────── */
+.pl-bar {
+  position: absolute;
+  top: 4px;
+  height: calc(var(--row-h) - 14px);
+  border-radius: 4px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e293b;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow .15s, opacity .15s, height .15s ease;
+}
+.pl-bar:hover { box-shadow: 0 1px 6px rgba(0,0,0,0.18); }
+.pl-bar:active { cursor: grabbing; }
+
+/* ── 7b. Hover-driven row resize */
+.pl-inner:not(.pl-dragging) .pl-row:hover:not(:has(.pl-bar:hover)):not(:has(.pl-bar-absence:hover)) .pl-bar:not(.pl-bar-absence) {
+  height: calc(var(--row-h) - 20px);
+}
+.pl-inner:not(.pl-dragging) .pl-row:hover:not(:has(.pl-bar:hover)):not(:has(.pl-bar-absence:hover)) .pl-bar:not(.pl-bar-absence):hover {
+  height: calc(var(--row-h) - 14px);
+}
+
+/* ── 7c. Bar contents ─────────────────────────────────────────────────── */
+.pl-bar-label {
+  position: relative; z-index: 1;
+  flex: 1;
+  padding: 0 4px;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.pl-handle {
+  position: relative; z-index: 2;
+  flex: 0 0 6px;
+  align-self: stretch;
+  cursor: ew-resize;
+}
+.pl-bar:hover .pl-handle {
+  background: rgba(255, 255, 255, 0.40);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+.pl-bar:hover .pl-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0; height: 50%; max-height: 14px;
+  border-left: 1px solid rgba(0, 0, 0, 0.40);
+}
+.pl-handle:hover {
+  background: rgba(var(--blue-rgb), 0.85);
+  box-shadow: inset 0 0 0 1px var(--blue-700);
+}
+.pl-handle:hover::after { border-left-color: rgba(255, 255, 255, 0.9); }
+
+.pl-handle::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 16px;
+}
+.pl-handle[data-edge="l"]::before { left: 0; }
+.pl-handle[data-edge="r"]::before { right: 0; }
+
+.pl-del {
+  position: relative; z-index: 2;
+  display: none;
+  border: 0; background: transparent; color: inherit;
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px;
+}
+.pl-bar:hover .pl-del { display: block; }
+
+/* ── 7d. Absence overlay band ─────────────────────────────────────────────
+   Hatch lives on background-image (not ::after) so the ::after pseudo stays
+   free for the edge-clip chevron in section 12. backgroundColor in JS sets
+   only the colour, leaving this background-image layer intact. */
+.pl-bar-absence {
+  top: 2px;
+  height: 15px;
+  z-index: 3;
+  font-style: italic;
+  font-size: 9px;
+  opacity: 0.95;
+  transition: height .15s ease, font-size .15s ease;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255,255,255,0.45) 0 5px,
+    transparent 5px 10px);
+}
+.pl-inner:not(.pl-dragging) .pl-bar-absence:hover {
+  height: calc(var(--row-h) - 20px);
+  font-size: 11px;
+}
+
+.pl-bar-absence .pl-bar-label { padding: 0 4px; }
+.pl-bar-absence .pl-del       { font-size: 11px; }
+
+/* ── 7e. Ghost / drag preview ─────────────────────────────────────────── */
+.pl-bar-ghost {
+  opacity: 0.5;
+  outline: 2px dashed var(--blue-600);
+  background: var(--blue-100);
+}
+.pl-bar.dragging { opacity: 0.35; }
+
+.pl-inner.pl-dragging,
+.pl-inner.pl-dragging * { cursor: grabbing !important; }
+
+/* ==========================================================================
+   8. GROUP HEADERS
+   ========================================================================== */
+.pl-grouphead { height: 28px; }
+.pl-grouphead-label {
+  position: sticky; left: 0; z-index: 11;
+  display: inline-block;
+  font-weight: 700; font-size: 13px;
+  padding: 5px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+/* ==========================================================================
+   9. SUMMARY ROWS
+   ========================================================================== */
+.pl-summary .pl-resource.summary-label {
+  font-weight: bold;
+  padding: 10px 16px;
+  align-content: center;
+}
+
+.pl-summary .pl-track {
+  display: flex;
+  align-items: center;
+}
+.pl-summary .summary-value {
+  flex: 0 0 auto;
+  text-align: center;
+  align-content: center;
+  font-size: 13px;
+  border-left: 1px solid #f1f5f9;
+  box-sizing: border-box;
+}
+.pl-summary.summary-assigned .pl-resource,
+.pl-summary.summary-assigned .pl-track { background: var(--green-50); font-weight: 600; }
+.pl-summary.summary-ledig .pl-resource,
+.pl-summary.summary-ledig .pl-track { background: var(--blue-50); font-weight: 600; }
+.pl-summary.summary-total .pl-resource,
+.pl-summary.summary-total .pl-track { background: var(--amber-50); font-weight: 700; }
+
+/* ==========================================================================
+   10. NOW MARKER
+   ========================================================================== */
+.pl-nowline {
+  position: absolute; top: 0; bottom: 0;
+  width: 2px; z-index: 5;
+  background: var(--amber-600);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   11. TOOLTIPS
+   ========================================================================== */
+.drag-range-tooltip {
+  position: fixed; z-index: 9999;
+  pointer-events: none; display: none;
+  background: var(--slate-700); color: #fff;
+  font: 600 12px 'Inter', sans-serif;
+  padding: 4px 8px; border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+.pl-hovertip {
+  position: fixed; z-index: 9999;
+  pointer-events: none; display: none;
+  background: var(--slate-700); color: #fff;
+  font-family: 'Inter', sans-serif;
+  padding: 6px 9px; border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  max-width: 260px;
+}
+.pl-tip-title { font-weight: 700; font-size: 12px; }
+.pl-tip-sub   { opacity: 0.85; font-size: 11px; margin-top: 2px; }
+.pl-tip-clip {
+  margin-top: 4px; padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.18);
+  font-size: 11px; font-style: italic;
+  color: var(--amber-100);
+}
+
+/* ==========================================================================
+   12. EDGE CONTINUATION (chevrons for out-of-viewport spans)
+   ========================================================================== */
+.pl-clip-r { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.pl-clip-l { border-top-left-radius: 0;  border-bottom-left-radius: 0; }
+
+.pl-clip-r::after,
+.pl-clip-l::before {
+    content: '';
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    border-top: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+.pl-clip-r::after  {
+    right: 5px;
+    left: auto;
+    transform: translateY(-50%) rotate(45deg);
+}
+.pl-clip-l::before {
+    left: 5px;
+    right: auto;
+    transform: translateY(-50%) rotate(-135deg);
+}
+
+.pl-clip-l .pl-bar-label { padding-left: 24px !important; }
+.pl-clip-r .pl-bar-label { padding-right: 24px !important; }
+
+.pl-bar-absence.pl-clip-l .pl-bar-label { padding-left: 20px !important; }
+.pl-bar-absence.pl-clip-r .pl-bar-label { padding-right: 20px !important; }

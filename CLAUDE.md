@@ -72,12 +72,14 @@ Add Script URL / Stylesheet URL in the component's **Resources** section. Librar
 ```
 components/
   <component-name>/
-    index.js        ← paste this into Appfarm Create (single source of truth)
-    component.json  ← metadata: name, version, app, last synced
+    index.js        ← Script tab in Appfarm Create (paste here)
+    styles.css      ← CSS tab in Appfarm Create (paste here)
+    template.html   ← HTML Content tab in Appfarm Create (paste here)
+    component.json  ← metadata: name, version, app, inputs, actions, last synced
     CHANGELOG.md    ← log every change before pasting into Appfarm
 ```
 
-`index.js` contains the Script content only (not HTML or CSS — those are separate fields in Appfarm Create).
+Each file maps to one tab in the Appfarm Create coded component editor. Paste them separately — they are independent fields.
 
 ## Versioning
 
@@ -91,10 +93,10 @@ Then paste the restored `index.js` into Appfarm Create.
 
 ## Workflow for every change
 
-1. Edit `index.js` locally
+1. Edit `index.js`, `styles.css`, and/or `template.html` locally
 2. Update `version` in `component.json` and log the change in `CHANGELOG.md`
 3. `git add` + `git commit` + `git tag <name>@<version>`
-4. Paste `index.js` into Appfarm Create
+4. Paste each file into the corresponding tab in Appfarm Create
 5. Update `lastSynced` in `component.json` and commit
 
 ## Platform context
