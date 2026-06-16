@@ -1,5 +1,16 @@
 # Changelog — resource-demand-chart-v2
 
+## 1.3.0 — 2026-06-16
+
+Readability of the bar rows:
+- Sum-of-worktypes (source-header) rows now show a light category-tinted
+  background band and heavier bars (bold number, stronger border, slight
+  shadow) so the total is distinct from the worktype breakdown rows, which
+  stay on white. Adds the rp-row-source-header-<source> row class.
+- Every other span within a row is shaded slightly darker (rp-bar-alt,
+  filter: brightness(0.92)) so adjacent runs like 6|8|6 are easy to tell
+  apart. Applied to both aggregate and editable bars.
+
 ## 1.2.0 — 2026-06-16
 
 Aggregate rows as bars:

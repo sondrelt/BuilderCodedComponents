@@ -339,7 +339,11 @@ function makeEditableTrack(projectId, srcEnum, srcClass, workType, srcName) {
     track.style.width          = gridWidth + 'px';
     track.style.backgroundSize = COL_W + 'px 100%';
     (reqsByKey.get(reqKey(projectId, srcEnum, workType)) || [])
-        .forEach(r => track.appendChild(makeBar(r, srcClass)));
+        .forEach((r, idx) => {
+            const bar = makeBar(r, srcClass);
+            if (idx % 2) bar.classList.add('rp-bar-alt');   // alternate-shade spans
+            track.appendChild(bar);
+        });
     return track;
 }
 
@@ -351,7 +355,7 @@ function makeRunBarTrack(values, srcClass) {
     track.className = 'rp-track rp-track-agg';
     track.style.width          = gridWidth + 'px';
     track.style.backgroundSize = COL_W + 'px 100%';
-    let i = 0;
+    let i = 0, runIdx = 0;
     while (i < values.length) {
         const v = values[i];
         if (!v) { i++; continue; }                                   // 0 → gap
@@ -359,12 +363,14 @@ function makeRunBarTrack(values, srcClass) {
         while (j + 1 < values.length && values[j + 1] === v) j++;    // extend run
         const left = columns[i].left;
         const bar = document.createElement('div');
-        bar.className = 'rp-bar rp-bar-agg rp-bar-' + srcClass;
+        bar.className = 'rp-bar rp-bar-agg rp-bar-' + srcClass
+            + (runIdx % 2 ? ' rp-bar-alt' : '');                     // alternate-shade spans
         bar.style.left  = left + 'px';
         bar.style.width = (columns[j].left + columns[j].width - left) + 'px';
         bar.innerHTML = '<span class="rp-bar-count">' + v + '</span>';
         track.appendChild(bar);
         i = j + 1;
+        runIdx++;
     }
     return track;
 }
@@ -523,7 +529,7 @@ function buildAll() {
 
             // Source summary row (aggregate across all work types, read-only)
             const srcRow = document.createElement('div');
-            srcRow.className = 'rp-row rp-row-source-header';
+            srcRow.className = 'rp-row rp-row-source-header rp-row-source-header-' + srcClass;
 
             const srcLabel = document.createElement('div');
             srcLabel.className = 'rp-label-cell rp-source-label rp-source-label-' + srcClass;

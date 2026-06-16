@@ -255,6 +255,22 @@
    Base .rp-track supplies position:relative and the column gridlines. */
 .rp-track-agg { cursor: default; }
 
+/* Sum-of-worktypes rows: light category-tinted band so they read as totals.
+   The gridline background-image stays visible above this background-color. */
+.rp-row-source-header-behov     .rp-track-agg { background-color: var(--rp-behov-bg); }
+.rp-row-source-header-egne      .rp-track-agg { background-color: var(--rp-egne-bg); }
+.rp-row-source-header-innleide  .rp-track-agg { background-color: var(--rp-innleide-bg); }
+.rp-row-source-header-utleide   .rp-track-agg { background-color: var(--rp-utleide-bg); }
+.rp-row-source-header-udekt     .rp-track-agg { background-color: var(--rp-udekt-bg); }
+.rp-row-source-header-overskudd .rp-track-agg { background-color: var(--rp-overskudd-bg); }
+
+/* Total bars sit heavier than the detail bars below them */
+.rp-row-source-header .rp-bar-agg {
+  border-color: rgba(0,0,0,0.22);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+}
+.rp-row-source-header .rp-bar-count { font-weight: 800; }
+
 /* Popover trigger button — pinned to the track's right edge (last column) */
 .rp-popover-btn {
   position: absolute;
@@ -308,6 +324,10 @@
   box-shadow: none;
   border-color: rgba(0,0,0,0.06);
 }
+
+/* Alternate-shade: every other span in a row is slightly darker so run
+   boundaries are visible. Colour-agnostic — works on any bar hue. */
+.rp-bar-alt { filter: brightness(0.92); }
 
 /* Quantity label centred in bar — absolute overlay so it stays centred
    regardless of handle widths; handles are pinned to the edges below. */
