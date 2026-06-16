@@ -1,5 +1,13 @@
 # Changelog — resource-demand-chart-v2
 
+## 1.3.5 — 2026-06-16
+
+- Fixed the sum-marker line reading grey/black: it was derived from the
+  near-white band tint (--rp-<src>-bg), which has no hue left to darken into a
+  colour. --sum-line is now derived per source from the saturated bar colour
+  (color-mix(--rp-<src>-bar, #000 25%)), so the line/ticks are a soft blue /
+  amber / red / green matching the source.
+
 ## 1.3.4 — 2026-06-16
 
 - Sum-marker line is now a darker shade of the same hue instead of a grey/black:

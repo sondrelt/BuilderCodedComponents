@@ -256,21 +256,18 @@
 .rp-track-agg { cursor: default; }
 
 /* Sum-of-worktypes rows are a secondary readout — they recede behind the
-   editable worktype bars. Per source they expose a faint band tint (--sum-tint);
-   the marker line/ticks use currentColor (the category text colour). */
-.rp-row-source-header-behov     { --sum-tint: var(--rp-behov-bg); }
-.rp-row-source-header-egne      { --sum-tint: var(--rp-egne-bg); }
-.rp-row-source-header-innleide  { --sum-tint: var(--rp-innleide-bg); }
-.rp-row-source-header-utleide   { --sum-tint: var(--rp-utleide-bg); }
-.rp-row-source-header-udekt     { --sum-tint: var(--rp-udekt-bg); }
-.rp-row-source-header-overskudd { --sum-tint: var(--rp-overskudd-bg); }
+   editable worktype bars. Per source: a faint band tint (--sum-tint) and a soft
+   line colour (--sum-line). The line is derived from the SATURATED bar colour,
+   not the near-white band — darkening the band just yields grey. */
+.rp-row-source-header-behov     { --sum-tint: var(--rp-behov-bg);     --sum-line: color-mix(in srgb, var(--rp-behov-bar),     #000 25%); }
+.rp-row-source-header-egne      { --sum-tint: var(--rp-egne-bg);      --sum-line: color-mix(in srgb, var(--rp-egne-bar),      #000 25%); }
+.rp-row-source-header-innleide  { --sum-tint: var(--rp-innleide-bg);  --sum-line: color-mix(in srgb, var(--rp-innleide-bar),  #000 25%); }
+.rp-row-source-header-utleide   { --sum-tint: var(--rp-utleide-bg);   --sum-line: color-mix(in srgb, var(--rp-utleide-bar),   #000 25%); }
+.rp-row-source-header-udekt     { --sum-tint: var(--rp-udekt-bg);     --sum-line: color-mix(in srgb, var(--rp-udekt-bar),     #000 25%); }
+.rp-row-source-header-overskudd { --sum-tint: var(--rp-overskudd-bg); --sum-line: color-mix(in srgb, var(--rp-overskudd-bar), #000 25%); }
 
 /* Faint band (gridlines stay visible above this background-color) */
 .rp-row-source-header .rp-track-agg { background-color: var(--sum-tint); }
-
-/* Soft marker line: the band tint darkened ~20% toward black, so it's a darker
-   shade of the SAME hue (not a grey/black line) — visible but not harsh. */
-.rp-row-source-header { --sum-line: color-mix(in srgb, var(--sum-tint), #000 20%); }
 
 /* Sum value as an underlined-number marker, not a filled box. */
 .rp-row-source-header .rp-bar-agg {
