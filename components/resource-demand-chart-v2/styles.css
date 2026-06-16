@@ -268,12 +268,15 @@
 /* Faint band (gridlines stay visible above this background-color) */
 .rp-row-source-header .rp-track-agg { background-color: var(--sum-tint); }
 
-/* Sum value as an underlined-number marker, not a filled box.
-   currentColor (the category text colour) keeps the line legible on the band. */
+/* Soft marker line: translucent black reads as a slightly darker shade of the
+   band tint behind it — visible but not harsh (currentColor was too strong). */
+.rp-row-source-header { --sum-line: rgba(0,0,0,0.22); }
+
+/* Sum value as an underlined-number marker, not a filled box. */
 .rp-row-source-header .rp-bar-agg {
   background: transparent;
   border: none;
-  border-bottom: 2px solid currentColor;
+  border-bottom: 2px solid var(--sum-line);
   border-radius: 0;
   box-shadow: none;
 }
@@ -287,7 +290,7 @@
   bottom: 0;
   width: 2px;
   height: 6px;
-  background: currentColor;
+  background: var(--sum-line);
 }
 .rp-row-source-header .rp-bar-agg::before { left: 0; }
 .rp-row-source-header .rp-bar-agg::after  { right: 0; }

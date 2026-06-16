@@ -1,5 +1,11 @@
 # Changelog — resource-demand-chart-v2
 
+## 1.3.3 — 2026-06-16
+
+- Softened the sum-marker line/ticks: currentColor (dark category text) was too
+  harsh; now a translucent black (--sum-line: rgba(0,0,0,0.22)) that reads as a
+  slightly darker shade of the band tint. The number stays dark for readability.
+
 ## 1.3.2 — 2026-06-16
 
 Sum markers now show run boundaries:
