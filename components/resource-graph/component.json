@@ -1,5 +1,5 @@
 {
-  "name": "resource-demand-chart",
+  "name": "resource-graph",
   "version": "1.0.0",
   "description": "Stacked bar + line chart showing weekly resource demand by category: own employees, hired, leased out, unmet demand, surplus, and total need.",
   "appfarmApp": "",

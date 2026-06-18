@@ -1,4 +1,4 @@
-# Changelog — resource-demand-chart-v2
+# Changelog — resource-graph-v2
 
 ## 1.3.5 — 2026-06-16
 

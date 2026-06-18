@@ -1,5 +1,5 @@
 {
-  "name": "resource-planning-grid",
+  "name": "resource-req",
   "version": "1.0.0",
   "description": "Multi-project editable resource planning grid. Shows aggregated header rows per source type with expandable work-type detail rows. Inline editing with optimistic local aggregation.",
   "appfarmApp": "",

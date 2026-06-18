@@ -129,7 +129,7 @@ git branch -d feat/<component-name>
 ```
 
 Commit message format: `<component-name>: <version> — <short description>`
-Example: `resource-demand-chart: 1.1.0 — add filter persistence across re-renders`
+Example: `resource-graph: 1.1.0 — add filter persistence across re-renders`
 
 ## Platform context
 

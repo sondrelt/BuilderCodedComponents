@@ -28,9 +28,9 @@ Project planners, HR, and resource planners — broadly, anyone who manages and 
 ## App modules
 
 - **Resource planner** — the supporting value prop and the engine that makes the marketplace useful: gives each company an overview of its own use and capacity and highlights supply vs. demand. Built from the `resource-*` coded components:
-  - **resource-planning-grid** — editable multi-project grid; summary row per source type plus expandable per-work-type detail rows for inline editing.
-  - **resource-demand-chart** — stacked-bar + line chart of weekly demand vs. supply.
-  - **resource-allocation-calendar** — date-positioned (span-native) timeline for creating, moving, and resizing allocations and absences per person.
+  - **resource-req** — editable multi-project grid; summary row per source type plus expandable per-work-type detail rows for inline editing.
+  - **resource-graph** — stacked-bar + line chart of weekly demand vs. supply.
+  - **assignment-grid** — date-positioned (span-native) timeline for creating, moving, and resizing allocations and absences per person.
 - **Marketplace / matching** — browse, post, and match surplus and needs across companies.
 - **Contracts / agreements** — handling the lease agreement and terms between the two companies.
 - **Worker profiles** — people with skills, work types, availability.

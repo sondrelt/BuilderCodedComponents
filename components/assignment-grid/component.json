@@ -1,5 +1,5 @@
 {
-  "name": "resource-allocation-calendar",
+  "name": "assignment-grid",
   "version": "1.1.0",
   "description": "Span-native resource planning timeline with day/week granularity. Drag to create, move, and resize allocations and absences.",
   "appfarmApp": "",
