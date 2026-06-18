@@ -129,6 +129,7 @@ let allocsByProject = new Map(); // projectId → [allocation]
 let wtNameMap       = {};        // workType enum_value → enum_name
 
 let activeDrag    = null;
+let liftedBar     = null;        // editable span currently lifted by lane-hover
 let popoverEl     = null;
 let tooltipEl     = null;
 let activeEdit    = false;       // popover open → block rebuilds
@@ -503,6 +504,7 @@ function buildAll() {
     buildColumns();
     indexData();
     inner.innerHTML = '';
+    liftedBar = null;                 // DOM is recreated — drop the stale ref
     buildHeader(inner);
 
     const allProjects  = safeGet(appfarm.data.projects);
@@ -873,6 +875,37 @@ function onPointerUp(e) {
     flushQueuedRebuild();
 }
 
+// ═══ 9b. LANE-HOVER LIFT ════════════════════════════════════════════════════
+//  Lift the editable span the cursor is splitting under: cursor X inside the
+//  span's period (from→to) AND cursor Y in the lane beneath the span body. The
+//  body stays put (it's the grab zone); only the lane lifts its span. Bars are
+//  absolutely positioned in their track, so offsetLeft/Top/Width/Height already
+//  give the span's pixel box.
+function setLift(bar) {
+    if (liftedBar === bar) return;
+    if (liftedBar) liftedBar.classList.remove('rp-lifted');
+    liftedBar = bar;
+    if (liftedBar) liftedBar.classList.add('rp-lifted');
+}
+
+// ponytail: O(bars-in-track) scan per mousemove — fine for the few spans per
+// row; add a cache only if a row ever holds many bars.
+function onHoverMove(e) {
+    if (activeDrag) return;                            // don't fight a drag
+    const track = e.target.closest?.('.rp-track-editable');
+    if (!track) return setLift(null);
+    const rect = track.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    let hit = null;
+    track.querySelectorAll('.rp-bar:not(.rp-bar-ghost)').forEach(bar => {
+        const inX    = x >= bar.offsetLeft && x <= bar.offsetLeft + bar.offsetWidth;
+        const inLane = y > bar.offsetTop + bar.offsetHeight;   // below the span body
+        if (inX && inLane) hit = bar;                          // over the body → no lift
+    });
+    setLift(hit);
+}
+
 // ═══ 10. LIFECYCLE ══════════════════════════════════════════════════════════
 function ensureSkeleton() {
     const root = document.getElementById('req-planner');
@@ -889,7 +922,10 @@ function init() {
     initialized = true;
     ensureSkeleton();
 
-    document.getElementById('rp-inner')?.addEventListener('mousedown', onPointerDown);
+    const innerEl = document.getElementById('rp-inner');
+    innerEl?.addEventListener('mousedown', onPointerDown);
+    innerEl?.addEventListener('mousemove', onHoverMove);
+    innerEl?.addEventListener('mouseleave', () => setLift(null));
 
     buildAll();
 

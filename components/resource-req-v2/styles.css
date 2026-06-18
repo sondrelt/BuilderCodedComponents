@@ -348,10 +348,11 @@
    hover required. Mirrors assignment-grid. */
 .rp-row-editable { height: calc(var(--rp-row-h) + 6px); }   /* 36 → 42, ~12px lane */
 
-/* Lift only the bar under the pointer (not the whole row), and only a touch,
-   to enlarge its lane for an easier drag-to-split. */
-.rp-inner:not(.rp-dragging) .rp-row-editable .rp-bar:hover {
-  height: calc(var(--rp-row-h) - 14px);   /* 26 → 22px, +4px lane on hover */
+/* Lift the span whose period (from→to) the cursor is in WHILE the cursor is in
+   the lane beneath it — set by onHoverMove. The span body itself never lifts
+   (it's the grab zone); only the lane invites a split. One span at a time. */
+.rp-row-editable .rp-bar.rp-lifted {
+  height: calc(var(--rp-row-h) - 14px);   /* 26 → 22px, exposes more lane */
 }
 
 /* Per-source bar colours */

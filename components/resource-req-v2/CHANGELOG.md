@@ -2,11 +2,12 @@
 
 ## 1.6.0 — 2026-06-18
 
-- Editable spans now leave a permanent drag lane beneath them: you can drag a new
-  span in that lane even where a long bar already covers the area — letting you
-  split a long period with a small span. Hovering a span lifts only that one (a
-  touch) to enlarge its lane. createProjectRequirement handles the split/trim
-  server-side; no JS change, affordance only (mirrors assignment-grid).
+- Editable rows now carry a drag lane beneath each span: you can drag a new span
+  in that lane even where a long bar already covers the area — letting you split a
+  long period with a small span. Moving the cursor into the lane under a span
+  lifts just that span (the span body stays put — it's the grab zone), pointing
+  to where the split will land. createProjectRequirement handles the split/trim
+  server-side. Mirrors assignment-grid.
 
 ## 1.5.0 — 2026-06-18
 
