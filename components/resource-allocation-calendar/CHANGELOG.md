@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0 — 2026-06-18
+
+- Added `jobs` data source: Builder lease-out ads matched to resources by `workType`
+- Job ghosts render in each matching resource's free gaps only (suppressed where they
+  would overlap an existing allocation or absence)
+- Ghost is a slim dashed indigo band — recessive vs. real bars, brightens on hover; a
+  link (pointer cursor), not draggable. Multiple ads sharing one gap collapse into a
+  single "N ledige oppdrag" marker
+- Ghost shows the ad's `numberOfResources` as a count pill next to the title
+- Clicking a ghost calls the `openJob` action with `jobId`
+- Empty-lane "drag to assign" hint suppressed on rows that carry a ghost
+
 ## 1.0.0 — 2026-06-16
 
 - Initial version

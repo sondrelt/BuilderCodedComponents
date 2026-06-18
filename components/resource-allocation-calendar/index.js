@@ -24,6 +24,8 @@ let allocById = new Map();
 let absencesByResource = new Map();
 let absenceById = new Map();
 
+let jobsByWorkType = new Map();      // workType enum value -> [Job] (Builder lease-out ads)
+
 let groupingAnchorDate = null;       // pinned once, for project grouping
 let activeDrag = null;               // see onPointerDown for shape
 let dragTooltipEl = null;
@@ -239,6 +241,40 @@ function indexData() {
         absencesByResource.get(rid).push(a);
     });
     absencesByResource.forEach(list => list.sort((x, y) => +new Date(x.dateFrom) - +new Date(y.dateFrom)));
+
+    // Builder job ads — generic lease-out opportunities, bucketed by work type so each
+    // matching resource can surface them in its free gaps.
+    jobsByWorkType = new Map();
+    safeGet(appfarm.data.jobs).forEach(j => {
+        const wt = resolveId(j.workType);   // workType is a reference enum — resolve to its id
+        if (wt == null) return;
+        if (!jobsByWorkType.has(wt)) jobsByWorkType.set(wt, []);
+        jobsByWorkType.get(wt).push(j);
+    });
+}
+
+// Sub-spans of [from,to] NOT covered by any allocation or absence for this resource.
+// ponytail: naive merge-and-subtract, O(intervals) per resource per job; fine for a
+// handful of ads — add a spatial index only if job volume explodes.
+function freeGapsForResource(resourceId, from, to) {
+    const lo = +startOfDay(new Date(from));
+    const hi = +endOfDay(new Date(to));
+    if (hi <= lo) return [];
+
+    const busy = []
+        .concat(allocsByResource.get(resourceId) || [], absencesByResource.get(resourceId) || [])
+        .map(r => [+startOfDay(new Date(r.dateFrom)), +endOfDay(new Date(r.dateTo))])
+        .filter(([s, e]) => e >= lo && s <= hi)
+        .sort((a, b) => a[0] - b[0]);
+
+    const gaps = [];
+    let cursor = lo;
+    busy.forEach(([s, e]) => {
+        if (s > cursor) gaps.push({ from: new Date(cursor), to: new Date(s - 1) });
+        if (e > cursor) cursor = e + 1;
+    });
+    if (cursor <= hi) gaps.push({ from: new Date(cursor), to: new Date(hi) });
+    return gaps;
 }
 
 function getAnchorDate() {
@@ -329,7 +365,33 @@ function makeBar(record, kind) {
     return bar;
 }
 
-function makeTrack(resourceId) {
+// Ghost for a Builder job ad sitting in a resource's free gap. Not a real bar:
+// dashed, recessive, clickable (opens the ad) — never draggable.
+function makeJobGhost(gapFrom, gapTo, jobsInGap) {
+    const left  = xForDate(startOfDay(new Date(gapFrom)));
+    const right = xForDate(endOfDay(new Date(gapTo)));
+    const n = jobsInGap.length;
+    const label = n > 1 ? `${n} ledige oppdrag` : (jobsInGap[0].title || 'Oppdrag');
+    const count = jobsInGap.reduce((sum, j) => sum + (Number(j.numberOfResources) || 0), 0);
+
+    const ghost = document.createElement('div');
+    ghost.className = 'pl-jobad';
+    ghost.style.left = left + 'px';
+    ghost.style.width = Math.max(right - left, 1) + 'px';
+    ghost.dataset.jobId = jobsInGap[0]._id;
+    if (n > 1) ghost.dataset.jobIds = jobsInGap.map(j => j._id).join(',');
+    ghost.title = count ? `${label} · ${count} stk` : label;
+    ghost.innerHTML =
+        `<span class="pl-jobad-mark">↗</span>` +
+        `<span class="pl-jobad-label"></span>` +
+        (count ? `<span class="pl-jobad-count"></span>` : '');
+    ghost.querySelector('.pl-jobad-label').textContent = label;
+    if (count) ghost.querySelector('.pl-jobad-count').textContent = count;
+    return ghost;
+}
+
+function makeTrack(res) {
+    const resourceId = res._id;
     const track = document.createElement('div');
     track.className = 'pl-track';
     track.dataset.resourceId = resourceId;
@@ -338,6 +400,23 @@ function makeTrack(resourceId) {
     track.style.backgroundSize = `${W}px 100%`;
     (allocsByResource.get(resourceId) || []).forEach(a => track.appendChild(makeBar(a, 'alloc')));
     (absencesByResource.get(resourceId) || []).forEach(a => track.appendChild(makeBar(a, 'absence')));
+
+    // Surface matching Builder ads in this resource's free gaps. Gaps are computed once
+    // over the visible range; each gap renders at most one ghost (multiple ads sharing a
+    // gap collapse into a single "N ledige oppdrag" marker) so ghosts never occlude.
+    const jobs = jobsByWorkType.get(resolveId(res.workType)) || [];
+    if (jobs.length) {
+        freeGapsForResource(resourceId, rangeStart, rangeEnd).forEach(gap => {
+            const gf = +gap.from, gt = +gap.to;
+            const hits = jobs.filter(j =>
+                +endOfDay(new Date(j.dateEnd)) >= gf && +startOfDay(new Date(j.dateStart)) <= gt);
+            if (!hits.length) return;
+            // Clip the ghost to the part of the gap actually covered by the matching ads.
+            const from = new Date(Math.max(gf, Math.min(...hits.map(j => +startOfDay(new Date(j.dateStart))))));
+            const to   = new Date(Math.min(gt, Math.max(...hits.map(j => +endOfDay(new Date(j.dateEnd))))));
+            track.appendChild(makeJobGhost(from, to, hits));
+        });
+    }
     return track;
 }
 
@@ -345,7 +424,7 @@ function renderRow(res, frag, role = null) {
     const row = document.createElement('div');
     row.className = 'pl-row' + (role ? ` ${role.rowClass}` : '');
     row.appendChild(buildResourceCell(res, role));
-    row.appendChild(makeTrack(res._id));
+    row.appendChild(makeTrack(res));
     frag.appendChild(row);
 }
 
@@ -544,6 +623,7 @@ function hideTooltip() { if (dragTooltipEl) dragTooltipEl.style.display = 'none'
 function onPointerDown(e) {
     if (e.button !== 0) return;
     if (e.target.closest('.resource-edit-wrapper')) return;
+    if (e.target.closest('.pl-jobad')) return;   // job ghost is a link, not a draggable bar
     const track = e.target.closest('.pl-track');
     if (!track || !track.dataset.resourceId) return;
 
@@ -686,7 +766,10 @@ function onClick(e) {
     if (editWrap) {
         const rid = editWrap.closest('.pl-resource')?.dataset.resourceId;
         if (rid) appfarm.actions?.openResourceEdit?.({ resourceId: rid });
+        return;
     }
+    const ghost = e.target.closest('.pl-jobad');
+    if (ghost) appfarm.actions?.openJob?.({ jobId: ghost.dataset.jobId });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────
@@ -734,7 +817,7 @@ function init() {
     });
 
     appfarm.data.sortByProjects?.on?.('change', buildAll);
-    ['viewStart', 'viewEnd', 'resources', 'projects', 'allocation', 'absence', 'workTypeEnum', 'absenceColors']
+    ['viewStart', 'viewEnd', 'resources', 'projects', 'allocation', 'absence', 'workTypeEnum', 'absenceColors', 'jobs']
         .forEach(h => appfarm.data[h]?.on?.('change', buildAll));
 }
 
