@@ -338,6 +338,17 @@
 .rp-bar:active     { cursor: grabbing; }
 .rp-bar-readonly   { cursor: default; pointer-events: none; opacity: 0.6; }
 
+/* Hover-lift "create lane": hovering an editable row (but not a bar itself)
+   shrinks its bars upward, opening a lane below where you can drag a new span —
+   even across an area an existing long bar already covers. The lane is plain
+   track, so pointer-down there hits onPointerDown's create branch, and
+   createProjectRequirement splits/trims the long period server-side. This is
+   the only affordance that lets you split a long span with a small one.
+   Mirrors assignment-grid §7b. Bars already have top:4px + transition:height. */
+.rp-inner:not(.rp-dragging) .rp-row-editable:hover:not(:has(.rp-bar:hover)) .rp-bar:not(.rp-bar-ghost) {
+  height: calc(var(--rp-row-h) - 22px);   /* 26px → 14px, opens ~18px lane below */
+}
+
 /* Per-source bar colours */
 .rp-bar-behov     { background-color: var(--rp-behov-bar);     color: var(--rp-behov-text); }
 .rp-bar-egne      { background-color: var(--rp-egne-bar);      color: var(--rp-egne-text); }

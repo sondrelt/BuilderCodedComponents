@@ -1,5 +1,13 @@
 # Changelog — resource-graph-v2
 
+## 1.6.0 — 2026-06-18
+
+- Editable rows now "lift" on hover: hovering a row (but not a bar) shrinks its
+  bars upward, opening a drag lane below them. You can drag a new span in that
+  lane even where a long bar already covers the area — letting you split a long
+  period with a small span. createProjectRequirement handles the split/trim
+  server-side; no JS change, affordance only (mirrors assignment-grid).
+
 ## 1.5.0 — 2026-06-18
 
 - Source-header aggregate rows: removed the vertical week gridlines that crossed
