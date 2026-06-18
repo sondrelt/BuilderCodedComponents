@@ -1,0 +1,9 @@
+{
+  "name": "resource-planning-grid-v2",
+  "version": "1.0.0",
+  "description": "Resource planning grid",
+  "appfarmApp": "AppName",
+  "environment": "Development",
+  "inputs": [],
+  "lastSynced": null
+}
