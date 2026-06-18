@@ -1,4 +1,4 @@
-# Changelog — resource-graph-v2
+# Changelog — resource-req-v2
 
 ## 1.6.0 — 2026-06-18
 

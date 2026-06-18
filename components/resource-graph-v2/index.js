@@ -1,4 +1,4 @@
-// Component: resource-req-v2
+// Component: resource-graph-v2
 // Paste this file into Appfarm Create > Coded Component > Script
 
 const root = appfarm.element;
