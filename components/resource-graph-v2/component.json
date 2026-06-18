@@ -1,29 +1,9 @@
 {
-  "name": "resource-graph-v2",
-  "version": "1.3.5",
-  "description": "Interactive Gantt-style project requirements planner. Drag to create/resize/move requirement bars per work type, with quantity popovers, optimistic UI, and per-week aggregate summaries per source category.",
-  "appfarmApp": "",
+  "name": "resource-req-v2",
+  "version": "1.0.0",
+  "description": "Resource planning grid",
+  "appfarmApp": "AppName",
   "environment": "Development",
-  "inputs": [
-    "projectRequirements",
-    "projects",
-    "source",
-    "projectWorkType",
-    "workTypeEnum",
-    "allocation",
-    "calendarWeekWidthPixel",
-    "viewFrom",
-    "viewTo"
-  ],
-  "actions": [
-    "createProjectRequirement",
-    "updateProjectRequirement",
-    "deleteProjectRequirement",
-    "toggleDetails",
-    "editProject",
-    "openGraph",
-    "viewBuilderAds"
-  ],
-  "externalResources": [],
+  "inputs": [],
   "lastSynced": null
 }
