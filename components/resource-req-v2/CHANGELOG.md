@@ -2,10 +2,10 @@
 
 ## 1.6.0 — 2026-06-18
 
-- Editable rows now "lift" on hover: hovering a row (but not a bar) shrinks its
-  bars upward, opening a drag lane below them. You can drag a new span in that
-  lane even where a long bar already covers the area — letting you split a long
-  period with a small span. createProjectRequirement handles the split/trim
+- Editable spans now leave a permanent drag lane beneath them: you can drag a new
+  span in that lane even where a long bar already covers the area — letting you
+  split a long period with a small span. Hovering a span lifts only that one (a
+  touch) to enlarge its lane. createProjectRequirement handles the split/trim
   server-side; no JS change, affordance only (mirrors assignment-grid).
 
 ## 1.5.0 — 2026-06-18
