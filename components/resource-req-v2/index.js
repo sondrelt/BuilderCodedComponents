@@ -95,6 +95,10 @@ function startOfWeekMon(d) {
     return x;
 }
 function endOfWeekMon(d) { return endOfDay(addDays(startOfWeekMon(d), 6)); }
+function fmtDayMonth(d) {
+    const x = new Date(d);
+    return String(x.getDate()).padStart(2, '0') + '.' + String(x.getMonth() + 1).padStart(2, '0');
+}
 
 function getISOWeek(d) {
     const t = startOfDay(d);
@@ -585,18 +589,34 @@ function flushQueuedRebuild() {
 //  Enter = confirm · Esc / click-outside = cancel · optional Slett = delete.
 //  While open, activeEdit blocks rebuilds so the pending ghost survives.
 function showCountPopover(opts) {
-    // opts: { anchorX, anchorY, defaultCount, onConfirm, onCancel?, onDelete? }
+    // opts: { anchorX, anchorY, defaultCount, dateFrom, dateTo, onConfirm, onCancel?, onDelete? }
+    //   onConfirm(count, dateFromISO, dateToISO)
     removePopover();
     activeEdit = true;
 
     const showDelete = typeof opts.onDelete === 'function'
         && typeof appfarm.actions?.deleteProjectRequirement === 'function';
 
+    // Calendar state — seeded from the click/drag period, snapped to whole weeks.
+    const seedFrom = opts.dateFrom ? new Date(opts.dateFrom) : new Date();
+    const calState = {
+        view:    startOfDay(new Date(seedFrom)),
+        from:    opts.dateFrom ? startOfWeekMon(new Date(opts.dateFrom)) : null,
+        to:      opts.dateTo   ? endOfWeekMon(new Date(opts.dateTo))     : null,
+        picking: 'start'
+    };
+
     popoverEl = document.createElement('div');
-    popoverEl.className = 'rp-popover';
+    popoverEl.className = 'rp-popover rp-popover-wide';
     popoverEl.innerHTML =
         '<div class="rp-popover-title">Antall ressurser</div>' +
         '<input class="rp-popover-input" type="number" min="0" step="1" value="' + (opts.defaultCount ?? 1) + '" />' +
+        '<div class="rp-popover-section">Periode</div>' +
+        '<div class="rp-popover-dates">' +
+            '<span class="rp-date-chip" data-end="start">Fra <b class="rp-chip-from">–</b></span>' +
+            '<span class="rp-date-chip" data-end="end">Til <b class="rp-chip-to">–</b></span>' +
+        '</div>' +
+        '<div class="rp-cal"></div>' +
         '<div class="rp-popover-hint">Enter for å lagre &nbsp;·&nbsp; Esc for å avbryte</div>' +
         '<div class="rp-popover-actions">' +
             '<button class="rp-popover-cancel">Avbryt</button>' +
@@ -606,21 +626,44 @@ function showCountPopover(opts) {
     document.body.appendChild(popoverEl);
 
     // Position: prefer right of cursor, flip left near the window edge
-    const pw = 170;
+    const pw = 280;
     let left = opts.anchorX + 10;
     if (left + pw > window.innerWidth - 10) left = opts.anchorX - pw - 10;
-    popoverEl.style.left = left + 'px';
+    popoverEl.style.left = Math.max(8, left) + 'px';
     popoverEl.style.top  = (opts.anchorY - 16) + 'px';
 
     const input = /** @type {HTMLInputElement} */ (popoverEl.querySelector('.rp-popover-input'));
+
+    // Period chips + calendar
+    const chipFrom   = popoverEl.querySelector('.rp-chip-from');
+    const chipTo     = popoverEl.querySelector('.rp-chip-to');
+    const chipFromEl = popoverEl.querySelector('.rp-date-chip[data-end="start"]');
+    const chipToEl   = popoverEl.querySelector('.rp-date-chip[data-end="end"]');
+    const label = (d) => 'uke ' + getISOWeek(d) + ' · ' + fmtDayMonth(d);
+    function updateChips() {
+        chipFrom.textContent = calState.from ? label(calState.from) : '–';
+        chipTo.textContent   = calState.to   ? label(calState.to)   : '–';
+        chipFromEl.classList.toggle('active', calState.picking === 'start');
+        chipToEl.classList.toggle('active', calState.picking === 'end');
+    }
+    chipFromEl.addEventListener('click', () => { calState.picking = 'start'; updateChips(); });
+    chipToEl.addEventListener('click',   () => { calState.picking = 'end';   updateChips(); });
+    renderWeekCalendar(popoverEl.querySelector('.rp-cal'), calState, updateChips);
+    updateChips();
 
     input.focus();
     input.select();
 
     function confirm() {
         const count = Math.max(0, parseInt(input.value, 10) || 0);
+        let from = calState.from ? startOfWeekMon(calState.from) : startOfWeekMon(seedFrom);
+        let to;
+        if (calState.to)        to = endOfWeekMon(calState.to);
+        else if (calState.from) to = endOfWeekMon(calState.from);   // start picked, no end → one week
+        else                    to = endOfWeekMon(opts.dateTo ? new Date(opts.dateTo) : seedFrom);
+        if (+to < +from) to = endOfWeekMon(from);
         removeOutsideHandler();
-        opts.onConfirm(count);
+        opts.onConfirm(count, from.toISOString(), to.toISOString());
         removePopover();
     }
     function cancel() {
@@ -656,6 +699,120 @@ function removePopover() {
     if (popoverEl) { popoverEl.remove(); popoverEl = null; }
     activeEdit = false;
     flushQueuedRebuild();
+}
+
+// ═══ 8b. WEEK CALENDAR (period picker inside the popover) ════════════════════
+//  Operates on whole ISO weeks: hovering a row highlights its Mon–Sun week,
+//  clicking selects it. Two-click range — first click sets the start week
+//  (clears end), second sets the end (swaps if earlier). state is mutated in
+//  place: { view: Date(month shown), from: Date|null(Mon), to: Date|null(Sun),
+//  picking: 'start'|'end' }.
+const WEEKDAY_LABELS = ['Ma', 'Ti', 'On', 'To', 'Fr', 'Lø', 'Sø'];
+const MONTH_NAMES = ['januar', 'februar', 'mars', 'april', 'mai', 'juni',
+    'juli', 'august', 'september', 'oktober', 'november', 'desember'];
+
+// Pure week-range transition (extracted so the self-check below can exercise it).
+function nextWeekSelection(from, to, picking, day) {
+    const mon = startOfWeekMon(day);
+    if (picking === 'start' || !from) {
+        return { from: mon, to: null, picking: 'end' };
+    }
+    if (+mon < +from) return { from: mon, to: endOfWeekMon(from), picking: 'start' };
+    return { from, to: endOfWeekMon(day), picking: 'start' };
+}
+
+function renderWeekCalendar(mount, state, onChange) {
+    function render() {
+        mount.innerHTML = '';
+
+        // Nav: ‹ month year ›
+        const nav = document.createElement('div');
+        nav.className = 'rp-cal-nav';
+        const prev = document.createElement('button');
+        prev.type = 'button'; prev.className = 'rp-cal-navbtn'; prev.innerHTML = '‹';
+        const title = document.createElement('span');
+        title.className = 'rp-cal-title';
+        title.textContent = MONTH_NAMES[state.view.getMonth()] + ' ' + state.view.getFullYear();
+        const next = document.createElement('button');
+        next.type = 'button'; next.className = 'rp-cal-navbtn'; next.innerHTML = '›';
+        prev.addEventListener('click', () => { state.view = new Date(state.view.getFullYear(), state.view.getMonth() - 1, 1); render(); });
+        next.addEventListener('click', () => { state.view = new Date(state.view.getFullYear(), state.view.getMonth() + 1, 1); render(); });
+        nav.appendChild(prev); nav.appendChild(title); nav.appendChild(next);
+        mount.appendChild(nav);
+
+        const grid = document.createElement('div');
+        grid.className = 'rp-cal-grid';
+
+        // Header: week# label + weekday labels
+        const hWeek = document.createElement('div');
+        hWeek.className = 'rp-cal-hcell rp-cal-wnum';
+        hWeek.textContent = 'Uke';
+        grid.appendChild(hWeek);
+        WEEKDAY_LABELS.forEach(l => {
+            const h = document.createElement('div');
+            h.className = 'rp-cal-hcell';
+            h.textContent = l;
+            grid.appendChild(h);
+        });
+
+        // Effective highlight range: full range when both ends set, else just
+        // the start week so a single pick is still visible.
+        let lo = null, hi = null;
+        if (state.from && state.to) { lo = +startOfDay(state.from); hi = +startOfDay(state.to); }
+        else if (state.from)        { lo = +startOfDay(state.from); hi = +startOfDay(endOfWeekMon(state.from)); }
+
+        const monthIdx = state.view.getMonth();
+        let cur = startOfWeekMon(new Date(state.view.getFullYear(), monthIdx, 1));
+
+        for (let w = 0; w < 6; w++) {
+            const row = document.createElement('div');
+            row.className = 'rp-cal-row';
+
+            const wnum = document.createElement('div');
+            wnum.className = 'rp-cal-cell rp-cal-wnum';
+            wnum.textContent = String(getISOWeek(cur));
+            row.appendChild(wnum);
+
+            for (let dOff = 0; dOff < 7; dOff++) {
+                const day = addDays(cur, dOff);
+                const t = +startOfDay(day);
+                const cell = document.createElement('div');
+                cell.className = 'rp-cal-cell rp-cal-day';
+                if (day.getMonth() !== monthIdx) cell.classList.add('muted');
+                if (lo != null && t >= lo && t <= hi) {
+                    cell.classList.add('rp-cal-in-range');
+                    if (t === lo) cell.classList.add('start');
+                    if (t === hi) cell.classList.add('end');
+                }
+                cell.textContent = String(day.getDate());
+                cell.addEventListener('click', () => {
+                    const s = nextWeekSelection(state.from, state.to, state.picking, day);
+                    state.from = s.from; state.to = s.to; state.picking = s.picking;
+                    render();
+                    onChange();
+                });
+                row.appendChild(cell);
+            }
+            grid.appendChild(row);
+            cur = addDays(cur, 7);
+        }
+        mount.appendChild(grid);
+    }
+    render();
+}
+
+// ponytail: console-only self-check for the week-range logic — call demo() from
+// the browser console after pasting. Not auto-run (would log on every load).
+function demo() {
+    const wed = new Date(2026, 7, 19);                       // a Wednesday, week 34
+    const a = nextWeekSelection(null, null, 'start', wed);
+    console.assert(a.from.getDay() === 1, 'from snaps to Monday');
+    console.assert(a.to === null && a.picking === 'end', 'first click clears end, picks end next');
+    const earlier = new Date(2026, 7, 5);                    // earlier week
+    const b = nextWeekSelection(a.from, a.to, 'end', earlier);
+    console.assert(+b.from < +a.from, 'end-before-start swaps start earlier');
+    console.assert(b.to && +b.to > +b.from && b.picking === 'start', 'to after from, cycle resets');
+    console.log('[req-planner] week-calendar self-check passed');
 }
 
 // ═══ 9. DRAG INTERACTIONS (create / move / resize / click-edit) ═════════════
@@ -815,14 +972,16 @@ function onPointerUp(e) {
             anchorX:    e.clientX,
             anchorY:    e.clientY,
             defaultCount: 1,
-            onConfirm:  count => {
+            dateFrom,
+            dateTo,
+            onConfirm:  (count, fromISO, toISO) => {
                 promoteGhost(d.bar, d.source, count);
                 appfarm.actions?.createProjectRequirement?.({
                     projectId: d.projectId,
                     source:    d.source,
                     workType:  d.workType,
-                    dateFrom:  dateFrom.toISOString(),
-                    dateTo:    dateTo.toISOString(),
+                    dateFrom:  fromISO,
+                    dateTo:    toISO,
                     count
                 });
             },
@@ -841,13 +1000,15 @@ function onPointerUp(e) {
             anchorX:    e.clientX,
             anchorY:    e.clientY,
             defaultCount: rec.resourceCount || 0,
-            onConfirm:  count => {
+            dateFrom:   new Date(rec.dateFrom),
+            dateTo:     new Date(rec.dateTo),
+            onConfirm:  (count, fromISO, toISO) => {
                 const countEl = /** @type {HTMLElement} */ (d.bar.querySelector('.rp-bar-count'));
                 if (countEl) countEl.textContent = count;
                 appfarm.actions?.updateProjectRequirement?.({
                     projectRequirementId: rec._id,
-                    dateFrom:      rec.dateFrom,
-                    dateTo:        rec.dateTo,
+                    dateFrom:      fromISO,
+                    dateTo:        toISO,
                     count
                 });
             },

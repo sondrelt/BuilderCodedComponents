@@ -1,5 +1,15 @@
 # Changelog — resource-req-v2
 
+## 1.7.0 — 2026-06-18
+
+- Count popover ("Antall ressurser") now has an editable **Periode** picker: a
+  custom inline calendar styled to match the navy popover. It seeds with the
+  click/drag period (Fra/Til chips show the current selection), hovering a row
+  highlights the whole Mon–Sun week, and clicking selects weeks (two-click range,
+  swaps if the end is earlier). Selections snap to whole ISO weeks on Lagre, so
+  periods can be adjusted without re-dragging. Both create and edit flows pass the
+  picked dates into createProjectRequirement / updateProjectRequirement.
+
 ## 1.6.0 — 2026-06-18
 
 - Editable rows now carry a drag lane beneath each span: you can drag a new span
