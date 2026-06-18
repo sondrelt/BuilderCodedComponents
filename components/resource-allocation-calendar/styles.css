@@ -16,6 +16,11 @@
   --slate-50: #eef1f2; --slate-500: #4d6470; --slate-600: #415560; --slate-700: #34454e;
   --red-500: #a2332f;
 
+  /* Builder job-ad ghost — indigo, distinct from project / absence / now-line hues. Tunable. */
+  --jobad-accent: #6366c4;
+  --jobad-fill:   rgba(99, 102, 196, 0.10);
+  --jobad-fill-hover: rgba(99, 102, 196, 0.18);
+
   --row-h: 48px;
 }
 
@@ -180,7 +185,7 @@
 
 .pl-row:not(.pl-summary) .pl-track { cursor: cell; }
 
-.pl-row:not(.pl-summary) .pl-track:not(:has(.pl-bar))::before {
+.pl-row:not(.pl-summary) .pl-track:not(:has(.pl-bar)):not(:has(.pl-jobad))::before {
   content: "Klikk og dra for å tildele prosjekt";
   position: absolute; left: 12px; top: 50%;
   transform: translateY(-50%);
@@ -211,6 +216,7 @@
   font-size: 11px;
   font-weight: 600;
   color: #1e293b;
+  z-index: 2;                 /* above job ghosts (z:1); absence (7d) overrides to 3 */
   border: 1px solid rgba(0,0,0,0.06);
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   overflow: hidden;
@@ -314,6 +320,53 @@
 
 .pl-inner.pl-dragging,
 .pl-inner.pl-dragging * { cursor: grabbing !important; }
+
+/* ==========================================================================
+   7f. JOB-AD GHOST (Builder lease-out opportunity in a free gap)
+   Recessive at rest (slim dashed band, below real bars), brightens into a CTA
+   on hover. A link, not a draggable bar — pointer cursor, no handles.
+   ========================================================================== */
+.pl-jobad {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 16px;
+  z-index: 1;                 /* below real bars (.pl-bar z:2, absence z:3) */
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border: 1px dashed var(--jobad-accent);
+  border-radius: 4px;
+  background: var(--jobad-fill);
+  color: var(--jobad-accent);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  opacity: 0.7;
+  transition: opacity .15s, background .15s, box-shadow .15s;
+}
+.pl-jobad:hover {
+  opacity: 1;
+  background: var(--jobad-fill-hover);
+  border-style: solid;
+  box-shadow: 0 1px 6px rgba(99, 102, 196, 0.30);
+}
+.pl-jobad-mark  { flex: 0 0 auto; font-weight: 700; }
+.pl-jobad-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+.pl-jobad-count {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--jobad-accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 13px;
+}
 
 /* ==========================================================================
    8. GROUP HEADERS
