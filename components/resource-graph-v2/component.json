@@ -1,9 +1,20 @@
 {
   "name": "resource-graph-v2",
   "version": "1.0.0",
-  "description": "Resource planning grid",
-  "appfarmApp": "AppName",
+  "description": "Weekly stacked-bar + behov-line resource chart computed live from raw projectRequirements spans (+ allocation), mirroring the resource-req-v2 planner's aggregation instead of the pre-aggregated perProjectData source. Work-type filter and clickable legend toggles.",
+  "appfarmApp": "",
   "environment": "Development",
-  "inputs": [],
+  "inputs": [
+    "projectRequirements",
+    "allocation",
+    "workTypeEnum",
+    "projects",
+    "viewFrom",
+    "viewTo"
+  ],
+  "actions": [],
+  "externalResources": [
+    "https://cdn.jsdelivr.net/npm/chart.js"
+  ],
   "lastSynced": null
 }
