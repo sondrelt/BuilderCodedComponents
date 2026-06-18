@@ -17,7 +17,7 @@
   --rp-text-muted:   #6b7280;
   --rp-sticky-bg:    #fdfbf7;
   --rp-sticky-w:     280px;
-  --rp-row-h:        36px;
+  --rp-row-h:        42px;
 
   /* Source-category colours — one per enum value */
   --rp-behov-bg:     #e8f0fe; --rp-behov-text:     #1e3a5f; --rp-behov-bar:     #bad0f8;
@@ -321,7 +321,7 @@
 .rp-bar {
   position: absolute;
   top: 4px;
-  height: calc(var(--rp-row-h) - 10px);
+  height: calc(var(--rp-row-h) - 16px);
   border-radius: 4px;
   box-sizing: border-box;
   display: flex;
@@ -338,19 +338,17 @@
 .rp-bar:active     { cursor: grabbing; }
 .rp-bar-readonly   { cursor: default; pointer-events: none; opacity: 0.6; }
 
-/* "Create lane": editable rows are taller than the rest so a permanent drag lane
-   sits beneath each span — WITHOUT shrinking the span. The span keeps its base
-   height (.rp-bar = --rp-row-h - 10 = 26px, top:4px); the extra row height is the
-   lane. The lane is plain track, so pointer-down there hits onPointerDown's
+/* "Create lane": every body row is 42px while the span stays 26px (top:4px), so
+   a permanent ~12px drag lane sits beneath each span — WITHOUT shrinking the
+   span. The lane is plain track, so pointer-down there hits onPointerDown's
    create branch and createProjectRequirement splits/trims the long period
    server-side — the only affordance that splits a long span with a small one.
    Always available, no hover required. Mirrors assignment-grid. */
-.rp-row-editable { height: calc(var(--rp-row-h) + 6px); }   /* 36 → 42, ~12px lane */
 
 /* Lift only the bar under the pointer (not the whole row), and only a touch,
    to enlarge its lane for an easier drag-to-split. */
 .rp-inner:not(.rp-dragging) .rp-row-editable .rp-bar:hover {
-  height: calc(var(--rp-row-h) - 14px);   /* 26 → 22px, +4px lane on hover */
+  height: calc(var(--rp-row-h) - 20px);   /* 26 → 22px, +4px lane on hover */
 }
 
 /* Per-source bar colours */
