@@ -44,11 +44,11 @@ const ROW_H = 34;
 // Kind is inferred from whether projectId (allocation) or absenceType (absence) is
 // passed; the record id param differs per kind (used for edit + delete).
 const ACT = {
-    save:           'allocationAbsenceSave', // ({ [id]?, resourceId, projectId|absenceType, dateFrom, dateTo })
+    save:           'allocationAbsenceSave', // ({ resourceId, projectId|absenceType, dateFrom, dateTo }) — no id
     deleteAlloc:    'deleteAllocation',      // ({ projectResourceId })
     deleteAbsence:  'deleteAbsence',         // ({ resourceAbsence })
-    allocIdParam:   'projectResourceId',     // allocation record id (edit + delete)
-    absenceIdParam: 'resourceAbsence'        // absence record id (edit + delete)
+    allocIdParam:   'projectResourceId',     // allocation record id (delete only)
+    absenceIdParam: 'resourceAbsence'        // absence record id (delete only)
 };
 
 const MONTHS_NB = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
@@ -934,13 +934,7 @@ function showAllocAbsencePopover(opts) {
         if (+to < +from) to = endOfDay(from);
         removeOutsideHandler();
         const params = { resourceId: opts.resourceId, dateFrom: from.toISOString(), dateTo: to.toISOString() };
-        if (kind === 'allocation') {
-            params.projectId = selId;
-            if (opts.recordId) params[ACT.allocIdParam] = opts.recordId;
-        } else {
-            params.absenceType = selId;
-            if (opts.recordId) params[ACT.absenceIdParam] = opts.recordId;
-        }
+        if (kind === 'allocation') params.projectId = selId; else params.absenceType = selId;
         appfarm.actions?.[ACT.save]?.(params);
         removePopover();
     }
@@ -1146,13 +1140,8 @@ function onPointerUp(e) {
     // record's unchanged project/absenceType so the action still knows the kind.
     const rec = (d.kind === 'absence' ? absenceById : allocById).get(d.recId);
     const params = { resourceId: d.resourceId, dateFrom: from.toISOString(), dateTo: to.toISOString() };
-    if (d.kind === 'absence') {
-        params.absenceType = rec?.absenceType;
-        params[ACT.absenceIdParam] = d.recId;
-    } else {
-        params.projectId = resolveId(rec?.project);
-        params[ACT.allocIdParam] = d.recId;
-    }
+    if (d.kind === 'absence') params.absenceType = rec?.absenceType;
+    else params.projectId = resolveId(rec?.project);
     appfarm.actions?.[ACT.save]?.(params);
     flushQueuedRebuild();
 }
