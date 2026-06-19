@@ -1,8 +1,12 @@
 <div id="resource-graph-v2">
   <div class="chart-header">
-    <select id="work-type-filter">
-      <option value="">Alle arbeidstyper</option>
-    </select>
+    <div class="wt-filter">
+      <button type="button" class="wt-trigger" id="wt-trigger" aria-haspopup="listbox" aria-expanded="false">
+        <span class="wt-label" id="wt-label">Alle arbeidstyper</span>
+        <span class="wt-caret" aria-hidden="true"></span>
+      </button>
+      <ul class="wt-menu" id="wt-menu" role="listbox" hidden></ul>
+    </div>
   </div>
   <div class="chart-body">
     <canvas id="resourceChart"></canvas>

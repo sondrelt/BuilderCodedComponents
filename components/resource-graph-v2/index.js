@@ -8,14 +8,15 @@
 //
 //  Data sources:
 //    projectRequirements { project, source, workType, dateFrom, dateTo, resourceCount }
-//    allocation          { project, workType, dateFrom, dateTo }
+//    allocation          { project, workType, resource, dateFrom, dateTo }
+//    absence             { resource, dateFrom, dateTo }   — person-global leave
 //    workTypeEnum        { enum_value, enum_name }   — work-type filter labels
 //    projects            active-project filter set
 //    viewFrom, viewTo    week-window bounds
 //
 //  Aggregation mirrors the planner exactly:
 //    Behov/Innleide/Utleide = sum of projectRequirements.resourceCount per week
-//    Egne                   = count of overlapping allocation rows per week
+//    Egne                   = distinct allocated persons present (minus absent) per week
 //    Udekt                  = max(0, behov − egne − innleide)
 //    Overskudd              = max(0, −(behov − egne − innleide))
 //    (Utleide is NOT part of the coverage diff — same as the planner.)
@@ -27,6 +28,10 @@
 // non-simple parameter list, where a 'use strict' directive is a SyntaxError.
 
 const ns = appfarm;
+
+// Chart.js is loaded globally from the CDN (Resources section); the type-checker
+// can't see it, so grab it off window with an `any` cast to silence checkJs.
+const Chart = /** @type {any} */ (window).Chart;
 
 // ═══ 1. CONFIG ════════════════════════════════════════════════════════════
 const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35, UDEKT: 40, OVERSKUDD: 50 };
@@ -69,6 +74,8 @@ let weeks         = [];   // [{ start, end, label }]
 let rangeStart    = null;
 let rangeEnd      = null;
 let chartInstance = null;
+let selectedWT    = '';   // '' = Alle arbeidstyper, else enum_value as string
+let lastView      = null; // { labels, data } the chart is currently showing (for tooltip footer)
 
 // ═══ 4. WEEK AXIS ═════════════════════════════════════════════════════════════
 // Simplified from the planner's buildColumns — date bounds + ISO-week label only.
@@ -102,16 +109,27 @@ function weekIndexForDate(d) {
 }
 
 // ═══ 5. AGGREGATION (mirrors planner math, summed across active projects) ═════
+// Resolve a date span to the [startIdx, endIdx] week range it covers, clamped to
+// the window. Returns null if the dates are invalid or fully outside the window.
+function weekRange(fromRaw, toRaw) {
+    const from = startOfDay(new Date(fromRaw));
+    const to   = endOfDay(new Date(toRaw));
+    if (isNaN(+from) || isNaN(+to)) return null;
+    if (+to < +rangeStart || +from > +rangeEnd) return null;
+    let s = weekIndexForDate(from); if (s < 0) s = 0;
+    let e = weekIndexForDate(to);   if (e < 0) e = weeks.length - 1;
+    return [s, e];
+}
 // Paint a span's value onto every week it overlaps, clamped to the window.
 function paint(arr, fromRaw, toRaw, val) {
     if (!val) return;
-    const from = startOfDay(new Date(fromRaw));
-    const to   = endOfDay(new Date(toRaw));
-    if (isNaN(+from) || isNaN(+to)) return;
-    if (+to < +rangeStart || +from > +rangeEnd) return;
-    let s = weekIndexForDate(from); if (s < 0) s = 0;
-    let e = weekIndexForDate(to);   if (e < 0) e = weeks.length - 1;
-    for (let i = s; i <= e; i++) arr[i] += val;
+    const r = weekRange(fromRaw, toRaw); if (!r) return;
+    for (let i = r[0]; i <= r[1]; i++) arr[i] += val;
+}
+// Collect an id into the per-week Set for every week the span overlaps.
+function paintSet(weekSets, fromRaw, toRaw, id) {
+    const r = weekRange(fromRaw, toRaw); if (!r) return;
+    for (let i = r[0]; i <= r[1]; i++) weekSets[i].add(id);
 }
 
 function aggregate(selectedWorkType) {
@@ -144,13 +162,33 @@ function aggregate(selectedWorkType) {
         paint(arr, r.dateFrom, r.dateTo, r.resourceCount || 0);
     });
 
-    // Egne from allocations (an allocation without a workType counts for all)
+    // Egne = distinct allocated persons PRESENT (not absent) per week.
+    // Build per-week sets of allocated resources, then subtract those absent.
+    // (Counting persons, not allocation rows, so absence-matching is meaningful.)
+    const allocByWeek = Array.from({ length: N }, () => new Set());
     safeGet(ns.data.allocation).forEach(a => {
         if (!inScope(a.project)) return;
         const aWt = toInt(a.workType);
         if (wt !== null && aWt !== null && aWt !== wt) return;
-        paint(out.egne, a.dateFrom, a.dateTo, 1);
+        const rid = resolveId(a.resource);
+        if (rid == null) return;
+        paintSet(allocByWeek, a.dateFrom, a.dateTo, rid);
     });
+
+    // Absence is person-global (no project/workType) — absent in a week removes
+    // that resource from Egne for every allocation that week.
+    const absentByWeek = Array.from({ length: N }, () => new Set());
+    safeGet(ns.data.absence).forEach(ab => {
+        const rid = resolveId(ab.resource);
+        if (rid == null) return;
+        paintSet(absentByWeek, ab.dateFrom, ab.dateTo, rid);
+    });
+
+    for (let i = 0; i < N; i++) {
+        let present = 0;
+        allocByWeek[i].forEach(rid => { if (!absentByWeek[i].has(rid)) present++; });
+        out.egne[i] = present;
+    }
 
     // Derive Udekt / Overskudd per week
     for (let i = 0; i < N; i++) {
@@ -161,11 +199,13 @@ function aggregate(selectedWorkType) {
     return out;
 }
 
-// ═══ 6. WORK-TYPE FILTER ══════════════════════════════════════════════════════
+// ═══ 6. WORK-TYPE FILTER (custom dropdown) ════════════════════════════════════
 // Only list work types that actually appear in the active projects' requirements.
-function populateWorkTypeFilter() {
-    const select = ns.element.querySelector('#work-type-filter');
-    if (!select) return;
+// Rebuilds the menu options; keeps the current selection if it still applies,
+// otherwise falls back to "Alle arbeidstyper".
+function buildFilterOptions() {
+    const menu = ns.element.querySelector('#wt-menu');
+    if (!menu) return;
 
     const activeIds = new Set(safeGet(ns.data.projects).map(p => p._id || p.id));
     const used = new Set();
@@ -175,40 +215,86 @@ function populateWorkTypeFilter() {
         if (v != null) used.add(v);
     });
 
-    const prev = select.value;
-    while (select.options.length) select.remove(0);
-    const def = document.createElement('option');
-    def.value = '';
-    def.textContent = 'Alle arbeidstyper';
-    select.appendChild(def);
-
+    const opts = [{ value: '', label: 'Alle arbeidstyper' }];
     safeGet(ns.data.workTypeEnum).forEach(item => {
         const v = toInt(item?.enum_value);
         if (v == null || !used.has(v)) return;
-        const opt = document.createElement('option');
-        opt.value = String(v);
-        opt.textContent = item.enum_name || String(v);
-        select.appendChild(opt);
+        opts.push({ value: String(v), label: item.enum_name || String(v) });
     });
-    if (prev && [...select.options].some(o => o.value === prev)) select.value = prev;
+
+    // Selection no longer valid → reset to all.
+    if (selectedWT && !opts.some(o => o.value === selectedWT)) selectedWT = '';
+
+    menu.innerHTML = '';
+    opts.forEach(o => {
+        const li = document.createElement('li');
+        li.className = 'wt-option';
+        li.setAttribute('role', 'option');
+        li.dataset.value = o.value;
+        li.textContent = o.label;
+        if (o.value === selectedWT) li.setAttribute('aria-selected', 'true');
+        menu.appendChild(li);
+    });
+    syncFilterLabel(opts);
+}
+
+function syncFilterLabel(opts) {
+    const label = ns.element.querySelector('#wt-label');
+    if (!label) return;
+    const cur = opts.find(o => o.value === selectedWT);
+    label.textContent = cur ? cur.label : 'Alle arbeidstyper';
+}
+
+function openMenu()  { setMenuOpen(true); }
+function closeMenu() { setMenuOpen(false); }
+function setMenuOpen(open) {
+    const menu    = /** @type {HTMLElement|null} */ (ns.element.querySelector('#wt-menu'));
+    const trigger = /** @type {HTMLElement|null} */ (ns.element.querySelector('#wt-trigger'));
+    if (!menu || !trigger) return;
+    menu.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
 }
 
 // ═══ 7. CHART ═════════════════════════════════════════════════════════════════
+// Drop trailing weeks with no data at all, so the axis isn't padded with blanks
+// when the view window overshoots the requirements. Keeps at least one week.
+function trimTrailingEmpty(labels, data) {
+    const keys = ['behov', 'egne', 'innleide', 'utleide', 'udekt', 'overskudd'];
+    let last = labels.length - 1;
+    while (last > 0 && keys.every(k => !data[k][last])) last--;
+    if (last === labels.length - 1) return { labels, data };
+    const end = last + 1;
+    const out = {};
+    keys.forEach(k => { out[k] = data[k].slice(0, end); });
+    return { labels: labels.slice(0, end), data: out };
+}
+
 function renderChart() {
     buildWeeks();
     if (!weeks.length) return;
 
-    const select = ns.element.querySelector('#work-type-filter');
-    const data = aggregate(select ? select.value : '');
+    const full = aggregate(selectedWT);
+    const view = trimTrailingEmpty(weeks.map(w => w.label), full);
+    const { labels, data } = view;
+    lastView = view;
+
+    // Update in place when the chart already exists — avoids the destroy/recreate
+    // flicker and keeps Chart.js's transition animations on data change.
+    if (chartInstance) {
+        const series = [data.egne, data.innleide, data.utleide, data.udekt, data.overskudd, data.behov];
+        chartInstance.data.labels = labels;
+        series.forEach((arr, i) => { chartInstance.data.datasets[i].data = arr; });
+        chartInstance.update();
+        return;
+    }
 
     const canvas = /** @type {HTMLCanvasElement} */ (ns.element.querySelector('#resourceChart'));
     if (!canvas) return;
-    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
     chartInstance = new Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: {
-            labels: weeks.map(w => w.label),
+            labels: labels,
             datasets: [
                 { label: 'Egne ansatte', data: data.egne,      backgroundColor: COLORS.egne,      stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
                 { label: 'Innleide',     data: data.innleide,   backgroundColor: COLORS.innleide,  stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
@@ -241,8 +327,19 @@ function renderChart() {
                             const v = ctx.parsed.y;
                             if (!v) return null;
                             return ctx.dataset.label + ': ' + v;
+                        },
+                        // The stacked total isn't itself meaningful — surface the
+                        // numbers that are: demand vs. covered (egne + innleide).
+                        footer: (items) => {
+                            if (!items.length || !lastView) return '';
+                            const i = items[0].dataIndex;
+                            const d = lastView.data;
+                            return 'Behov: ' + d.behov[i] + '  ·  Dekket: ' + (d.egne[i] + d.innleide[i]);
                         }
-                    }
+                    },
+                    footerFont: { family: 'Lato', size: 11, weight: '400' },
+                    footerColor: 'rgb(190,205,212)',
+                    footerMarginTop: 8
                 }
             },
             scales: {
@@ -255,20 +352,42 @@ function renderChart() {
 
 // ═══ 8. LIFECYCLE ═════════════════════════════════════════════════════════════
 function refresh() {
-    populateWorkTypeFilter();
+    buildFilterOptions();
     renderChart();
 }
 
 function init() {
-    populateWorkTypeFilter();
+    buildFilterOptions();
     renderChart();
 
-    ns.element.querySelector('#work-type-filter')?.addEventListener('change', renderChart);
+    const trigger = /** @type {HTMLElement|null} */ (ns.element.querySelector('#wt-trigger'));
+    const menu    = /** @type {HTMLElement|null} */ (ns.element.querySelector('#wt-menu'));
 
-    ['projectRequirements', 'allocation', 'projects', 'workTypeEnum', 'viewFrom', 'viewTo']
+    trigger?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu && menu.hidden ? openMenu() : closeMenu();
+    });
+
+    // Event-delegated option pick — menu contents are rebuilt on every refresh.
+    menu?.addEventListener('click', (e) => {
+        const target = /** @type {HTMLElement} */ (e.target);
+        const li = /** @type {HTMLElement|null} */ (target.closest('.wt-option'));
+        if (!li) return;
+        selectedWT = li.dataset.value || '';
+        buildFilterOptions();   // refresh labels + aria-selected
+        closeMenu();
+        renderChart();
+    });
+
+    // Close on outside click / Escape.
+    document.addEventListener('click', closeMenu);
+    ns.element.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+
+    ['projectRequirements', 'allocation', 'absence', 'projects', 'workTypeEnum', 'viewFrom', 'viewTo']
         .forEach(name => ns.data[name]?.on?.('change', refresh));
 
     ns.on?.('unload', () => {
+        document.removeEventListener('click', closeMenu);
         if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     });
 }
