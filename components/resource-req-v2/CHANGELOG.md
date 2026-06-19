@@ -1,5 +1,20 @@
 # Changelog — resource-req-v2
 
+## 1.8.0 — 2026-06-19
+
+- Egne ansatte now matches resource-graph-v2 1.2.0: counts **distinct allocated
+  persons** present per work type/week, **minus** any resource absent that week.
+  Was: `+1 per allocation row`, no person-dedup, no absence.
+- New `absence` data source (`resource`, `dateFrom`, `dateTo`); person-global
+  (no project/workType), indexed once per render into `absentByCol`. Added to
+  the change-listener set so the planner rebuilds when absence changes.
+- Two allocations for the same person on a project in one week now count once.
+- Known structural limits (not bugs): the planner is per-project, so a person
+  allocated to two projects in a week counts once per project (the graph's
+  global total counts them once); and a workType-less allocation is distributed
+  into every work type, so the all-worktypes header over-counts such a person
+  vs the graph's single bucket. Both only bite in those edge cases.
+
 ## 1.7.0 — 2026-06-18
 
 - Count popover ("Antall ressurser") now has an editable **Periode** picker: a

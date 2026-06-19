@@ -2,6 +2,9 @@
 //  Project Requirements Planner — v2 (optimized rewrite)
 //
 //  Data source:  projectRequirements { project, source, workType, dateFrom, dateTo, resourceCount }
+//  Also read:     allocation { project, workType, resource, dateFrom, dateTo },
+//                 absence { resource, dateFrom, dateTo } (person-global) — Egne
+//                 = distinct allocated persons present, minus absent, per week.
 //  Appfarm actions called (all via optional chaining — a missing action is a
 //  silent no-op instead of a thrown TypeError):
 //    createProjectRequirement { projectId, source, workType, dateFrom, dateTo, count }
@@ -130,6 +133,7 @@ let COL_W      = DEFAULT_COL_W;
 let reqById         = new Map(); // _id → requirement record
 let reqsByKey       = new Map(); // reqKey() → [record] sorted by dateFrom
 let allocsByProject = new Map(); // projectId → [allocation]
+let absentByCol     = [];        // column index → Set<resourceId> absent that week
 let wtNameMap       = {};        // workType enum_value → enum_name
 
 let activeDrag    = null;
@@ -234,10 +238,27 @@ function indexData() {
         if (!list) allocsByProject.set(projId, (list = []));
         list.push(a);
     });
+
+    // Absence is person-global (no project/workType): paint each absent resource
+    // onto every column its span overlaps, so Egne can exclude them per week.
+    // Built once here (columns exist — buildColumns runs before indexData).
+    absentByCol = Array.from({ length: columns.length }, () => new Set());
+    safeGet(appfarm.data.absence).forEach(ab => {
+        const rid = resolveId(ab.resource);
+        if (rid == null) return;
+        const from = startOfDay(new Date(ab.dateFrom));
+        const to   = endOfDay(new Date(ab.dateTo));
+        if (isNaN(+from) || isNaN(+to)) return;
+        if (+to < +rangeStart || +from > +rangeEnd) return;
+        const s = clampIdx(colIndexForDate(from));
+        const e = clampIdx(colIndexForDate(to));
+        for (let i = s; i <= e; i++) absentByCol[i].add(rid);
+    });
 }
 
 // ═══ 6. AGGREGATES ══════════════════════════════════════════════════════════
-//  Egne      = allocation count on this project overlapping the column's week
+//  Egne      = distinct allocated persons on this project overlapping the
+//              column's week, minus any resource absent that week
 //  Udekt     = max(0, Behov − Egne − Innleide)
 //  Overskudd = max(0, Egne + Innleide − Behov)
 //
@@ -273,13 +294,38 @@ function computeAggregates(projectId, workTypes) {
         });
     });
 
-    // Egne from allocations (an allocation without a workType counts for all)
+    // Egne = distinct allocated persons PRESENT (not absent) per work type/column.
+    // Count distinct resources (not allocation rows) and drop anyone absent that
+    // week. An allocation without a workType counts for all work types.
+    const egneSets = new Map(); // wt → Array<Set>(N)
+    const egneSetFor = (wt) => {
+        let a = egneSets.get(wt);
+        if (!a) egneSets.set(wt, (a = Array.from({ length: N }, () => new Set())));
+        return a;
+    };
     (allocsByProject.get(projectId) || []).forEach(a => {
+        const rid = resolveId(a.resource);
+        if (rid == null) return;
+        const from = startOfDay(new Date(a.dateFrom));
+        const to   = endOfDay(new Date(a.dateTo));
+        if (isNaN(+from) || isNaN(+to)) return;
+        if (+to < +rangeStart || +from > +rangeEnd) return;
+        const s = clampIdx(colIndexForDate(from));
+        const e = clampIdx(colIndexForDate(to));
         const aWt = toInt(a.workType);
         workTypes.forEach(wt => {
             if (aWt !== null && aWt !== wt) return;
-            paint(detailArr(SRC.EGNE, wt), a.dateFrom, a.dateTo, 1);
+            const sets = egneSetFor(wt);
+            for (let i = s; i <= e; i++) {
+                if (absentByCol[i] && absentByCol[i].has(rid)) continue;
+                sets[i].add(rid);
+            }
         });
+    });
+    workTypes.forEach(wt => {
+        const egne = detailArr(SRC.EGNE, wt);
+        const sets = egneSetFor(wt);
+        for (let i = 0; i < N; i++) egne[i] = sets[i].size;
     });
 
     // Derive Udekt / Overskudd per work type per column
@@ -1093,7 +1139,7 @@ function init() {
     // Any structural or data change → guarded rebuild
     ['source', 'projects', 'projectWorkType', 'calendarWeekWidthPixel',
      'workTypeEnum', 'viewFrom', 'viewTo',
-     'projectRequirements', 'allocation']
+     'projectRequirements', 'allocation', 'absence']
         .forEach(name => appfarm.data[name]?.on?.('change', guardedBuildAll));
 }
 
