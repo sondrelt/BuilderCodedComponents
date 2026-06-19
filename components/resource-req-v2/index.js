@@ -677,12 +677,20 @@ function showCountPopover(opts) {
         (showDelete ? '<button class="rp-popover-delete">Slett periode</button>' : '');
     document.body.appendChild(popoverEl);
 
-    // Position: prefer right of cursor, flip left near the window edge
-    const pw = 280;
-    let left = opts.anchorX + 10;
-    if (left + pw > window.innerWidth - 10) left = opts.anchorX - pw - 10;
-    popoverEl.style.left = Math.max(8, left) + 'px';
-    popoverEl.style.top  = (opts.anchorY - 16) + 'px';
+    // Position: prefer right of / below the cursor, but clamp into the viewport so a
+    // low or right-edge click never pushes the popover off-screen. Called after the
+    // calendar renders, so offsetHeight reflects the full popover.
+    function placePopover() {
+        const pw = popoverEl.offsetWidth  || 280;
+        const ph = popoverEl.offsetHeight || 360;
+        const M = 8;
+        let left = opts.anchorX + 10;
+        if (left + pw > window.innerWidth - M) left = opts.anchorX - pw - 10;
+        let top = opts.anchorY - 16;
+        if (top + ph > window.innerHeight - M) top = window.innerHeight - ph - M;
+        popoverEl.style.left = Math.max(M, left) + 'px';
+        popoverEl.style.top  = Math.max(M, top) + 'px';
+    }
 
     const input = /** @type {HTMLInputElement} */ (popoverEl.querySelector('.rp-popover-input'));
 
@@ -725,6 +733,7 @@ function showCountPopover(opts) {
     chipToEl.addEventListener('click',   () => { calState.open = 'to';   renderCalendar(); updateChips(); });
     renderCalendar();
     updateChips();
+    placePopover();   // measure & clamp once content height is final
 
     input.focus();
     input.select();
