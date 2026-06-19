@@ -8,14 +8,15 @@
 //
 //  Data sources:
 //    projectRequirements { project, source, workType, dateFrom, dateTo, resourceCount }
-//    allocation          { project, workType, dateFrom, dateTo }
+//    allocation          { project, workType, resource, dateFrom, dateTo }
+//    absence             { resource, dateFrom, dateTo }   — person-global leave
 //    workTypeEnum        { enum_value, enum_name }   — work-type filter labels
 //    projects            active-project filter set
 //    viewFrom, viewTo    week-window bounds
 //
 //  Aggregation mirrors the planner exactly:
 //    Behov/Innleide/Utleide = sum of projectRequirements.resourceCount per week
-//    Egne                   = count of overlapping allocation rows per week
+//    Egne                   = distinct allocated persons present (minus absent) per week
 //    Udekt                  = max(0, behov − egne − innleide)
 //    Overskudd              = max(0, −(behov − egne − innleide))
 //    (Utleide is NOT part of the coverage diff — same as the planner.)
@@ -108,16 +109,27 @@ function weekIndexForDate(d) {
 }
 
 // ═══ 5. AGGREGATION (mirrors planner math, summed across active projects) ═════
+// Resolve a date span to the [startIdx, endIdx] week range it covers, clamped to
+// the window. Returns null if the dates are invalid or fully outside the window.
+function weekRange(fromRaw, toRaw) {
+    const from = startOfDay(new Date(fromRaw));
+    const to   = endOfDay(new Date(toRaw));
+    if (isNaN(+from) || isNaN(+to)) return null;
+    if (+to < +rangeStart || +from > +rangeEnd) return null;
+    let s = weekIndexForDate(from); if (s < 0) s = 0;
+    let e = weekIndexForDate(to);   if (e < 0) e = weeks.length - 1;
+    return [s, e];
+}
 // Paint a span's value onto every week it overlaps, clamped to the window.
 function paint(arr, fromRaw, toRaw, val) {
     if (!val) return;
-    const from = startOfDay(new Date(fromRaw));
-    const to   = endOfDay(new Date(toRaw));
-    if (isNaN(+from) || isNaN(+to)) return;
-    if (+to < +rangeStart || +from > +rangeEnd) return;
-    let s = weekIndexForDate(from); if (s < 0) s = 0;
-    let e = weekIndexForDate(to);   if (e < 0) e = weeks.length - 1;
-    for (let i = s; i <= e; i++) arr[i] += val;
+    const r = weekRange(fromRaw, toRaw); if (!r) return;
+    for (let i = r[0]; i <= r[1]; i++) arr[i] += val;
+}
+// Collect an id into the per-week Set for every week the span overlaps.
+function paintSet(weekSets, fromRaw, toRaw, id) {
+    const r = weekRange(fromRaw, toRaw); if (!r) return;
+    for (let i = r[0]; i <= r[1]; i++) weekSets[i].add(id);
 }
 
 function aggregate(selectedWorkType) {
@@ -150,13 +162,33 @@ function aggregate(selectedWorkType) {
         paint(arr, r.dateFrom, r.dateTo, r.resourceCount || 0);
     });
 
-    // Egne from allocations (an allocation without a workType counts for all)
+    // Egne = distinct allocated persons PRESENT (not absent) per week.
+    // Build per-week sets of allocated resources, then subtract those absent.
+    // (Counting persons, not allocation rows, so absence-matching is meaningful.)
+    const allocByWeek = Array.from({ length: N }, () => new Set());
     safeGet(ns.data.allocation).forEach(a => {
         if (!inScope(a.project)) return;
         const aWt = toInt(a.workType);
         if (wt !== null && aWt !== null && aWt !== wt) return;
-        paint(out.egne, a.dateFrom, a.dateTo, 1);
+        const rid = resolveId(a.resource);
+        if (rid == null) return;
+        paintSet(allocByWeek, a.dateFrom, a.dateTo, rid);
     });
+
+    // Absence is person-global (no project/workType) — absent in a week removes
+    // that resource from Egne for every allocation that week.
+    const absentByWeek = Array.from({ length: N }, () => new Set());
+    safeGet(ns.data.absence).forEach(ab => {
+        const rid = resolveId(ab.resource);
+        if (rid == null) return;
+        paintSet(absentByWeek, ab.dateFrom, ab.dateTo, rid);
+    });
+
+    for (let i = 0; i < N; i++) {
+        let present = 0;
+        allocByWeek[i].forEach(rid => { if (!absentByWeek[i].has(rid)) present++; });
+        out.egne[i] = present;
+    }
 
     // Derive Udekt / Overskudd per week
     for (let i = 0; i < N; i++) {
@@ -351,7 +383,7 @@ function init() {
     document.addEventListener('click', closeMenu);
     ns.element.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
 
-    ['projectRequirements', 'allocation', 'projects', 'workTypeEnum', 'viewFrom', 'viewTo']
+    ['projectRequirements', 'allocation', 'absence', 'projects', 'workTypeEnum', 'viewFrom', 'viewTo']
         .forEach(name => ns.data[name]?.on?.('change', refresh));
 
     ns.on?.('unload', () => {

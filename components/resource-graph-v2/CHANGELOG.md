@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 — 2026-06-19
+
+- Egne ansatte now nets out absence. Was: count of overlapping allocation
+  rows. Now: count of **distinct allocated persons present** per week — i.e.
+  distinct `allocation.resource` minus any `resource` absent that week.
+- New `absence` data source (`resource`, `dateFrom`, `dateTo`); person-global
+  (no project/workType), so an absence removes that person from Egne for every
+  allocation that week. Added to the change-listener set.
+- Counting persons (not allocation rows) is the behavioral change that makes
+  absence-matching meaningful — two allocations for the same person in a week
+  now count once.
+- Requires the `allocation` and `absence` data sources to be connected to this
+  component (binding names exactly `allocation` / `absence`).
+
 ## 1.1.0 — 2026-06-19
 
 - Replaced the native `<select>` work-type filter with a custom dropdown
