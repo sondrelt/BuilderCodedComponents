@@ -30,14 +30,33 @@ let groupingAnchorDate = null;       // pinned once, for project grouping
 let activeDrag = null;               // see onPointerDown for shape
 let dragTooltipEl = null;
 
+let popoverEl = null;                // alloc/absence editor popover (in document.body)
+let activeEdit = false;              // popover open → block rebuilds
+let rebuildQueued = false;           // a change arrived while blocked → flush later
+
 let absenceTypeMap = {}; // Will dynamically store { value: { name, color } }
 
 const STICKY_W = 380;
 const COLW = { week: 75, day: 75 };
 const ROW_H = 34;
 
+// ── Appfarm action + parameter names ───────────────────────────
+// CONFIRM these strings match the platform exactly before trusting saves/deletes.
+const ACT = {
+    save:          'allocationAbsenceSave', // ({ [idParam]?, resourceId, projectId|absenceType, dateFrom, dateTo })
+    deleteAlloc:   'deleteAllocation',      // ({ [idParam] })
+    deleteAbsence: 'deleteAbsence',         // ({ [idParam] })
+    idParam:       'recordId'               // single id; kind inferred from projectId vs absenceType
+};
 
 const MONTHS_NB = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+
+// Period-picker calendar labels / range (ported from resource-req-v2)
+const WEEKDAY_LABELS = ['Ma','Ti','On','To','Fr','Lø','Sø'];
+const MONTH_NAMES = ['januar','februar','mars','april','mai','juni',
+    'juli','august','september','oktober','november','desember'];
+const CAL_YEAR_BACK = 2;
+const CAL_YEAR_FWD  = 6;
 
 const RESOURCE_CELL_MARKUP = `
     <div class="resource-info">
@@ -87,6 +106,8 @@ function startOfWeekMon(d){ const x = startOfDay(d); x.setDate(x.getDate() - ((x
 function endOfWeekMon(d){ const x = startOfWeekMon(d); x.setDate(x.getDate()+6); return endOfDay(x); }
 function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 function clampDate(d, lo, hi){ const t = +d; return new Date(t < +lo ? +lo : t > +hi ? +hi : t); }
+function fmtDayMonth(d){ const x = new Date(d); return String(x.getDate()).padStart(2,'0') + '.' + String(x.getMonth()+1).padStart(2,'0'); }
+function fmtDate(d){ return fmtDayMonth(d) + '.' + new Date(d).getFullYear(); }
 
 // ── Week / day view-granularity helpers ────────────────────────
 function setActiveGranularityButton() {
@@ -609,6 +630,351 @@ function buildAll() {
     renderNowLine(inner);
 }
 
+// ── Rebuild guard ──────────────────────────────────────────────
+// Rebuilds are queued — never dropped — while a popover is open or a drag is in
+// progress, then flushed once the interaction ends (so an open editor survives a
+// datasource change instead of being wiped by buildAll's innerHTML reset).
+function guardedBuildAll() {
+    if (activeEdit || activeDrag) { rebuildQueued = true; return; }
+    buildAll();
+}
+function flushQueuedRebuild() {
+    if (rebuildQueued && !activeEdit && !activeDrag) {
+        rebuildQueued = false;
+        buildAll();
+    }
+}
+function removePopover() {
+    if (popoverEl) { popoverEl.remove(); popoverEl = null; }
+    activeEdit = false;
+    flushQueuedRebuild();
+}
+
+// ── Searchable single-select (custom, on-brand — not a native <select>) ─────────
+// opts: { items:[{id,label,color?}], value, placeholder, onPick(id) }
+function makeSearchSelect(mount, opts) {
+    let value = opts.value ?? null;
+    let query = '';
+    mount.innerHTML = '';
+    mount.classList.remove('pl-pop-invalid');
+
+    const box = document.createElement('div');
+    box.className = 'pl-select';
+    const input = /** @type {HTMLInputElement} */ (document.createElement('input'));
+    input.className = 'pl-select-input';
+    input.placeholder = opts.placeholder || 'Søk…';
+    const list = document.createElement('div');
+    list.className = 'pl-select-list';
+    box.appendChild(input);
+    box.appendChild(list);
+    mount.appendChild(box);
+
+    const labelOf = (id) => opts.items.find(it => String(it.id) === String(id))?.label || '';
+    const setInputToSelection = () => { input.value = value != null ? labelOf(value) : ''; };
+
+    let firstId = null;
+    function renderList() {
+        const q = query.toLowerCase().trim();
+        const matches = opts.items.filter(it => !q || it.label.toLowerCase().includes(q));
+        firstId = matches[0]?.id ?? null;
+        list.innerHTML = '';
+        if (!matches.length) {
+            const e = document.createElement('div');
+            e.className = 'pl-select-empty';
+            e.textContent = 'Ingen treff';
+            list.appendChild(e);
+            return;
+        }
+        matches.slice(0, 60).forEach((it, i) => {
+            const row = document.createElement('div');
+            row.className = 'pl-select-opt'
+                + (String(it.id) === String(value) ? ' sel' : '')
+                + (i === 0 ? ' active' : '');
+            if (it.color) {
+                const sw = document.createElement('span');
+                sw.className = 'pl-select-sw';
+                sw.style.background = it.color;
+                row.appendChild(sw);
+            }
+            const t = document.createElement('span');
+            t.className = 'pl-select-opt-label';
+            t.textContent = it.label;
+            row.appendChild(t);
+            // mousedown (not click) so we pick before the input's blur fires.
+            row.addEventListener('mousedown', e => { e.preventDefault(); pick(it.id); });
+            list.appendChild(row);
+        });
+    }
+    function pick(id) {
+        value = id;
+        query = '';
+        box.classList.remove('open');
+        setInputToSelection();
+        opts.onPick?.(id);
+    }
+    input.addEventListener('focus', () => { query = ''; box.classList.add('open'); renderList(); });
+    input.addEventListener('input', () => { query = input.value; box.classList.add('open'); renderList(); });
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); e.stopPropagation(); if (firstId != null) pick(firstId); }
+        if (e.key === 'Escape') { e.stopPropagation(); box.classList.remove('open'); setInputToSelection(); }
+    });
+    input.addEventListener('blur', () =>
+        setTimeout(() => { box.classList.remove('open'); setInputToSelection(); }, 120));
+
+    setInputToSelection();
+    renderList();
+}
+
+// ── Day picker (exact-day calendar inside the popover) ──────────────────────────
+// Ported from resource-req-v2. opts: { selected:Date|null, view:Date, onPickDay, onNavigate }
+function applyPick(from, to, end, day) {
+    const d = startOfDay(day);
+    if (end === 'from') return { from: d, to: (to && +to < +d) ? d : to };
+    return { from: (from && +d < +from) ? d : from, to: d };
+}
+
+function renderDayPicker(mount, opts) {
+    let view = startOfDay(opts.view || opts.selected || new Date());
+    let yearOpen = false;
+
+    function setView(d) { view = startOfDay(d); opts.onNavigate?.(view); render(); }
+
+    function render() {
+        mount.innerHTML = '';
+
+        const nav = document.createElement('div');
+        nav.className = 'pl-cal-nav';
+        const title = document.createElement('button');
+        title.type = 'button';
+        title.className = 'pl-cal-title' + (yearOpen ? ' open' : '');
+        title.textContent = MONTH_NAMES[view.getMonth()] + ' ' + view.getFullYear();
+        title.addEventListener('click', () => { yearOpen = !yearOpen; render(); });
+        const arrows = document.createElement('div');
+        arrows.className = 'pl-cal-arrows';
+        const prev = document.createElement('button');
+        prev.type = 'button'; prev.className = 'pl-cal-navbtn'; prev.innerHTML = '‹';
+        const next = document.createElement('button');
+        next.type = 'button'; next.className = 'pl-cal-navbtn'; next.innerHTML = '›';
+        prev.addEventListener('click', () => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1)));
+        next.addEventListener('click', () => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1)));
+        arrows.appendChild(prev); arrows.appendChild(next);
+        nav.appendChild(title); nav.appendChild(arrows);
+        mount.appendChild(nav);
+
+        if (yearOpen) {
+            renderYearGrid(mount, view.getFullYear(), (y) => {
+                yearOpen = false;
+                setView(new Date(y, view.getMonth(), 1));
+            });
+            return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'pl-cal-grid';
+        WEEKDAY_LABELS.forEach(l => {
+            const h = document.createElement('div');
+            h.className = 'pl-cal-hcell';
+            h.textContent = l;
+            grid.appendChild(h);
+        });
+
+        const sel = opts.selected ? +startOfDay(opts.selected) : null;
+        const monthIdx = view.getMonth();
+        let cur = startOfWeekMon(new Date(view.getFullYear(), monthIdx, 1));
+        for (let i = 0; i < 42; i++) {
+            const day = addDays(cur, i);
+            const cell = document.createElement('div');
+            cell.className = 'pl-cal-cell pl-cal-day';
+            if (day.getMonth() !== monthIdx) cell.classList.add('muted');
+            if (sel != null && +startOfDay(day) === sel) cell.classList.add('sel');
+            cell.textContent = String(day.getDate());
+            cell.addEventListener('click', () => opts.onPickDay(day));
+            grid.appendChild(cell);
+        }
+        mount.appendChild(grid);
+    }
+    render();
+}
+
+function renderYearGrid(mount, currentYear, onPick) {
+    const seedY = new Date().getFullYear();
+    const grid = document.createElement('div');
+    grid.className = 'pl-cal-yeargrid';
+    let selEl = null;
+    for (let y = seedY - CAL_YEAR_BACK; y <= seedY + CAL_YEAR_FWD; y++) {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'pl-cal-year' + (y === currentYear ? ' sel' : '');
+        cell.textContent = String(y);
+        cell.addEventListener('click', () => onPick(y));
+        if (y === currentYear) selEl = cell;
+        grid.appendChild(cell);
+    }
+    mount.appendChild(grid);
+    selEl?.scrollIntoView({ block: 'center' });
+}
+
+// ── Allocation / absence editor popover ─────────────────────────────────────────
+// One popover, Tildeling/Fravær toggle. Tildeling → project select (projectId);
+// Fravær → absence-type select (absenceType). On edit, kind is fixed to the bar.
+// opts: { resourceId, kind, recordId, projectId, absenceType, dateFrom, dateTo,
+//         anchorX, anchorY, onCancel?, onDelete? }
+function showAllocAbsencePopover(opts) {
+    removePopover();
+    activeEdit = true;
+
+    const isEdit = !!opts.recordId;
+    let kind  = opts.kind || 'allocation';
+    let selId = kind === 'allocation' ? (opts.projectId ?? null) : (opts.absenceType ?? null);
+
+    const seed = opts.dateFrom ? new Date(opts.dateFrom) : new Date();
+    const calState = {
+        from:     opts.dateFrom ? startOfDay(new Date(opts.dateFrom)) : null,
+        to:       opts.dateTo   ? startOfDay(new Date(opts.dateTo))   : null,
+        open:     'from',
+        viewFrom: startOfDay(opts.dateFrom ? new Date(opts.dateFrom) : seed),
+        viewTo:   startOfDay(opts.dateTo ? new Date(opts.dateTo)
+                           : opts.dateFrom ? new Date(opts.dateFrom) : seed)
+    };
+
+    popoverEl = document.createElement('div');
+    popoverEl.className = 'pl-popover';
+    popoverEl.innerHTML =
+        '<div class="pl-pop-toggle' + (isEdit ? ' locked' : '') + '">' +
+            '<button type="button" data-kind="allocation">Tildeling</button>' +
+            '<button type="button" data-kind="absence">Fravær</button>' +
+        '</div>' +
+        '<div class="pl-pop-section pl-pop-sellabel"></div>' +
+        '<div class="pl-pop-select"></div>' +
+        '<div class="pl-pop-section">Periode</div>' +
+        '<div class="pl-pop-dates">' +
+            '<span class="pl-date-chip" data-end="from">Fra <b class="pl-chip-from">–</b></span>' +
+            '<span class="pl-date-chip" data-end="to">Til <b class="pl-chip-to">–</b></span>' +
+        '</div>' +
+        '<div class="pl-cal"></div>' +
+        '<div class="pl-pop-hint">Enter for å lagre &nbsp;·&nbsp; Esc for å avbryte</div>' +
+        '<div class="pl-pop-actions">' +
+            '<button class="pl-pop-cancel">Avbryt</button>' +
+            '<button class="pl-pop-confirm">Lagre</button>' +
+        '</div>' +
+        (isEdit ? '<button class="pl-pop-delete">Slett</button>' : '');
+    document.body.appendChild(popoverEl);
+
+    // Position: prefer right of cursor, flip left near the window edge.
+    const pw = 280;
+    let left = opts.anchorX + 10;
+    if (left + pw > window.innerWidth - 10) left = opts.anchorX - pw - 10;
+    popoverEl.style.left = Math.max(8, left) + 'px';
+    popoverEl.style.top  = (opts.anchorY - 16) + 'px';
+
+    const selMount   = popoverEl.querySelector('.pl-pop-select');
+    const selLabel   = popoverEl.querySelector('.pl-pop-sellabel');
+    const toggleBtns = popoverEl.querySelectorAll('.pl-pop-toggle button');
+
+    function itemsForKind(k) {
+        if (k === 'allocation')
+            return [...projectsById.values()].map(p => ({ id: p._id, label: p.bepmnX || p.name || 'Prosjekt' }));
+        return Object.entries(absenceTypeMap).map(([v, info]) => ({ id: v, label: info.name, color: info.color }));
+    }
+    function renderSelect() {
+        selLabel.textContent = kind === 'allocation' ? 'Prosjekt' : 'Fraværstype';
+        toggleBtns.forEach(b => b.classList.toggle('active', b.dataset.kind === kind));
+        makeSearchSelect(selMount, {
+            items: itemsForKind(kind),
+            value: selId,
+            placeholder: kind === 'allocation' ? 'Søk prosjekt…' : 'Søk fraværstype…',
+            onPick: (id) => { selId = id; }
+        });
+    }
+    toggleBtns.forEach(b => b.addEventListener('click', () => {
+        if (isEdit || kind === b.dataset.kind) return;   // kind is fixed while editing
+        kind = b.dataset.kind;
+        selId = null;
+        renderSelect();
+    }));
+    renderSelect();
+
+    const chipFrom   = popoverEl.querySelector('.pl-chip-from');
+    const chipTo     = popoverEl.querySelector('.pl-chip-to');
+    const chipFromEl = popoverEl.querySelector('.pl-date-chip[data-end="from"]');
+    const chipToEl   = popoverEl.querySelector('.pl-date-chip[data-end="to"]');
+    const calMount   = popoverEl.querySelector('.pl-cal');
+    function updateChips() {
+        chipFrom.textContent = calState.from ? fmtDate(calState.from) : '–';
+        chipTo.textContent   = calState.to   ? fmtDate(calState.to)   : '–';
+        chipFromEl.classList.toggle('active', calState.open === 'from');
+        chipToEl.classList.toggle('active', calState.open === 'to');
+    }
+    function renderCalendar() {
+        const isFrom = calState.open === 'from';
+        renderDayPicker(calMount, {
+            selected: isFrom ? calState.from : calState.to,
+            view:     isFrom ? calState.viewFrom : calState.viewTo,
+            onPickDay(day) {
+                const r = applyPick(calState.from, calState.to, calState.open, day);
+                calState.from = r.from; calState.to = r.to;
+                if (isFrom) calState.viewFrom = startOfDay(day); else calState.viewTo = startOfDay(day);
+                renderCalendar();
+                updateChips();
+            },
+            onNavigate(v) { if (isFrom) calState.viewFrom = v; else calState.viewTo = v; }
+        });
+    }
+    chipFromEl.addEventListener('click', () => { calState.open = 'from'; renderCalendar(); updateChips(); });
+    chipToEl.addEventListener('click',   () => { calState.open = 'to';   renderCalendar(); updateChips(); });
+    renderCalendar();
+    updateChips();
+
+    function confirm() {
+        if (selId == null) { selMount.classList.add('pl-pop-invalid'); return; }
+        const from = startOfDay(calState.from || seed);
+        let to = endOfDay(calState.to || calState.from || (opts.dateTo ? new Date(opts.dateTo) : seed));
+        if (+to < +from) to = endOfDay(from);
+        removeOutsideHandler();
+        const params = { resourceId: opts.resourceId, dateFrom: from.toISOString(), dateTo: to.toISOString() };
+        if (opts.recordId) params[ACT.idParam] = opts.recordId;
+        if (kind === 'allocation') params.projectId = selId; else params.absenceType = selId;
+        appfarm.actions?.[ACT.save]?.(params);
+        removePopover();
+    }
+    function cancel() { removeOutsideHandler(); opts.onCancel?.(); removePopover(); }
+    function outsideHandler(e) { if (popoverEl && !popoverEl.contains(e.target)) cancel(); }
+    function removeOutsideHandler() {
+        document.removeEventListener('pointerdown', outsideHandler, { capture: true });
+    }
+
+    popoverEl.querySelector('.pl-pop-confirm').addEventListener('click', confirm);
+    popoverEl.querySelector('.pl-pop-cancel').addEventListener('click', cancel);
+    if (isEdit) popoverEl.querySelector('.pl-pop-delete').addEventListener('click', () => {
+        removeOutsideHandler();
+        const act = kind === 'allocation' ? ACT.deleteAlloc : ACT.deleteAbsence;
+        appfarm.actions?.[act]?.({ [ACT.idParam]: opts.recordId });
+        opts.onDelete?.();
+        removePopover();
+    });
+    popoverEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); confirm(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    setTimeout(() =>
+        document.addEventListener('pointerdown', outsideHandler, { capture: true }), 0);
+}
+
+// ponytail: console-only self-check for the day-clamp logic — call demo() from the
+// browser console after pasting. Not auto-run (would log on every load).
+function demo() {
+    const aug10 = new Date(2026, 7, 10), aug20 = new Date(2026, 7, 20);
+    let r = applyPick(aug20, null, 'to', aug10);
+    console.assert(+r.to === +startOfDay(aug10), 'to set to picked day');
+    r = applyPick(aug20, aug20, 'to', aug10);
+    console.assert(+r.from === +startOfDay(aug10), 'to before from pulls from back');
+    r = applyPick(aug10, aug10, 'from', aug20);
+    console.assert(+r.to === +startOfDay(aug20), 'from after to pushes to forward');
+    r = applyPick(aug10, aug20, 'from', new Date(2026, 7, 12));
+    console.assert(+r.to === +startOfDay(aug20), 'other end untouched when order ok');
+    console.log('[assignment-grid] day-picker self-check passed');
+}
+
 // ── Interaction (pointer-based: create / move / resize) ────────
 function setTooltip(n) {
     if (!dragTooltipEl) {
@@ -725,27 +1091,37 @@ function onPointerUp(e) {
     const popoverX = Math.round(e.clientX), popoverY = Math.round(e.clientY);
 
     if (d.mode === 'create') {
-        d.bar.remove();
+        d.bar.remove();                           // ghost goes; the saved bar arrives via rebuild
         const s = clampIdx(d.curS ?? d.origS), eIdx = clampIdx(d.curE ?? d.origE);
-        const dateFrom = columns[s].start.toISOString();
-        const dateTo   = columns[eIdx].end.toISOString();
-        appfarm.actions?.openAllocationAbsenceEditor?.(
-            { resourceId: d.resourceId, allocationId: null, projectId: null, dateFrom, dateTo, popoverX, popoverY },
-            { event: e });
+        showAllocAbsencePopover({
+            resourceId: d.resourceId, kind: 'allocation', recordId: null,
+            dateFrom: columns[s].start.toISOString(),
+            dateTo:   columns[eIdx].end.toISOString(),
+            anchorX: popoverX, anchorY: popoverY
+        });
         return;
     }
 
     if (!d.moved) {
+        const bar = d.bar;
         if (d.kind === 'absence') {
             const rec = absenceById.get(d.recId);
-            appfarm.actions?.openAllocationAbsenceEditor?.(
-                { resourceId: d.resourceId, absenceId: d.recId,
-                  dateFrom: rec?.dateFrom, dateTo: rec?.dateTo, popoverX, popoverY }, { event: e });
+            showAllocAbsencePopover({
+                resourceId: d.resourceId, kind: 'absence', recordId: d.recId,
+                absenceType: rec?.absenceType,
+                dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
+                anchorX: popoverX, anchorY: popoverY,
+                onDelete: () => bar?.remove()
+            });
         } else {
             const rec = allocById.get(d.recId);
-            appfarm.actions?.openAllocationAbsenceEditor?.(
-                { resourceId: d.resourceId, allocationId: d.recId, projectId: resolveId(rec?.project),
-                  dateFrom: rec?.dateFrom, dateTo: rec?.dateTo, popoverX, popoverY }, { event: e });
+            showAllocAbsencePopover({
+                resourceId: d.resourceId, kind: 'allocation', recordId: d.recId,
+                projectId: resolveId(rec?.project),
+                dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
+                anchorX: popoverX, anchorY: popoverY,
+                onDelete: () => bar?.remove()
+            });
         }
         return;
     }
@@ -757,11 +1133,19 @@ function onPointerUp(e) {
 
     if (+to < +from) to = endOfDay(from);
 
-    const dateFrom = from.toISOString();
-    const dateTo   = to.toISOString();
-
-    if (d.kind === 'absence') appfarm.actions?.saveAbsenceDates?.({ absenceId: d.recId, dateFrom, dateTo });
-    else appfarm.actions?.saveAllocationDates?.({ allocationId: d.recId, dateFrom, dateTo });
+    // Move/resize changes only dates — persist via the one save action, carrying the
+    // record's unchanged project/absenceType so the action still knows the kind.
+    const rec = (d.kind === 'absence' ? absenceById : allocById).get(d.recId);
+    const params = {
+        [ACT.idParam]: d.recId,
+        resourceId: d.resourceId,
+        dateFrom: from.toISOString(),
+        dateTo:   to.toISOString()
+    };
+    if (d.kind === 'absence') params.absenceType = rec?.absenceType;
+    else params.projectId = resolveId(rec?.project);
+    appfarm.actions?.[ACT.save]?.(params);
+    flushQueuedRebuild();
 }
 
 function onClick(e) {
@@ -804,7 +1188,7 @@ function init() {
     inner?.addEventListener('click', onClick);
 
     let deb;
-    document.getElementById('search-input')?.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(buildAll, 150); });
+    document.getElementById('search-input')?.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(guardedBuildAll, 150); });
 
     document.getElementById('granularity-toggle')?.addEventListener('click', (e) => {
         const target = /** @type {HTMLElement} */ (e.target);
@@ -819,9 +1203,9 @@ function init() {
         applyGranularity(v);
     });
 
-    appfarm.data.sortByProjects?.on?.('change', buildAll);
+    appfarm.data.sortByProjects?.on?.('change', guardedBuildAll);
     ['viewStart', 'viewEnd', 'resources', 'projects', 'allocation', 'absence', 'workTypeEnum', 'absenceColors', 'jobs']
-        .forEach(h => appfarm.data[h]?.on?.('change', buildAll));
+        .forEach(h => appfarm.data[h]?.on?.('change', guardedBuildAll));
 }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') init();

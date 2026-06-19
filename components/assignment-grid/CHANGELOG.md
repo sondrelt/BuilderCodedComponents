@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0 — 2026-06-19
+
+- In-component allocation/absence editor popover (replaces the native
+  `openAllocationAbsenceEditor` dialog). One popover with a Tildeling/Fravær toggle:
+  - Tildeling → searchable project select (saved as `projectId`)
+  - Fravær → searchable absence-type select with colour swatches (saved as `absenceType`)
+  - Fra/Til exact-day calendar ported from resource-req-v2 (month nav + year quick-jump)
+- Create (drag empty lane), edit (click a bar, prefilled), and Slett all run in-grid
+- Persistence consolidated onto a single `allocationAbsenceSave` action (kind inferred
+  from `projectId` vs `absenceType`); move/resize now save through it too. Delete uses
+  `deleteAllocation` / `deleteAbsence`
+- Rebuild guard added: an open popover survives datasource changes, then flushes on close
+
 ## 1.1.1 — 2026-06-19
 
 - When "group by projects" is on, project groups now render in the `projects`
