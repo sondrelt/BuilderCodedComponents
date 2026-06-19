@@ -1,8 +1,39 @@
 /* Resource Graph v2 — scope everything under #resource-graph-v2. Chart.js
-   paints the canvas itself, so this is just the shell + the filter control. */
+   paints the canvas itself, so this is the shell + the custom filter control. */
 #resource-graph-v2 { width: 100%; height: 100%; display: flex; flex-direction: column;
   font-family: 'Lato', 'Hind Madurai', sans-serif; background: transparent; }
 #resource-graph-v2 .chart-header { display: flex; justify-content: flex-end; align-items: center; padding: 12px 20px 4px; }
-#resource-graph-v2 #work-type-filter { padding: 4px 8px; border-radius: 4px; border: 1px solid rgb(190,205,212);
-  background: #fff; font-family: 'Lato', sans-serif; font-size: 12px; color: rgb(31,41,46); cursor: pointer; outline: none; }
 #resource-graph-v2 .chart-body { flex: 1; position: relative; min-height: 0; padding: 0 12px 12px; }
+
+/* ── Custom work-type dropdown (replaces native <select>) ──────────────── */
+#resource-graph-v2 .wt-filter { position: relative; }
+#resource-graph-v2 .wt-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 10px 6px 12px; min-width: 150px;
+  border: 1px solid rgb(190,205,212); border-radius: 8px; background: #fff;
+  font-family: 'Lato', sans-serif; font-size: 12px; color: rgb(31,41,46);
+  cursor: pointer; outline: none; transition: border-color .15s, box-shadow .15s; }
+#resource-graph-v2 .wt-trigger:hover { border-color: rgb(157,178,189); }
+#resource-graph-v2 .wt-trigger:focus-visible,
+#resource-graph-v2 .wt-trigger[aria-expanded="true"] {
+  border-color: rgb(31,41,46); box-shadow: 0 0 0 3px rgba(17,64,94,0.12); }
+#resource-graph-v2 .wt-label { flex: 1; text-align: left; white-space: nowrap; }
+#resource-graph-v2 .wt-caret {
+  width: 0; height: 0; margin-left: 4px;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-top: 5px solid rgb(77,100,112); transition: transform .15s; }
+#resource-graph-v2 .wt-trigger[aria-expanded="true"] .wt-caret { transform: rotate(180deg); }
+
+#resource-graph-v2 .wt-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 9999;
+  margin: 0; padding: 6px; list-style: none; min-width: 100%;
+  background: #fff; border: 1px solid rgb(190,205,212); border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(17,64,94,0.18);
+  max-height: 280px; overflow-y: auto; }
+#resource-graph-v2 .wt-menu[hidden] { display: none; }
+#resource-graph-v2 .wt-option {
+  padding: 8px 10px; border-radius: 8px; font-size: 12px; color: rgb(31,41,46);
+  white-space: nowrap; cursor: pointer; transition: background .1s; }
+#resource-graph-v2 .wt-option:hover { background: rgb(240,245,247); }
+#resource-graph-v2 .wt-option[aria-selected="true"] {
+  background: rgb(232,240,244); font-weight: 700; }

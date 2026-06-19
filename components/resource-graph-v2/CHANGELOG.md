@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0 — 2026-06-19
+
+- Replaced the native `<select>` work-type filter with a custom dropdown
+  (button + popover list) styled to the palette — white, 12px radius, soft
+  navy shadow, animated caret. Same behavior (Alle arbeidstyper + used types,
+  re-render on pick); closes on outside click / Escape.
+- Tooltip footer now summarizes `Behov: X · Dekket: egne+innleide`, since the
+  stacked total isn't itself a meaningful number.
+- Chart updates in place (`chart.update()`) instead of destroy/recreate on data
+  change — no flicker, keeps transition animations. Still destroyed on unload.
+- Trailing all-zero weeks are trimmed so the axis isn't padded with blanks when
+  the view window overshoots the requirements.
+- Stacking semantics unchanged (Utleide stays in the stack — total footprint).
+
 ## 1.0.0 — 2026-06-18
 
 - First real version (replaces the empty scaffold).
