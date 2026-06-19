@@ -574,7 +574,10 @@ function buildAll() {
             groups[proj._id].push(res);
         });
 
-        Object.entries(groups).forEach(([projId, list]) => {
+        // Groups follow the project list order (projectsById is built from
+        // appfarm.data.projects, which preserves source order).
+        [...projectsById.keys()].filter(id => groups[id]).forEach(projId => {
+            const list = groups[projId];
             const proj = projectsById.get(projId);
             const color = getBadgeColor(proj || {});
             const pmId = resolveId(proj?.projectManager);

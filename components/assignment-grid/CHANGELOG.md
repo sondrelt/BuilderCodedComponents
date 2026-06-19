@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 — 2026-06-19
+
+- When "group by projects" is on, project groups now render in the `projects`
+  data source order (previously resource-encounter order)
+
 ## 1.1.0 — 2026-06-18
 
 - Added `jobs` data source: Builder lease-out ads matched to resources by `workType`
