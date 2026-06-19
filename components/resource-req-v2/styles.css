@@ -577,6 +577,119 @@
   border-color: var(--rp-red-700);
 }
 
+/* ── 8b. PERIOD PICKER (custom week calendar inside the popover) ───────────── */
+.rp-popover-wide { width: 280px; }
+
+.rp-popover-section {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--rp-text-muted);
+  margin: 14px 0 6px;
+}
+
+.rp-popover-dates {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.rp-date-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border: 1px solid var(--rp-border);
+  border-radius: 8px;
+  font-size: 10px;
+  color: var(--rp-text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color .12s, box-shadow .12s;
+}
+.rp-date-chip b {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rp-navy);
+}
+.rp-date-chip.active {
+  border-color: var(--rp-navy);
+  box-shadow: 0 0 0 2px rgba(17, 64, 94, 0.12);
+}
+
+.rp-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.rp-cal-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rp-navy);
+  text-transform: capitalize;
+}
+.rp-cal-navbtn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--rp-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--rp-navy);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .12s;
+}
+.rp-cal-navbtn:hover { background: #f3f4f6; }
+
+.rp-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  row-gap: 1px;
+}
+.rp-cal-hcell {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--rp-text-muted);
+  text-align: center;
+  padding: 2px 0 4px;
+}
+/* The day cells of a week sit in a contents-row so :hover can tint the whole
+   Mon–Sun span at once. */
+.rp-cal-row { display: contents; }
+.rp-cal-cell {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--rp-text);
+}
+.rp-cal-wnum {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--rp-text-muted);
+}
+.rp-cal-day {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background .1s;
+}
+.rp-cal-day.muted { color: #c7ccd1; }
+.rp-cal-row:hover .rp-cal-day { background: rgba(17, 64, 94, 0.07); }
+.rp-cal-in-range { background: rgba(17, 64, 94, 0.14); border-radius: 0; }
+.rp-cal-in-range.start { border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+.rp-cal-in-range.end   { border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
+.rp-cal-in-range.start,
+.rp-cal-in-range.end {
+  background: var(--rp-navy);
+  color: #fff;
+  font-weight: 700;
+}
+
 /* ── 9. DRAG TOOLTIP ──────────────────────────────────────────────────────── */
 .rp-tooltip {
   position: fixed;
