@@ -41,12 +41,15 @@ const COLW = { week: 75, day: 75 };
 const ROW_H = 34;
 
 // ── Appfarm action + parameter names ───────────────────────────
-// CONFIRM these strings match the platform exactly before trusting saves/deletes.
+// Kind is inferred from whether projectId (allocation) or absenceType (absence) is
+// passed; the record id param differs per kind (used for edit + delete).
 const ACT = {
-    save:          'allocationAbsenceSave', // ({ [idParam]?, resourceId, projectId|absenceType, dateFrom, dateTo })
-    deleteAlloc:   'deleteAllocation',      // ({ [idParam] })
-    deleteAbsence: 'deleteAbsence',         // ({ [idParam] })
-    idParam:       'recordId'               // single id; kind inferred from projectId vs absenceType
+    save:           'allocationAbsenceSave', // ({ [id]?, resourceId, projectId|absenceType, dateFrom, dateTo })
+    deleteAlloc:    'deleteAllocation',      // ({ projectResourceId })
+    deleteAbsence:  'deleteAbsence',         // ({ resourceAbsence })
+    allocIdParam:   'projectResourceId',     // allocation record id (edit + delete)
+    absenceIdParam: 'resourceAbsence'        // absence record id (edit + delete)
+    // CONFIRM: does allocationAbsenceSave use these same id params when editing?
 };
 
 const MONTHS_NB = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
@@ -932,8 +935,13 @@ function showAllocAbsencePopover(opts) {
         if (+to < +from) to = endOfDay(from);
         removeOutsideHandler();
         const params = { resourceId: opts.resourceId, dateFrom: from.toISOString(), dateTo: to.toISOString() };
-        if (opts.recordId) params[ACT.idParam] = opts.recordId;
-        if (kind === 'allocation') params.projectId = selId; else params.absenceType = selId;
+        if (kind === 'allocation') {
+            params.projectId = selId;
+            if (opts.recordId) params[ACT.allocIdParam] = opts.recordId;
+        } else {
+            params.absenceType = selId;
+            if (opts.recordId) params[ACT.absenceIdParam] = opts.recordId;
+        }
         appfarm.actions?.[ACT.save]?.(params);
         removePopover();
     }
@@ -947,8 +955,10 @@ function showAllocAbsencePopover(opts) {
     popoverEl.querySelector('.pl-pop-cancel').addEventListener('click', cancel);
     if (isEdit) popoverEl.querySelector('.pl-pop-delete').addEventListener('click', () => {
         removeOutsideHandler();
-        const act = kind === 'allocation' ? ACT.deleteAlloc : ACT.deleteAbsence;
-        appfarm.actions?.[act]?.({ [ACT.idParam]: opts.recordId });
+        if (kind === 'allocation')
+            appfarm.actions?.[ACT.deleteAlloc]?.({ [ACT.allocIdParam]: opts.recordId });
+        else
+            appfarm.actions?.[ACT.deleteAbsence]?.({ [ACT.absenceIdParam]: opts.recordId });
         opts.onDelete?.();
         removePopover();
     });
@@ -1136,14 +1146,14 @@ function onPointerUp(e) {
     // Move/resize changes only dates — persist via the one save action, carrying the
     // record's unchanged project/absenceType so the action still knows the kind.
     const rec = (d.kind === 'absence' ? absenceById : allocById).get(d.recId);
-    const params = {
-        [ACT.idParam]: d.recId,
-        resourceId: d.resourceId,
-        dateFrom: from.toISOString(),
-        dateTo:   to.toISOString()
-    };
-    if (d.kind === 'absence') params.absenceType = rec?.absenceType;
-    else params.projectId = resolveId(rec?.project);
+    const params = { resourceId: d.resourceId, dateFrom: from.toISOString(), dateTo: to.toISOString() };
+    if (d.kind === 'absence') {
+        params.absenceType = rec?.absenceType;
+        params[ACT.absenceIdParam] = d.recId;
+    } else {
+        params.projectId = resolveId(rec?.project);
+        params[ACT.allocIdParam] = d.recId;
+    }
     appfarm.actions?.[ACT.save]?.(params);
     flushQueuedRebuild();
 }
