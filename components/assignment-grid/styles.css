@@ -318,6 +318,9 @@
 }
 .pl-bar.dragging { opacity: 0.35; }
 
+/* Optimistic bar — shown immediately on save, until the rebuild swaps in the real one */
+.pl-bar-pending { opacity: 0.6; }
+
 .pl-inner.pl-dragging,
 .pl-inner.pl-dragging * { cursor: grabbing !important; }
 

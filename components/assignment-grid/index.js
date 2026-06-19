@@ -816,6 +816,20 @@ function renderYearGrid(mount, currentYear, onPick) {
     selEl?.scrollIntoView({ block: 'center' });
 }
 
+// Optimistic bar: build a real-looking bar from the just-saved values and place it —
+// replacing the edited bar, or appending to the lane on create. Marked pending; the
+// post-save rebuild swaps in the persisted record (clicking it before then is a no-op,
+// since its synthetic _id isn't in allocById/absenceById).
+function applyOptimisticBar(opts, kind, selId, fromISO, toISO) {
+    const barKind = kind === 'allocation' ? 'alloc' : 'absence';
+    const rec = { _id: '__optimistic__', dateFrom: fromISO, dateTo: toISO };
+    if (kind === 'allocation') rec.project = selId; else rec.absenceType = selId;
+    const fresh = makeBar(rec, barKind);
+    fresh.classList.add('pl-bar-pending');
+    if (opts.bar && opts.bar.parentElement) opts.bar.replaceWith(fresh);          // edit
+    else if (opts.track && opts.track.isConnected) opts.track.appendChild(fresh); // create
+}
+
 // ── Allocation / absence editor popover ─────────────────────────────────────────
 // One popover, Tildeling/Fravær toggle. Tildeling → project select (projectId);
 // Fravær → absence-type select (absenceType). On edit, kind is fixed to the bar.
@@ -933,8 +947,12 @@ function showAllocAbsencePopover(opts) {
         let to = endOfDay(calState.to || calState.from || (opts.dateTo ? new Date(opts.dateTo) : seed));
         if (+to < +from) to = endOfDay(from);
         removeOutsideHandler();
-        const params = { resourceId: opts.resourceId, dateFrom: from.toISOString(), dateTo: to.toISOString() };
+        const fromISO = from.toISOString(), toISO = to.toISOString();
+        const params = { resourceId: opts.resourceId, dateFrom: fromISO, dateTo: toISO };
         if (kind === 'allocation') params.projectId = selId; else params.absenceType = selId;
+        // Optimistic UI: drop a real-looking bar in now; the save's datasource change
+        // later triggers a rebuild that swaps in the persisted record.
+        applyOptimisticBar(opts, kind, selId, fromISO, toISO);
         appfarm.actions?.[ACT.save]?.(params);
         removePopover();
     }
@@ -1100,7 +1118,8 @@ function onPointerUp(e) {
             resourceId: d.resourceId, kind: 'allocation', recordId: null,
             dateFrom: columns[s].start.toISOString(),
             dateTo:   columns[eIdx].end.toISOString(),
-            anchorX: popoverX, anchorY: popoverY
+            anchorX: popoverX, anchorY: popoverY,
+            track: d.track                       // optimistic bar lands here on save
         });
         return;
     }
@@ -1114,7 +1133,7 @@ function onPointerUp(e) {
                 absenceType: rec?.absenceType,
                 dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
                 anchorX: popoverX, anchorY: popoverY,
-                onDelete: () => bar?.remove()
+                bar, onDelete: () => bar?.remove()
             });
         } else {
             const rec = allocById.get(d.recId);
@@ -1123,7 +1142,7 @@ function onPointerUp(e) {
                 projectId: resolveId(rec?.project),
                 dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
                 anchorX: popoverX, anchorY: popoverY,
-                onDelete: () => bar?.remove()
+                bar, onDelete: () => bar?.remove()
             });
         }
         return;

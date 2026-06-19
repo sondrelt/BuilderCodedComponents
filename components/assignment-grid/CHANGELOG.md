@@ -8,6 +8,8 @@
   - Fravær → searchable absence-type select with colour swatches (saved as `absenceType`)
   - Fra/Til exact-day calendar ported from resource-req-v2 (month nav + year quick-jump)
 - Create (drag empty lane), edit (click a bar, prefilled), and Slett all run in-grid
+- Optimistic UI: saving drops a real-looking bar in immediately (pending style), then
+  the post-save rebuild swaps in the persisted record
 - Persistence consolidated onto a single `allocationAbsenceSave` action (kind inferred
   from `projectId` vs `absenceType`); move/resize now save through it too. Delete uses
   `deleteAllocation` / `deleteAbsence`
