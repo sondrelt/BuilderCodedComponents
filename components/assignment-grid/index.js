@@ -49,7 +49,6 @@ const ACT = {
     deleteAbsence:  'deleteAbsence',         // ({ resourceAbsence })
     allocIdParam:   'projectResourceId',     // allocation record id (edit + delete)
     absenceIdParam: 'resourceAbsence'        // absence record id (edit + delete)
-    // CONFIRM: does allocationAbsenceSave use these same id params when editing?
 };
 
 const MONTHS_NB = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
