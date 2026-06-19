@@ -68,6 +68,8 @@ const POPOVER_SOURCES  = new Set([SRC.INNLEIDE, SRC.UTLEIDE, SRC.UDEKT, SRC.OVER
 const STICKY_W          = 280;   // left panel width (px) — keep in sync with CSS --rp-sticky-w
 const DEFAULT_COL_W     = 60;
 const FALLBACK_WEEKS    = 20;    // window when viewFrom/viewTo are unset
+const CAL_YEAR_BACK     = 2;     // period-picker year grid spans seed−BACK .. seed+FWD
+const CAL_YEAR_FWD      = 6;     // FWD ≥ 2y future range from any seed
 const DAY_MS            = 86400000;
 const DRAG_THRESHOLD_PX = 4;     // movement below this = click, not drag
 
@@ -102,6 +104,7 @@ function fmtDayMonth(d) {
     const x = new Date(d);
     return String(x.getDate()).padStart(2, '0') + '.' + String(x.getMonth() + 1).padStart(2, '0');
 }
+function fmtDate(d) { return fmtDayMonth(d) + '.' + new Date(d).getFullYear(); }
 
 function getISOWeek(d) {
     const t = startOfDay(d);
@@ -643,13 +646,16 @@ function showCountPopover(opts) {
     const showDelete = typeof opts.onDelete === 'function'
         && typeof appfarm.actions?.deleteProjectRequirement === 'function';
 
-    // Calendar state — seeded from the click/drag period, snapped to whole weeks.
+    // Calendar state — exact-day precision, one calendar surface that edits
+    // whichever end (`open`) is active; each end keeps its own month view.
     const seedFrom = opts.dateFrom ? new Date(opts.dateFrom) : new Date();
     const calState = {
-        view:    startOfDay(new Date(seedFrom)),
-        from:    opts.dateFrom ? startOfWeekMon(new Date(opts.dateFrom)) : null,
-        to:      opts.dateTo   ? endOfWeekMon(new Date(opts.dateTo))     : null,
-        picking: 'start'
+        from:     opts.dateFrom ? startOfDay(new Date(opts.dateFrom)) : null,
+        to:       opts.dateTo   ? startOfDay(new Date(opts.dateTo))   : null,
+        open:     'from',
+        viewFrom: startOfDay(opts.dateFrom ? new Date(opts.dateFrom) : seedFrom),
+        viewTo:   startOfDay(opts.dateTo ? new Date(opts.dateTo)
+                           : opts.dateFrom ? new Date(opts.dateFrom) : seedFrom)
     };
 
     popoverEl = document.createElement('div');
@@ -659,8 +665,8 @@ function showCountPopover(opts) {
         '<input class="rp-popover-input" type="number" min="0" step="1" value="' + (opts.defaultCount ?? 1) + '" />' +
         '<div class="rp-popover-section">Periode</div>' +
         '<div class="rp-popover-dates">' +
-            '<span class="rp-date-chip" data-end="start">Fra <b class="rp-chip-from">–</b></span>' +
-            '<span class="rp-date-chip" data-end="end">Til <b class="rp-chip-to">–</b></span>' +
+            '<span class="rp-date-chip" data-end="from">Fra <b class="rp-chip-from">–</b></span>' +
+            '<span class="rp-date-chip" data-end="to">Til <b class="rp-chip-to">–</b></span>' +
         '</div>' +
         '<div class="rp-cal"></div>' +
         '<div class="rp-popover-hint">Enter for å lagre &nbsp;·&nbsp; Esc for å avbryte</div>' +
@@ -680,21 +686,44 @@ function showCountPopover(opts) {
 
     const input = /** @type {HTMLInputElement} */ (popoverEl.querySelector('.rp-popover-input'));
 
-    // Period chips + calendar
+    // Period chips + calendar. One calendar edits the active end (`open`).
     const chipFrom   = popoverEl.querySelector('.rp-chip-from');
     const chipTo     = popoverEl.querySelector('.rp-chip-to');
-    const chipFromEl = popoverEl.querySelector('.rp-date-chip[data-end="start"]');
-    const chipToEl   = popoverEl.querySelector('.rp-date-chip[data-end="end"]');
-    const label = (d) => 'uke ' + getISOWeek(d) + ' · ' + fmtDayMonth(d);
+    const chipFromEl = popoverEl.querySelector('.rp-date-chip[data-end="from"]');
+    const chipToEl   = popoverEl.querySelector('.rp-date-chip[data-end="to"]');
+    const calMount   = popoverEl.querySelector('.rp-cal');
     function updateChips() {
-        chipFrom.textContent = calState.from ? label(calState.from) : '–';
-        chipTo.textContent   = calState.to   ? label(calState.to)   : '–';
-        chipFromEl.classList.toggle('active', calState.picking === 'start');
-        chipToEl.classList.toggle('active', calState.picking === 'end');
+        chipFrom.textContent = calState.from ? fmtDate(calState.from) : '–';
+        chipTo.textContent   = calState.to   ? fmtDate(calState.to)   : '–';
+        chipFromEl.classList.toggle('active', calState.open === 'from');
+        chipToEl.classList.toggle('active', calState.open === 'to');
     }
-    chipFromEl.addEventListener('click', () => { calState.picking = 'start'; updateChips(); });
-    chipToEl.addEventListener('click',   () => { calState.picking = 'end';   updateChips(); });
-    renderWeekCalendar(popoverEl.querySelector('.rp-cal'), calState, updateChips);
+    function renderCalendar() {
+        const isFrom = calState.open === 'from';
+        renderDayPicker(calMount, {
+            selected: isFrom ? calState.from : calState.to,
+            view:     isFrom ? calState.viewFrom : calState.viewTo,
+            onPickDay(day) {
+                const d = startOfDay(day);
+                if (isFrom) {
+                    calState.from = d;
+                    if (calState.to && +calState.to < +d) calState.to = d;
+                } else {
+                    calState.to = d;
+                    if (calState.from && +d < +calState.from) calState.from = d;
+                }
+                if (isFrom) calState.viewFrom = d; else calState.viewTo = d;
+                renderCalendar();
+                updateChips();
+            },
+            onNavigate(viewDate) {
+                if (isFrom) calState.viewFrom = viewDate; else calState.viewTo = viewDate;
+            }
+        });
+    }
+    chipFromEl.addEventListener('click', () => { calState.open = 'from'; renderCalendar(); updateChips(); });
+    chipToEl.addEventListener('click',   () => { calState.open = 'to';   renderCalendar(); updateChips(); });
+    renderCalendar();
     updateChips();
 
     input.focus();
@@ -702,12 +731,12 @@ function showCountPopover(opts) {
 
     function confirm() {
         const count = Math.max(0, parseInt(input.value, 10) || 0);
-        let from = calState.from ? startOfWeekMon(calState.from) : startOfWeekMon(seedFrom);
-        let to;
-        if (calState.to)        to = endOfWeekMon(calState.to);
-        else if (calState.from) to = endOfWeekMon(calState.from);   // start picked, no end → one week
-        else                    to = endOfWeekMon(opts.dateTo ? new Date(opts.dateTo) : seedFrom);
-        if (+to < +from) to = endOfWeekMon(from);
+        // Exact-day precision — no week snapping. endOfDay so the bar covers the
+        // full final day.
+        const from = startOfDay(calState.from || seedFrom);
+        let to = endOfDay(calState.to || calState.from
+                       || (opts.dateTo ? new Date(opts.dateTo) : seedFrom));
+        if (+to < +from) to = endOfDay(from);
         removeOutsideHandler();
         opts.onConfirm(count, from.toISOString(), to.toISOString());
         removePopover();
@@ -747,53 +776,61 @@ function removePopover() {
     flushQueuedRebuild();
 }
 
-// ═══ 8b. WEEK CALENDAR (period picker inside the popover) ════════════════════
-//  Operates on whole ISO weeks: hovering a row highlights its Mon–Sun week,
-//  clicking selects it. Two-click range — first click sets the start week
-//  (clears end), second sets the end (swaps if earlier). state is mutated in
-//  place: { view: Date(month shown), from: Date|null(Mon), to: Date|null(Sun),
-//  picking: 'start'|'end' }.
+// ═══ 8b. DAY PICKER (period picker inside the popover) ═══════════════════════
+//  Exact-day calendar for one end at a time. Month is stepped with ‹ ›; year is
+//  jumped via a scrollable grid opened from the title. opts:
+//    { selected: Date|null, view: Date(month shown),
+//      onPickDay(day), onNavigate(viewDate) }
 const WEEKDAY_LABELS = ['Ma', 'Ti', 'On', 'To', 'Fr', 'Lø', 'Sø'];
 const MONTH_NAMES = ['januar', 'februar', 'mars', 'april', 'mai', 'juni',
     'juli', 'august', 'september', 'oktober', 'november', 'desember'];
 
-// Pure week-range transition (extracted so the self-check below can exercise it).
-function nextWeekSelection(from, to, picking, day) {
-    const mon = startOfWeekMon(day);
-    if (picking === 'start' || !from) {
-        return { from: mon, to: null, picking: 'end' };
-    }
-    if (+mon < +from) return { from: mon, to: endOfWeekMon(from), picking: 'start' };
-    return { from, to: endOfWeekMon(day), picking: 'start' };
+// Pure clamp: writing one end nudges the other so from ≤ to. Exposed for demo().
+function applyPick(from, to, end, day) {
+    const d = startOfDay(day);
+    if (end === 'from') return { from: d, to: (to && +to < +d) ? d : to };
+    return { from: (from && +d < +from) ? d : from, to: d };
 }
 
-function renderWeekCalendar(mount, state, onChange) {
+function renderDayPicker(mount, opts) {
+    let view = startOfDay(opts.view || opts.selected || new Date());
+    let yearOpen = false;
+
+    function setView(d) { view = startOfDay(d); opts.onNavigate?.(view); render(); }
+
     function render() {
         mount.innerHTML = '';
 
-        // Nav: ‹ month year ›
+        // Header: [ Måned ÅÅÅÅ ▾ ]  ……  ‹ ›
         const nav = document.createElement('div');
         nav.className = 'rp-cal-nav';
+        const title = document.createElement('button');
+        title.type = 'button';
+        title.className = 'rp-cal-title' + (yearOpen ? ' open' : '');
+        title.textContent = MONTH_NAMES[view.getMonth()] + ' ' + view.getFullYear();
+        title.addEventListener('click', () => { yearOpen = !yearOpen; render(); });
+        const arrows = document.createElement('div');
+        arrows.className = 'rp-cal-arrows';
         const prev = document.createElement('button');
         prev.type = 'button'; prev.className = 'rp-cal-navbtn'; prev.innerHTML = '‹';
-        const title = document.createElement('span');
-        title.className = 'rp-cal-title';
-        title.textContent = MONTH_NAMES[state.view.getMonth()] + ' ' + state.view.getFullYear();
         const next = document.createElement('button');
         next.type = 'button'; next.className = 'rp-cal-navbtn'; next.innerHTML = '›';
-        prev.addEventListener('click', () => { state.view = new Date(state.view.getFullYear(), state.view.getMonth() - 1, 1); render(); });
-        next.addEventListener('click', () => { state.view = new Date(state.view.getFullYear(), state.view.getMonth() + 1, 1); render(); });
-        nav.appendChild(prev); nav.appendChild(title); nav.appendChild(next);
+        prev.addEventListener('click', () => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1)));
+        next.addEventListener('click', () => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1)));
+        arrows.appendChild(prev); arrows.appendChild(next);
+        nav.appendChild(title); nav.appendChild(arrows);
         mount.appendChild(nav);
+
+        if (yearOpen) {
+            renderYearGrid(mount, view.getFullYear(), (y) => {
+                yearOpen = false;
+                setView(new Date(y, view.getMonth(), 1));
+            });
+            return;   // year grid replaces the day grid while open
+        }
 
         const grid = document.createElement('div');
         grid.className = 'rp-cal-grid';
-
-        // Header: week# label + weekday labels
-        const hWeek = document.createElement('div');
-        hWeek.className = 'rp-cal-hcell rp-cal-wnum';
-        hWeek.textContent = 'Uke';
-        grid.appendChild(hWeek);
         WEEKDAY_LABELS.forEach(l => {
             const h = document.createElement('div');
             h.className = 'rp-cal-hcell';
@@ -801,64 +838,62 @@ function renderWeekCalendar(mount, state, onChange) {
             grid.appendChild(h);
         });
 
-        // Effective highlight range: full range when both ends set, else just
-        // the start week so a single pick is still visible.
-        let lo = null, hi = null;
-        if (state.from && state.to) { lo = +startOfDay(state.from); hi = +startOfDay(state.to); }
-        else if (state.from)        { lo = +startOfDay(state.from); hi = +startOfDay(endOfWeekMon(state.from)); }
+        const sel = opts.selected ? +startOfDay(opts.selected) : null;
+        const monthIdx = view.getMonth();
+        let cur = startOfWeekMon(new Date(view.getFullYear(), monthIdx, 1));
 
-        const monthIdx = state.view.getMonth();
-        let cur = startOfWeekMon(new Date(state.view.getFullYear(), monthIdx, 1));
-
-        for (let w = 0; w < 6; w++) {
-            const row = document.createElement('div');
-            row.className = 'rp-cal-row';
-
-            const wnum = document.createElement('div');
-            wnum.className = 'rp-cal-cell rp-cal-wnum';
-            wnum.textContent = String(getISOWeek(cur));
-            row.appendChild(wnum);
-
-            for (let dOff = 0; dOff < 7; dOff++) {
-                const day = addDays(cur, dOff);
-                const t = +startOfDay(day);
-                const cell = document.createElement('div');
-                cell.className = 'rp-cal-cell rp-cal-day';
-                if (day.getMonth() !== monthIdx) cell.classList.add('muted');
-                if (lo != null && t >= lo && t <= hi) {
-                    cell.classList.add('rp-cal-in-range');
-                    if (t === lo) cell.classList.add('start');
-                    if (t === hi) cell.classList.add('end');
-                }
-                cell.textContent = String(day.getDate());
-                cell.addEventListener('click', () => {
-                    const s = nextWeekSelection(state.from, state.to, state.picking, day);
-                    state.from = s.from; state.to = s.to; state.picking = s.picking;
-                    render();
-                    onChange();
-                });
-                row.appendChild(cell);
-            }
-            grid.appendChild(row);
-            cur = addDays(cur, 7);
+        for (let i = 0; i < 42; i++) {
+            const day = addDays(cur, i);
+            const cell = document.createElement('div');
+            cell.className = 'rp-cal-cell rp-cal-day';
+            if (day.getMonth() !== monthIdx) cell.classList.add('muted');
+            if (sel != null && +startOfDay(day) === sel) cell.classList.add('sel');
+            cell.textContent = String(day.getDate());
+            cell.addEventListener('click', () => opts.onPickDay(day));
+            grid.appendChild(cell);
         }
         mount.appendChild(grid);
     }
     render();
 }
 
-// ponytail: console-only self-check for the week-range logic — call demo() from
+// Year quick-jump: scrollable 4-col grid, current year highlighted + scrolled
+// into view. Lives inside the count popover, so the popover's outside-click
+// handler already ignores clicks on it.
+function renderYearGrid(mount, currentYear, onPick) {
+    const seedY = new Date().getFullYear();
+    const grid = document.createElement('div');
+    grid.className = 'rp-cal-yeargrid';
+    let selEl = null;
+    for (let y = seedY - CAL_YEAR_BACK; y <= seedY + CAL_YEAR_FWD; y++) {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'rp-cal-year' + (y === currentYear ? ' sel' : '');
+        cell.textContent = String(y);
+        cell.addEventListener('click', () => onPick(y));
+        if (y === currentYear) selEl = cell;
+        grid.appendChild(cell);
+    }
+    mount.appendChild(grid);
+    selEl?.scrollIntoView({ block: 'center' });
+}
+
+// ponytail: console-only self-check for the day-clamp logic — call demo() from
 // the browser console after pasting. Not auto-run (would log on every load).
 function demo() {
-    const wed = new Date(2026, 7, 19);                       // a Wednesday, week 34
-    const a = nextWeekSelection(null, null, 'start', wed);
-    console.assert(a.from.getDay() === 1, 'from snaps to Monday');
-    console.assert(a.to === null && a.picking === 'end', 'first click clears end, picks end next');
-    const earlier = new Date(2026, 7, 5);                    // earlier week
-    const b = nextWeekSelection(a.from, a.to, 'end', earlier);
-    console.assert(+b.from < +a.from, 'end-before-start swaps start earlier');
-    console.assert(b.to && +b.to > +b.from && b.picking === 'start', 'to after from, cycle resets');
-    console.log('[req-planner] week-calendar self-check passed');
+    const aug10 = new Date(2026, 7, 10), aug20 = new Date(2026, 7, 20);
+    // pick 'to' before 'from' → from pulls back
+    let r = applyPick(aug20, null, 'to', aug10);
+    console.assert(+r.to === +startOfDay(aug10), 'to set to picked day');
+    r = applyPick(aug20, aug20, 'to', aug10);
+    console.assert(+r.from === +startOfDay(aug10), 'to before from pulls from back');
+    // pick 'from' after 'to' → to pushes forward
+    r = applyPick(aug10, aug10, 'from', aug20);
+    console.assert(+r.to === +startOfDay(aug20), 'from after to pushes to forward');
+    // ordinary pick leaves the other end untouched
+    r = applyPick(aug10, aug20, 'from', new Date(2026, 7, 12));
+    console.assert(+r.to === +startOfDay(aug20), 'other end untouched when order ok');
+    console.log('[req-planner] day-picker self-check passed');
 }
 
 // ═══ 9. DRAG INTERACTIONS (create / move / resize / click-edit) ═════════════

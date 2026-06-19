@@ -577,7 +577,7 @@
   border-color: var(--rp-red-700);
 }
 
-/* ── 8b. PERIOD PICKER (custom week calendar inside the popover) ───────────── */
+/* ── 8b. PERIOD PICKER (custom day calendar inside the popover) ───────────── */
 .rp-popover-wide { width: 280px; }
 
 .rp-popover-section {
@@ -614,8 +614,8 @@
   color: var(--rp-navy);
 }
 .rp-date-chip.active {
-  border-color: var(--rp-navy);
-  box-shadow: 0 0 0 2px rgba(17, 64, 94, 0.12);
+  border-color: var(--rp-amber-600);
+  box-shadow: 0 0 0 2px rgba(232, 154, 58, 0.18);
 }
 
 .rp-cal-nav {
@@ -625,11 +625,28 @@
   margin-bottom: 4px;
 }
 .rp-cal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  padding: 2px 4px;
   font-size: 12px;
   font-weight: 700;
   color: var(--rp-navy);
   text-transform: capitalize;
+  cursor: pointer;
 }
+.rp-cal-title::after {
+  content: '';
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--rp-text-muted);
+  transition: transform .12s;
+}
+.rp-cal-title.open::after { transform: rotate(180deg); }
+.rp-cal-arrows { display: flex; gap: 4px; }
 .rp-cal-navbtn {
   width: 24px;
   height: 24px;
@@ -646,7 +663,7 @@
 
 .rp-cal-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   row-gap: 1px;
 }
 .rp-cal-hcell {
@@ -657,35 +674,52 @@
   text-align: center;
   padding: 2px 0 4px;
 }
-/* The day cells of a week sit in a contents-row so :hover can tint the whole
-   Mon–Sun span at once. */
-.rp-cal-row { display: contents; }
 .rp-cal-cell {
-  height: 26px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   color: var(--rp-text);
 }
-.rp-cal-wnum {
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--rp-text-muted);
-}
 .rp-cal-day {
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 50%;
+  width: 30px;
+  margin: 0 auto;
   transition: background .1s;
 }
 .rp-cal-day.muted { color: #c7ccd1; }
-.rp-cal-row:hover .rp-cal-day { background: rgba(17, 64, 94, 0.07); }
-.rp-cal-in-range { background: rgba(17, 64, 94, 0.14); border-radius: 0; }
-.rp-cal-in-range.start { border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
-.rp-cal-in-range.end   { border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
-.rp-cal-in-range.start,
-.rp-cal-in-range.end {
-  background: var(--rp-navy);
+.rp-cal-day:hover { background: rgba(232, 154, 58, 0.16); }
+.rp-cal-day.sel {
+  background: var(--rp-amber-600);
+  color: #fff;
+  font-weight: 700;
+}
+.rp-cal-day.sel:hover { background: var(--rp-amber-600); }
+
+/* Year quick-jump grid (opened from the calendar title) */
+.rp-cal-yeargrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.rp-cal-year {
+  border: none;
+  background: none;
+  padding: 8px 0;
+  border-radius: 14px;
+  font-size: 12px;
+  color: var(--rp-text);
+  cursor: pointer;
+  transition: background .1s;
+}
+.rp-cal-year:hover { background: rgba(232, 154, 58, 0.16); }
+.rp-cal-year.sel {
+  background: var(--rp-amber-600);
   color: #fff;
   font-weight: 700;
 }

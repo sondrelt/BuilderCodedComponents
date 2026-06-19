@@ -1,5 +1,22 @@
 # Changelog — resource-req-v2
 
+## 1.9.0 — 2026-06-19
+
+- Count-popover period picker reworked for long ranges (up to ~2 years) and
+  **exact-day precision** (was whole-week). Fra/Til are now two independent
+  ends sharing one calendar surface that switches to the active end; each end
+  keeps its own month view.
+- Calendar navigation matches the app's date picker: `‹ ›` step the month, and
+  the `Måned ÅÅÅÅ ▾` title opens a scrollable 4-column **year grid** to jump
+  years in one click. Selected day is an amber circle.
+- Dropped week-snapping and the calendar's "Uke" column. `confirm()` now emits
+  the exact picked dates (`startOfDay`..`endOfDay`); bars may start/end
+  mid-week. Week-level aggregation is unchanged (still paints any overlapping
+  week).
+- from ≤ to enforced on pick (picking one end nudges the other). Replaced the
+  two-click week-range logic (`nextWeekSelection`) with `applyPick` + day-clamp
+  self-check (`demo()`).
+
 ## 1.8.0 — 2026-06-19
 
 - Egne ansatte now matches resource-graph-v2 1.2.0: counts **distinct allocated
