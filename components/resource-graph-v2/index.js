@@ -28,6 +28,10 @@
 
 const ns = appfarm;
 
+// Chart.js is loaded globally from the CDN (Resources section); the type-checker
+// can't see it, so grab it off window with an `any` cast to silence checkJs.
+const Chart = /** @type {any} */ (window).Chart;
+
 // ═══ 1. CONFIG ════════════════════════════════════════════════════════════
 const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35, UDEKT: 40, OVERSKUDD: 50 };
 
@@ -212,8 +216,8 @@ function syncFilterLabel(opts) {
 function openMenu()  { setMenuOpen(true); }
 function closeMenu() { setMenuOpen(false); }
 function setMenuOpen(open) {
-    const menu    = ns.element.querySelector('#wt-menu');
-    const trigger = ns.element.querySelector('#wt-trigger');
+    const menu    = /** @type {HTMLElement|null} */ (ns.element.querySelector('#wt-menu'));
+    const trigger = /** @type {HTMLElement|null} */ (ns.element.querySelector('#wt-trigger'));
     if (!menu || !trigger) return;
     menu.hidden = !open;
     trigger.setAttribute('aria-expanded', String(open));
@@ -324,8 +328,8 @@ function init() {
     buildFilterOptions();
     renderChart();
 
-    const trigger = ns.element.querySelector('#wt-trigger');
-    const menu    = ns.element.querySelector('#wt-menu');
+    const trigger = /** @type {HTMLElement|null} */ (ns.element.querySelector('#wt-trigger'));
+    const menu    = /** @type {HTMLElement|null} */ (ns.element.querySelector('#wt-menu'));
 
     trigger?.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -334,7 +338,8 @@ function init() {
 
     // Event-delegated option pick — menu contents are rebuilt on every refresh.
     menu?.addEventListener('click', (e) => {
-        const li = /** @type {HTMLElement} */ (e.target).closest('.wt-option');
+        const target = /** @type {HTMLElement} */ (e.target);
+        const li = /** @type {HTMLElement|null} */ (target.closest('.wt-option'));
         if (!li) return;
         selectedWT = li.dataset.value || '';
         buildFilterOptions();   // refresh labels + aria-selected
