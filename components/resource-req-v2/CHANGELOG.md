@@ -1,5 +1,10 @@
 # Changelog — resource-req-v2
 
+## 1.9.1 — 2026-06-19
+
+- Count popover now clamps into the viewport: a low or right-edge click no longer
+  pushes it off-screen (measured after the calendar renders, flips/shifts to fit).
+
 ## 1.9.0 — 2026-06-19
 
 - Count-popover period picker reworked for long ranges (up to ~2 years) and
