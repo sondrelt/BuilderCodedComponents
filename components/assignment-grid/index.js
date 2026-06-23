@@ -428,16 +428,26 @@ function renderRow(res, frag, role = null) {
     frag.appendChild(row);
 }
 
-function groupHeader(label, bg, fg) {
+function groupHeader(label, color) {
     const row = document.createElement('div');
     row.className = 'pl-grouphead';
     row.style.width = (STICKY_W + gridWidth) + 'px';
+    row.style.setProperty('--proj-color', color);   // left stripe + muted tint (CSS)
     const inner = document.createElement('div');
     inner.className = 'pl-grouphead-label';
-    inner.style.cssText = `background:${bg};color:${fg};`;
     inner.textContent = label;
     row.appendChild(inner);
     return row;
+}
+
+// Full-width line in the project colour closing a group — scrolls with the grid so
+// the boundary reads across the whole timeline.
+function groupSep(color) {
+    const sep = document.createElement('div');
+    sep.className = 'pl-group-sep';
+    sep.style.width = (STICKY_W + gridWidth) + 'px';
+    sep.style.setProperty('--proj-color', color);
+    return sep;
 }
 
 // ── Header (month groups + column labels) ──────────────────────
@@ -581,7 +591,8 @@ function buildAll() {
             const smId = resolveId(proj?.siteManager);
             const rank = r => r._id === pmId ? 0 : r._id === smId ? 1 : 2;
             list.sort((a, b) => rank(a) - rank(b));
-            frag.appendChild(groupHeader(proj?.bepmnX || proj?.name || 'Prosjekt', color, getContrastColor(color)));
+            frag.appendChild(groupHeader(proj?.bepmnX || proj?.name || 'Prosjekt', color));
+            frag.appendChild(groupSep(color));
             list.forEach(res => {
                 let role = null;
                 if (res._id === pmId) role = { label: 'Prosjektleder', rowClass: 'role-pm', tagClass: 'role-tag-pm' };
@@ -590,11 +601,13 @@ function buildAll() {
             });
         });
         if (unassigned.length) {
-            frag.appendChild(groupHeader('Ledig / Ikke tildelt prosjekt', '#e5e7eb', '#374151'));
+            frag.appendChild(groupHeader('Ledig / Ikke tildelt prosjekt', '#94a3b8'));
+            frag.appendChild(groupSep('#94a3b8'));
             unassigned.forEach(res => renderRow(res, frag));
         }
         if (absences.length) {
-            frag.appendChild(groupHeader('Fravær / Permisjon', '#fee2e2', '#991b1b'));
+            frag.appendChild(groupHeader('Fravær / Permisjon', '#dc8a8a'));
+            frag.appendChild(groupSep('#dc8a8a'));
             absences.forEach(res => renderRow(res, frag));
         }
     } else {
