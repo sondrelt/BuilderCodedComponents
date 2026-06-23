@@ -11,13 +11,12 @@
 #resource-graph-v2 #resourceChart { height: 100%; }
 
 /* ── Custom tooltip (ApexCharts `tooltip.custom`) ──────────────────────── */
-/* Override ApexCharts' light wrapper so our dark tooltip shows through.
-   placeTooltip re-sets `left` to sit beside the hovered column, so: fade opacity
-   only (never animate position → no slide), and ignore the pointer so the tooltip
-   can't steal hover from a bar (that hover-steal is what made it disappear). */
-#resource-graph-v2 .apexcharts-tooltip { background: rgb(31,41,46); border: none;
-  border-radius: 8px; box-shadow: 0 8px 28px rgba(17,64,94,0.18); overflow: hidden;
-  pointer-events: none; transition: opacity .12s ease !important; }
+/* Our own popover (rg-tt-pop) — created/shown/positioned by showTooltip, not
+   ApexCharts. Absolutely positioned within .chart-body; pointer-events:none so it
+   never steals hover from a bar (the cause of the earlier disappear-on-move). */
+#resource-graph-v2 .rg-tt-pop { position: absolute; z-index: 20; display: none;
+  pointer-events: none; background: rgb(31,41,46); border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(17,64,94,0.18); overflow: hidden; }
 #resource-graph-v2 .rg-tt { padding: 10px 12px; font-family: 'Lato', sans-serif; font-size: 12px; color: #fff; min-width: 150px; }
 #resource-graph-v2 .rg-tt-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 #resource-graph-v2 .rg-tt-row { display: flex; align-items: center; gap: 6px; line-height: 1.6; }

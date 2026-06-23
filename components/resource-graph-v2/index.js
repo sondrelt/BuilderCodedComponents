@@ -311,12 +311,12 @@ function renderChart() {
             type: 'line', height: '100%', stacked: true,
             fontFamily: 'Lato, sans-serif',
             toolbar: { show: false }, zoom: { enabled: false },
-            // Offset the shared tooltip to the side of the hovered column (see
-            // placeTooltip). The CSS pointer-events:none + opacity-only transition
-            // keep it from stealing hover or sliding as it repositions.
+            // We render our own popover (showTooltip) — shown while hovering a
+            // column, positioned next to the cursor, hidden when leaving the chart.
             events: {
-                dataPointMouseEnter: (e, ctx, opts) => placeTooltip(ctx, opts.dataPointIndex),
-                mouseMove: (e, ctx, opts) => { if (opts && opts.dataPointIndex >= 0) placeTooltip(ctx, opts.dataPointIndex); }
+                dataPointMouseEnter: (e, ctx, opts) => showTooltip(e, ctx, opts.dataPointIndex),
+                mouseMove: (e, ctx, opts) => { if (opts && opts.dataPointIndex >= 0) showTooltip(e, ctx, opts.dataPointIndex); },
+                mouseLeave: () => hideTooltip()
             }
         },
         // Don't lighten/recolour the hovered column — only the tooltip should react.
@@ -363,28 +363,47 @@ function renderChart() {
             markers: { shape: ['square', 'square', 'square', 'square', 'square', 'circle'], size: 5, strokeWidth: 0 },
             onItemClick: { toggleDataSeries: true }
         },
-        tooltip: { shared: true, intersect: false, custom: renderTooltip }
+        // ApexCharts' own tooltip is disabled — we render rg-tt-pop ourselves
+        // (showTooltip) for full control over position and visibility.
+        tooltip: { enabled: false }
     });
     chartInstance.render();
 }
 
-// Offset the shared tooltip to the side of the hovered column, flipping to
-// whichever side has room (left half of the plot → tooltip on the right, and
-// vice versa) so it sits beside the bar without covering it. Uses ApexCharts
-// layout globals (gridWidth/translateX) — undocumented, so verify visually.
-function placeTooltip(ctx, i) {
-    const w = ctx && ctx.w;
-    if (!w) return;
-    const n = (lastView && lastView.labels.length) || (w.globals.labels && w.globals.labels.length);
-    if (i == null || i < 0 || !n) return;
-    const tt = w.globals.dom.baseEl.querySelector('.apexcharts-tooltip');
-    if (!tt) return;
-    const pointW = w.globals.gridWidth / n;
-    const colX   = w.globals.translateX + pointW * (i + 0.5);
-    const gap    = 12;
-    const x = i < n / 2 ? colX + gap : colX - gap - tt.offsetWidth;
-    tt.style.left = Math.max(4, x) + 'px';
-    tt.style.top  = '12px';
+// We render our OWN popover (rg-tt-pop) instead of ApexCharts' tooltip, so we
+// fully control when it shows and where it sits. ApexCharts' built-in tooltip
+// fought our repositioning and vanished on every mouse move; owning the element
+// sidesteps that. It's appended to .chart-body (which ApexCharts never re-renders)
+// so it survives in-place chart updates.
+let ttEl = null;
+function getTooltipEl() {
+    if (ttEl && ttEl.isConnected) return ttEl;
+    const host = ns.element.querySelector('.chart-body');
+    if (!host) return null;
+    ttEl = document.createElement('div');
+    ttEl.className = 'rg-tt-pop';
+    host.appendChild(ttEl);
+    return ttEl;
+}
+function hideTooltip() { if (ttEl) ttEl.style.display = 'none'; }
+// Position the popover next to the cursor (which is over the hovered bar),
+// flipping to the left when near the right edge, clamped inside the plot.
+function showTooltip(e, ctx, i) {
+    if (i == null || i < 0 || !lastView) return;
+    const host = ns.element.querySelector('.chart-body');
+    const el = getTooltipEl();
+    if (!host || !el) return;
+    el.innerHTML = renderTooltip({ dataPointIndex: i });
+    el.style.display = 'block';
+    const rect = host.getBoundingClientRect();
+    const ttW = el.offsetWidth, ttH = el.offsetHeight;
+    let x = (e.clientX - rect.left) + 16;                       // right of the cursor
+    if (x + ttW > rect.width - 4) x = (e.clientX - rect.left) - 16 - ttW; // flip left near edge
+    let y = (e.clientY - rect.top) - ttH / 2;                   // vertically centred on cursor
+    x = Math.max(4, Math.min(x, rect.width - ttW - 4));
+    y = Math.max(4, Math.min(y, rect.height - ttH - 4));
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
 }
 
 // Per-week values aren't carried in the ApexCharts hover payload reliably for a
