@@ -117,14 +117,6 @@ function getISOWeekYear(d) {
     t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + 3);
     return t.getFullYear();
 }
-function getContrastColor(hex) {
-    if (!hex) return '#1e293b';
-    const h = hex.replace('#', '');
-    const r = parseInt(h.substring(0, 2), 16);
-    const g = parseInt(h.substring(2, 4), 16);
-    const b = parseInt(h.substring(4, 6), 16);
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5 ? '#1e293b' : '#ffffff';
-}
 
 // ═══ 3. STATE ═══════════════════════════════════════════════════════════════
 let columns    = [];     // [{ index, start, end, left, width, label, topLabel, topYear }]
@@ -298,14 +290,19 @@ function computeAggregates(projectId, workTypes) {
     });
 
     // Egne = distinct allocated persons PRESENT (not absent) per work type/column.
-    // Count distinct resources (not allocation rows) and drop anyone absent that
-    // week. An allocation without a workType counts for all work types.
-    const egneSets = new Map(); // wt → Array<Set>(N)
+    // Count distinct resources (not allocation rows) and drop anyone absent that week.
+    const egneSets = new Map(); // wt → Array<Set>(N) — per-work-type detail rows
     const egneSetFor = (wt) => {
         let a = egneSets.get(wt);
         if (!a) egneSets.set(wt, (a = Array.from({ length: N }, () => new Set())));
         return a;
     };
+    // Project-wide present-person set per column — drives the EGNE summary header.
+    // The per-wt detail rows below filter by workType; the header must NOT, or it
+    // (a) silently drops allocations whose workType isn't a configured projectWorkType
+    // row — the "Egne shows 0" bug — and (b) double-counts a workType-less person
+    // across every wt. Counting distinct persons project-wide matches resource-graph-v2.
+    const egneAllSets = Array.from({ length: N }, () => new Set());
     (allocsByProject.get(projectId) || []).forEach(a => {
         const rid = resolveId(a.resource);
         if (rid == null) return;
@@ -315,15 +312,22 @@ function computeAggregates(projectId, workTypes) {
         if (+to < +rangeStart || +from > +rangeEnd) return;
         const s = clampIdx(colIndexForDate(from));
         const e = clampIdx(colIndexForDate(to));
+        // Per-wt placement: if the allocation is tagged with one of THIS project's
+        // work types, it belongs to that row only. Otherwise (no workType, or a
+        // workType the project doesn't list) we can't pin it to a single row, so it
+        // counts toward every work-type row — keeping the per-wt bars from going
+        // blank when allocations aren't tagged with the project's exact work types.
+        // The summary header stays distinct (egneAllSets), so no double-count there.
         const aWt = toInt(a.workType);
-        workTypes.forEach(wt => {
-            if (aWt !== null && aWt !== wt) return;
-            const sets = egneSetFor(wt);
-            for (let i = s; i <= e; i++) {
-                if (absentByCol[i] && absentByCol[i].has(rid)) continue;
-                sets[i].add(rid);
-            }
-        });
+        const tagged = aWt !== null && workTypes.includes(aWt);
+        for (let i = s; i <= e; i++) {
+            if (absentByCol[i] && absentByCol[i].has(rid)) continue;   // present only
+            egneAllSets[i].add(rid);                                   // project-wide total
+            workTypes.forEach(wt => {                                  // per-wt detail
+                if (tagged && aWt !== wt) return;
+                egneSetFor(wt)[i].add(rid);
+            });
+        }
     });
     workTypes.forEach(wt => {
         const egne = detailArr(SRC.EGNE, wt);
@@ -345,8 +349,14 @@ function computeAggregates(projectId, workTypes) {
         }
     });
 
-    // Headers = column-wise sums across work types (incl. Utleide, fixed in v2)
+    // Headers = column-wise sums across work types (incl. Utleide, fixed in v2).
+    // EGNE is the exception: its header is distinct present persons project-wide
+    // (egneAllSets), not the cross-wt sum of the detail rows — see egneAllSets above.
     Object.values(SRC).forEach(src => {
+        if (src === SRC.EGNE) {
+            header.set(src, egneAllSets.map(set => set.size));
+            return;
+        }
         const h = new Array(N).fill(0);
         workTypes.forEach(wt => {
             const d = detail.get(src + '_' + wt);
@@ -462,16 +472,15 @@ function makeActionButton(icon, title, onClick) {
 
 function makeGroupHeader(project, showDetails) {
     const projectId = project._id;
-    const color     = project.colorHexCode || '#e2e8f0';
+    const color     = project.colorHexCode || '#94a3b8';
 
     const row = document.createElement('div');
     row.className = 'rp-group-head';
     row.style.width = (STICKY_W + gridWidth) + 'px';
+    row.style.setProperty('--proj-color', color);   // left stripe + muted-tint base (CSS)
 
     const inner = document.createElement('div');
     inner.className = 'rp-group-label';
-    inner.style.background = color;
-    inner.style.color      = getContrastColor(color);
 
     const collapseBtn = makeActionButton(
         showDetails ? ICONS.chevronUp : ICONS.chevronDown,
@@ -568,6 +577,7 @@ function buildAll() {
     allProjects.forEach(project => {
         const projectId   = project._id;
         const showDetails = !!project.detailsShowBOL;
+        const projColor   = project.colorHexCode || '#94a3b8';   // left stripe + bottom line
 
         const projectWTs = allWorkTypes
             .filter(wt => resolveId(wt.project) === projectId)
@@ -578,6 +588,14 @@ function buildAll() {
 
         frag.appendChild(makeGroupHeader(project, showDetails));
 
+        // Full-width line in the project colour directly under the title row —
+        // marks the project across the whole timeline (scrolls with the grid).
+        const sep = document.createElement('div');
+        sep.className = 'rp-group-sep';
+        sep.style.width = (STICKY_W + gridWidth) + 'px';
+        sep.style.setProperty('--proj-color', projColor);
+        frag.appendChild(sep);
+
         allSources.forEach(src => {
             const srcEnum = toInt(src.enum_value);
             if (srcEnum == null) return;
@@ -586,6 +604,7 @@ function buildAll() {
 
             // Source summary row (aggregate across all work types, read-only)
             const srcRow = document.createElement('div');
+            srcRow.style.setProperty('--proj-color', projColor);
             srcRow.className = 'rp-row rp-row-source-header rp-row-source-header-' + srcClass;
 
             const srcLabel = document.createElement('div');
@@ -600,6 +619,7 @@ function buildAll() {
             if (!showDetails) return;
             projectWTs.forEach(wtId => {
                 const wtRow = document.createElement('div');
+                wtRow.style.setProperty('--proj-color', projColor);
                 wtRow.className = 'rp-row rp-row-wt'
                     + (isEditable ? ' rp-row-editable' : ' rp-row-derived');
 

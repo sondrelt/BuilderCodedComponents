@@ -1,5 +1,27 @@
 # Changelog — resource-req-v2
 
+## 1.10.0 — 2026-06-23
+
+- **Fix Egne showing 0.** The Egne summary header was a cross-work-type sum of the
+  per-work-type detail sets, so any allocation whose `workType` wasn't a configured
+  `projectWorkType` row was silently dropped from the total (and work-type-less
+  persons were double-counted). The header now counts **distinct present persons
+  project-wide** per week (allocation − absence), independent of work-type matching —
+  matching resource-graph-v2's "Egne ansatte".
+- **Per-work-type Egne bars now render.** The work-type detail rows draw the same
+  hatched read-only bars as Udekt/Overskudd. Attribution: an allocation tagged with
+  one of the project's work types lands in that row only; an allocation with no work
+  type, or one the project doesn't list, counts toward every work-type row (so the
+  rows don't go blank when allocations aren't tagged with the project's exact work
+  types). The summary header stays a distinct project-wide count.
+- **Project colour marking.** Each project now carries a left accent stripe pinned to
+  the sticky panel (stays visible while scrolling horizontally) and a full-width line
+  in the project colour directly under the project title row, spanning the whole
+  timeline. The
+  group header's full saturated fill is replaced with a muted tint so it no longer
+  clashes with the Egne-green / Innleide-amber source bands. New `--proj-color` row
+  property + `.rp-group-sep` element; removed the now-unused `getContrastColor`.
+
 ## 1.9.0 — 2026-06-19
 
 - Count-popover period picker reworked for long ranges (up to ~2 years) and

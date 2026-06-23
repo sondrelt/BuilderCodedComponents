@@ -149,6 +149,12 @@
   box-sizing: border-box;
   position: sticky;
   left: 0;
+  /* Muted tint of the project colour (was a full saturated fill that clashed with
+     the Egne-green / Innleide-amber source bands); the saturated colour lives in
+     the left accent stripe + bottom line instead. */
+  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
+  color: var(--rp-text);
+  box-shadow: inset 4px 0 0 0 var(--proj-color, #94a3b8);
 }
 
 .rp-action-btn {
@@ -196,6 +202,17 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   font-size: 12px;
+  /* Left accent stripe in the project colour — pinned (cell is sticky-left) so it
+     stays visible while scrolling horizontally. --proj-color is set per row. */
+  box-shadow: inset 4px 0 0 0 var(--proj-color, transparent);
+}
+
+/* Full-width line in the project colour closing each project group — scrolls with
+   the grid so the boundary reads across the whole timeline. */
+.rp-group-sep {
+  flex: 0 0 auto;
+  height: 3px;
+  background: var(--proj-color, #94a3b8);
 }
 
 /* Source header labels — coloured by category */

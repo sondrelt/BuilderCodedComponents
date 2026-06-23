@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 2026-06-23
+
+- Project colour marking in the group-by-project view: each project group header is
+  now a muted tint of the project colour with a pinned left accent stripe, and a
+  full-width line in the project colour sits directly under the title row, spanning
+  the whole timeline. Replaces the previous heavy saturated header fill. Existing PM / site
+  manager role stripes on the resource cells are preserved. New `--proj-color` +
+  `.pl-group-sep`; `groupHeader(label, color)` (dropped the separate `fg` arg).
+
 ## 1.1.0 — 2026-06-18
 
 - Added `jobs` data source: Builder lease-out ads matched to resources by `workType`
