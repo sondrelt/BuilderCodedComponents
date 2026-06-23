@@ -23,10 +23,11 @@
 - Custom dark tooltip: a row per **stacked source** (zero values skipped) with a
   colour dot matching its bar, plus a `Behov: X · Dekket: egne+innleide` footer.
   Behov is footer-only (it's the reference line, not a stack component). Hover no
-  longer recolours the column (`states.hover/active: none`). The popover is pinned
-  (`tooltip.fixed`) so it stays steady and continuously shown on hover, flipping to
-  the opposite top corner by which half is hovered (CSS `.tt-left`) so it never
-  covers the bar. Same stacked semantics and trailing-empty-week trim.
+  longer recolours the column (`states.hover/active: none`). The popover is offset
+  to the side of the hovered column (`placeTooltip`), flipping left/right by which
+  half is hovered so it never covers the bar; `pointer-events: none` + opacity-only
+  transition keep it steady (no hover-steal, no position slide). Same stacked
+  semantics and trailing-empty-week trim.
 - **Action required when syncing:** change the Resources Script URL in Appfarm
   Create from `chart.js` to `https://cdn.jsdelivr.net/npm/apexcharts`. The HTML
   tab now mounts a `<div id="resourceChart">` instead of a `<canvas>`.

@@ -311,11 +311,12 @@ function renderChart() {
             type: 'line', height: '100%', stacked: true,
             fontFamily: 'Lato, sans-serif',
             toolbar: { show: false }, zoom: { enabled: false },
-            // The tooltip is pinned (tooltip.fixed) so ApexCharts keeps it steady
-            // and continuously shown on hover. We only flip which side it pins to,
-            // by which half of the chart is hovered, via a CSS class (see flipTooltipSide).
+            // Offset the shared tooltip to the side of the hovered column (see
+            // placeTooltip). The CSS pointer-events:none + opacity-only transition
+            // keep it from stealing hover or sliding as it repositions.
             events: {
-                dataPointMouseEnter: (e, ctx, opts) => flipTooltipSide(opts.dataPointIndex)
+                dataPointMouseEnter: (e, ctx, opts) => placeTooltip(ctx, opts.dataPointIndex),
+                mouseMove: (e, ctx, opts) => { if (opts && opts.dataPointIndex >= 0) placeTooltip(ctx, opts.dataPointIndex); }
             }
         },
         // Don't lighten/recolour the hovered column — only the tooltip should react.
@@ -362,24 +363,28 @@ function renderChart() {
             markers: { shape: ['square', 'square', 'square', 'square', 'square', 'circle'], size: 5, strokeWidth: 0 },
             onItemClick: { toggleDataSeries: true }
         },
-        // fixed: pin the tooltip to a top corner so ApexCharts keeps it steady and
-        // continuously shown while hovering (no per-frame jumping/flicker). Default
-        // corner is top-right; flipTooltipSide flips it left for the right half via
-        // a CSS class so it never covers the hovered column.
-        tooltip: { shared: true, intersect: false, custom: renderTooltip,
-                   fixed: { enabled: true, position: 'topRight', offsetX: -8, offsetY: 34 } }
+        tooltip: { shared: true, intersect: false, custom: renderTooltip }
     });
     chartInstance.render();
 }
 
-// Flip which side the pinned tooltip sits on so it never covers the hovered
-// column: left half of the chart keeps it top-right; right half moves it left.
-// The `tt-left` class on the chart root drives the CSS position override.
-function flipTooltipSide(i) {
-    const root = ns.element.querySelector('#resourceChart');
-    if (!root) return;
-    const n = (lastView && lastView.labels.length) || 0;
-    root.classList.toggle('tt-left', n > 0 && i != null && i >= n / 2);
+// Offset the shared tooltip to the side of the hovered column, flipping to
+// whichever side has room (left half of the plot → tooltip on the right, and
+// vice versa) so it sits beside the bar without covering it. Uses ApexCharts
+// layout globals (gridWidth/translateX) — undocumented, so verify visually.
+function placeTooltip(ctx, i) {
+    const w = ctx && ctx.w;
+    if (!w) return;
+    const n = (lastView && lastView.labels.length) || (w.globals.labels && w.globals.labels.length);
+    if (i == null || i < 0 || !n) return;
+    const tt = w.globals.dom.baseEl.querySelector('.apexcharts-tooltip');
+    if (!tt) return;
+    const pointW = w.globals.gridWidth / n;
+    const colX   = w.globals.translateX + pointW * (i + 0.5);
+    const gap    = 12;
+    const x = i < n / 2 ? colX + gap : colX - gap - tt.offsetWidth;
+    tt.style.left = Math.max(4, x) + 'px';
+    tt.style.top  = '12px';
 }
 
 // Per-week values aren't carried in the ApexCharts hover payload reliably for a
