@@ -36,16 +36,16 @@ const ApexCharts = /** @type {any} */ (window).ApexCharts;
 // ═══ 1. CONFIG ════════════════════════════════════════════════════════════
 const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35, UDEKT: 40, OVERSKUDD: 50 };
 
-// Source palette = resource-req-v2's work-type bar fills (--rp-*-bar), i.e. the
-// exact colours of the bars that mark a resource need in the planner, so the two
-// views match. Behov stays near-black — it's the reference line/circles here,
-// not a stacked source.
+// Source palette = resource-req-v2's work-type bar fills (--rp-*-bar) so the two
+// views match, with egne (green) and udekt (red) nudged up slightly in saturation
+// (≈saturate 1.3) for a touch more punch. Behov stays near-black — it's the
+// reference line/circles here, not a stacked source.
 const COLORS = {
     behov:     'rgb(31,41,46)',
-    egne:      '#bcefd6',
+    egne:      '#b1f3d2',
     innleide:  '#fde68a',
     utleide:   '#c4b5fd',
-    udekt:     '#fecaca',
+    udekt:     '#ffc7c7',
     overskudd: '#a3e3f0'
 };
 
