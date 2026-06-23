@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.3.0 — 2026-06-23
+
+- Migrated chart rendering from Chart.js to **ApexCharts** (same `cdn.jsdelivr.net`
+  domain, so no new CSP whitelist). All data aggregation, the week axis, and the
+  custom work-type dropdown are unchanged.
+- **Behov legend marker is now a line** (the five bar series stay as squares),
+  via ApexCharts' per-series `legend.markers.shape`. Chart.js's built-in legend
+  couldn't size/shape one marker independently — the reason for the move.
+- Legend click toggles series visibility (`onItemClick.toggleDataSeries`).
+- In-place updates via `chart.updateOptions()` instead of destroy/recreate.
+- Tooltip footer (`Behov: X · Dekket: egne+innleide`) reimplemented as a custom
+  dark tooltip; per-series rows still skip zero values. Same palette, stacked
+  semantics, and trailing-empty-week trim.
+- **Action required when syncing:** change the Resources Script URL in Appfarm
+  Create from `chart.js` to `https://cdn.jsdelivr.net/npm/apexcharts`. The HTML
+  tab now mounts a `<div id="resourceChart">` instead of a `<canvas>`.
+
 ## 1.2.0 — 2026-06-19
 
 - Egne ansatte now nets out absence. Was: count of overlapping allocation

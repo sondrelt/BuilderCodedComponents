@@ -1,6 +1,6 @@
 {
   "name": "resource-graph-v2",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Weekly stacked-bar + behov-line resource chart computed live from raw projectRequirements spans (+ allocation), mirroring the resource-req-v2 planner's aggregation instead of the pre-aggregated perProjectData source. Custom work-type dropdown, summary tooltip footer, in-place chart updates, trailing-empty-week trim.",
   "appfarmApp": "",
   "environment": "Development",
@@ -15,7 +15,7 @@
   ],
   "actions": [],
   "externalResources": [
-    "https://cdn.jsdelivr.net/npm/chart.js"
+    "https://cdn.jsdelivr.net/npm/apexcharts"
   ],
   "lastSynced": "2026-06-19T14:55:15+02:00"
 }

@@ -21,7 +21,7 @@
 //    Overskudd              = max(0, −(behov − egne − innleide))
 //    (Utleide is NOT part of the coverage diff — same as the planner.)
 //
-//  External dependency: Chart.js via CDN (add as Script URL in Resources).
+//  External dependency: ApexCharts via CDN (add as Script URL in Resources).
 // =============================================================================
 
 // NOTE: No 'use strict' — Appfarm wraps this in a generated function with a
@@ -29,9 +29,9 @@
 
 const ns = appfarm;
 
-// Chart.js is loaded globally from the CDN (Resources section); the type-checker
-// can't see it, so grab it off window with an `any` cast to silence checkJs.
-const Chart = /** @type {any} */ (window).Chart;
+// ApexCharts is loaded globally from the CDN (Resources section); the
+// type-checker can't see it, so grab it off window with an `any` cast.
+const ApexCharts = /** @type {any} */ (window).ApexCharts;
 
 // ═══ 1. CONFIG ════════════════════════════════════════════════════════════
 const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35, UDEKT: 40, OVERSKUDD: 50 };
@@ -278,76 +278,108 @@ function renderChart() {
     const { labels, data } = view;
     lastView = view;
 
-    // Update in place when the chart already exists — avoids the destroy/recreate
-    // flicker and keeps Chart.js's transition animations on data change.
+    // Series order is fixed and must match `colors`, legend marker shapes, and
+    // SERIES_META below: five stacked columns, then the Behov line on top.
+    const series = [
+        { name: 'Egne ansatte', type: 'column', data: data.egne },
+        { name: 'Innleide',     type: 'column', data: data.innleide },
+        { name: 'Utleide',      type: 'column', data: data.utleide },
+        { name: 'Udekt behov',  type: 'column', data: data.udekt },
+        { name: 'Overskudd',    type: 'column', data: data.overskudd },
+        { name: 'Behov',        type: 'line',   data: data.behov }
+    ];
+
+    // Update in place when the chart already exists — avoids destroy/recreate
+    // flicker and keeps ApexCharts' transition animations on data change.
     if (chartInstance) {
-        const series = [data.egne, data.innleide, data.utleide, data.udekt, data.overskudd, data.behov];
-        chartInstance.data.labels = labels;
-        series.forEach((arr, i) => { chartInstance.data.datasets[i].data = arr; });
-        chartInstance.update();
+        chartInstance.updateOptions({ series, xaxis: { categories: labels } }, false, true);
         return;
     }
 
-    const canvas = /** @type {HTMLCanvasElement} */ (ns.element.querySelector('#resourceChart'));
-    if (!canvas) return;
+    const el = ns.element.querySelector('#resourceChart');
+    if (!el) return;
 
-    chartInstance = new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'Egne ansatte', data: data.egne,      backgroundColor: COLORS.egne,      stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
-                { label: 'Innleide',     data: data.innleide,   backgroundColor: COLORS.innleide,  stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
-                { label: 'Utleide',      data: data.utleide,    backgroundColor: COLORS.utleide,   stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
-                { label: 'Udekt behov',  data: data.udekt,      backgroundColor: COLORS.udekt,     stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
-                { label: 'Overskudd',    data: data.overskudd,  backgroundColor: COLORS.overskudd, stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
-                { label: 'Behov', data: data.behov, type: 'line', borderColor: COLORS.behov, backgroundColor: 'transparent',
-                  pointBackgroundColor: COLORS.behov, pointRadius: 4, pointHoverRadius: 6,
-                  borderWidth: 2.5, tension: 0.25, order: 1, fill: false, pointStyle: 'line' }
-            ]
+    chartInstance = new ApexCharts(el, {
+        series,
+        chart: {
+            type: 'line', height: '100%', stacked: true,
+            fontFamily: 'Lato, sans-serif',
+            toolbar: { show: false }, zoom: { enabled: false }
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                // ponytail: Chart.js's built-in legend already toggles datasets on
-                // click — that's the "legend toggles" feature, no hand-rolled legend.
-                legend: {
-                    position: 'top', align: 'start',
-                    labels: { font: { family: 'Lato', size: 12 }, color: 'rgb(31,41,46)', boxWidth: 12, boxHeight: 12, usePointStyle: true }
-                },
-                tooltip: {
-                    backgroundColor: 'rgb(31,41,46)',
-                    titleFont: { family: 'Lato', size: 13, weight: '600' },
-                    bodyFont: { family: 'Lato', size: 12 },
-                    padding: 12, cornerRadius: 8,
-                    callbacks: {
-                        label: (ctx) => {
-                            const v = ctx.parsed.y;
-                            if (!v) return null;
-                            return ctx.dataset.label + ': ' + v;
-                        },
-                        // The stacked total isn't itself meaningful — surface the
-                        // numbers that are: demand vs. covered (egne + innleide).
-                        footer: (items) => {
-                            if (!items.length || !lastView) return '';
-                            const i = items[0].dataIndex;
-                            const d = lastView.data;
-                            return 'Behov: ' + d.behov[i] + '  ·  Dekket: ' + (d.egne[i] + d.innleide[i]);
-                        }
-                    },
-                    footerFont: { family: 'Lato', size: 11, weight: '400' },
-                    footerColor: 'rgb(190,205,212)',
-                    footerMarginTop: 8
-                }
-            },
-            scales: {
-                x: { stacked: true, grid: { display: false }, ticks: { font: { family: 'Lato', size: 11 }, color: 'rgb(77,100,112)', maxRotation: 0 }, border: { color: 'rgb(157,178,189)' } },
-                y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(157,178,189,0.3)', drawBorder: false }, ticks: { font: { family: 'Lato', size: 11 }, color: 'rgb(77,100,112)', stepSize: 1, precision: 0 }, border: { display: false } }
+        colors: [COLORS.egne, COLORS.innleide, COLORS.utleide, COLORS.udekt, COLORS.overskudd, COLORS.behov],
+        plotOptions: { bar: { columnWidth: '70%', borderRadius: 2 } },
+        // Per-series: columns have no stroke/marker; Behov is a 2.5px smooth line
+        // with 4px point dots.
+        stroke: { width: [0, 0, 0, 0, 0, 2.5], curve: 'smooth' },
+        markers: { size: [0, 0, 0, 0, 0, 4], hover: { sizeOffset: 2 } },
+        dataLabels: { enabled: false },
+        xaxis: {
+            categories: labels,
+            axisBorder: { color: 'rgb(157,178,189)' },
+            axisTicks: { color: 'rgb(157,178,189)' },
+            labels: { style: { colors: 'rgb(77,100,112)', fontSize: '11px' } }
+        },
+        yaxis: {
+            min: 0, forceNiceScale: true,
+            labels: {
+                formatter: (v) => String(Math.round(v)),
+                style: { colors: 'rgb(77,100,112)', fontSize: '11px' }
             }
-        }
+        },
+        grid: {
+            borderColor: 'rgba(157,178,189,0.3)',
+            xaxis: { lines: { show: false } },
+            yaxis: { lines: { show: true } }
+        },
+        legend: {
+            position: 'top', horizontalAlign: 'left', fontSize: '12px',
+            labels: { colors: 'rgb(31,41,46)' },
+            // The whole point of v1.3: columns render a square swatch, Behov a line.
+            markers: { shape: ['square', 'square', 'square', 'square', 'square', 'line'] },
+            onItemClick: { toggleDataSeries: true }
+        },
+        tooltip: { shared: true, intersect: false, custom: renderTooltip }
     });
+    chartInstance.render();
+}
+
+// Per-week values aren't carried in the ApexCharts hover payload reliably for a
+// stacked+line mix, so read straight from `lastView.data` (what's on screen).
+// Rows skip zero values — same as the old Chart.js `label` callback returning
+// null — then a footer surfaces demand vs. covered, since the stacked total
+// isn't itself a meaningful number.
+const SERIES_META = [
+    { key: 'egne',      label: 'Egne ansatte', color: COLORS.egne },
+    { key: 'innleide',  label: 'Innleide',     color: COLORS.innleide },
+    { key: 'utleide',   label: 'Utleide',      color: COLORS.utleide },
+    { key: 'udekt',     label: 'Udekt behov',  color: COLORS.udekt },
+    { key: 'overskudd', label: 'Overskudd',    color: COLORS.overskudd },
+    { key: 'behov',     label: 'Behov',        color: COLORS.behov }
+];
+
+function renderTooltip({ dataPointIndex }) {
+    if (!lastView) return '';
+    const d = lastView.data;
+    const i = dataPointIndex;
+    const title = lastView.labels[i] || '';
+
+    const rows = SERIES_META
+        .filter(s => d[s.key][i])
+        .map(s =>
+            '<div class="rg-tt-row">' +
+              '<span class="rg-tt-dot" style="background:' + s.color + '"></span>' +
+              '<span class="rg-tt-label">' + s.label + '</span>' +
+              '<span class="rg-tt-val">' + d[s.key][i] + '</span>' +
+            '</div>'
+        ).join('');
+
+    const footer = 'Behov: ' + d.behov[i] + '  ·  Dekket: ' + (d.egne[i] + d.innleide[i]);
+
+    return '<div class="rg-tt">' +
+             '<div class="rg-tt-title">' + title + '</div>' +
+             rows +
+             '<div class="rg-tt-footer">' + footer + '</div>' +
+           '</div>';
 }
 
 // ═══ 8. LIFECYCLE ═════════════════════════════════════════════════════════════
