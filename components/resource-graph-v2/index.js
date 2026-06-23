@@ -310,10 +310,18 @@ function renderChart() {
         chart: {
             type: 'line', height: '100%', stacked: true,
             fontFamily: 'Lato, sans-serif',
-            toolbar: { show: false }, zoom: { enabled: false }
+            toolbar: { show: false }, zoom: { enabled: false },
+            // Place the shared tooltip just to the side of the hovered column
+            // (ApexCharts has no per-point position) — see placeTooltip.
+            events: {
+                dataPointMouseEnter: (e, ctx, opts) => placeTooltip(ctx, opts.dataPointIndex),
+                mouseMove: (e, ctx, opts) => { if (opts && opts.dataPointIndex >= 0) placeTooltip(ctx, opts.dataPointIndex); }
+            }
         },
+        // Don't lighten/recolour the hovered column — only the tooltip should react.
+        states: { hover: { filter: { type: 'none' } }, active: { filter: { type: 'none' } } },
         colors: [COLORS.egne, COLORS.innleide, COLORS.utleide, COLORS.udekt, COLORS.overskudd, COLORS.behov],
-        plotOptions: { bar: { columnWidth: '70%', borderRadius: 2 } },
+        plotOptions: { bar: { columnWidth: '70%', borderRadius: 0 } },
         // Per-series (Behov last): the columns have no stroke/marker; Behov is a
         // 2.5px smooth line with solid black circle dots (strokeWidth 0 drops
         // ApexCharts' default white ring, so the circles read as "hele svarte
@@ -364,13 +372,33 @@ function renderChart() {
 // Rows skip zero values — same as the old Chart.js `label` callback returning
 // null — then a footer surfaces demand vs. covered, since the stacked total
 // isn't itself a meaningful number.
+// Pin the shared tooltip just beside the hovered column, flipping to whichever
+// side has room (left half of the plot → tooltip on the right, and vice versa)
+// so it never covers the bar being read. Uses ApexCharts layout globals
+// (gridWidth/translateX) — undocumented, so verify visually.
+function placeTooltip(ctx, i) {
+    const w = ctx && ctx.w;
+    if (!w) return;
+    const n = (lastView && lastView.labels.length) || (w.globals.labels && w.globals.labels.length);
+    if (i == null || i < 0 || !n) return;
+    const tt = w.globals.dom.baseEl.querySelector('.apexcharts-tooltip');
+    if (!tt) return;
+    const pointW = w.globals.gridWidth / n;
+    const colX   = w.globals.translateX + pointW * (i + 0.5);
+    const gap    = 12;
+    const x = i < n / 2 ? colX + gap : colX - gap - tt.offsetWidth;
+    tt.style.left = Math.max(4, x) + 'px';
+    tt.style.top  = '12px';
+}
+
+// Only the five stacked sources get a row — Behov is the demand reference line,
+// not a stacked component, so it lives in the footer (Behov / Dekket) instead.
 const SERIES_META = [
     { key: 'egne',      label: 'Egne ansatte', color: COLORS.egne },
     { key: 'innleide',  label: 'Innleide',     color: COLORS.innleide },
     { key: 'utleide',   label: 'Utleide',      color: COLORS.utleide },
     { key: 'udekt',     label: 'Udekt behov',  color: COLORS.udekt },
-    { key: 'overskudd', label: 'Overskudd',    color: COLORS.overskudd },
-    { key: 'behov',     label: 'Behov',        color: COLORS.behov }
+    { key: 'overskudd', label: 'Overskudd',    color: COLORS.overskudd }
 ];
 
 function renderTooltip({ dataPointIndex }) {

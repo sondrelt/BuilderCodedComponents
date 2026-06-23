@@ -8,11 +8,7 @@
 #resource-graph-v2 .chart-header { position: absolute; top: 6px; right: 16px; z-index: 5;
   display: flex; align-items: center; }
 #resource-graph-v2 .chart-body { flex: 1; position: relative; min-height: 0; padding: 0 12px 12px; }
-/* Twice as colourful — same trick resource-req-v2 uses on its bars
-   (filter: saturate). Applied to the whole chart so bars and their legend
-   swatches stay in sync; the black Behov line and grey axes/grid are neutral,
-   so saturation leaves them untouched. */
-#resource-graph-v2 #resourceChart { height: 100%; filter: saturate(2); }
+#resource-graph-v2 #resourceChart { height: 100%; }
 
 /* ── Custom tooltip (ApexCharts `tooltip.custom`) ──────────────────────── */
 /* Override ApexCharts' light wrapper so our dark tooltip shows through. */
