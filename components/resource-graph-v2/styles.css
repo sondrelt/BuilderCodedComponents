@@ -1,9 +1,30 @@
-/* Resource Graph v2 — scope everything under #resource-graph-v2. Chart.js
-   paints the canvas itself, so this is the shell + the custom filter control. */
-#resource-graph-v2 { width: 100%; height: 100%; display: flex; flex-direction: column;
-  font-family: 'Lato', 'Hind Madurai', sans-serif; background: transparent; }
-#resource-graph-v2 .chart-header { display: flex; justify-content: flex-end; align-items: center; padding: 12px 20px 4px; }
+/* Resource Graph v2 — scope everything under #resource-graph-v2. ApexCharts
+   renders into #resourceChart, so this is the shell, the custom filter control,
+   and the custom tooltip. */
+#resource-graph-v2 { width: 100%; height: 100%; min-height: 240px; display: flex; flex-direction: column;
+  position: relative; font-family: 'Lato', 'Hind Madurai', sans-serif; background: transparent; }
+/* Overlay the filter at the top-right so it sits inline with ApexCharts'
+   top-left legend row (the legend renders inside the chart at the top). */
+#resource-graph-v2 .chart-header { position: absolute; top: 6px; right: 16px; z-index: 5;
+  display: flex; align-items: center; }
 #resource-graph-v2 .chart-body { flex: 1; position: relative; min-height: 0; padding: 0 12px 12px; }
+/* Twice as colourful — same trick resource-req-v2 uses on its bars
+   (filter: saturate). Applied to the whole chart so bars and their legend
+   swatches stay in sync; the black Behov line and grey axes/grid are neutral,
+   so saturation leaves them untouched. */
+#resource-graph-v2 #resourceChart { height: 100%; filter: saturate(2); }
+
+/* ── Custom tooltip (ApexCharts `tooltip.custom`) ──────────────────────── */
+/* Override ApexCharts' light wrapper so our dark tooltip shows through. */
+#resource-graph-v2 .apexcharts-tooltip { background: rgb(31,41,46); border: none;
+  border-radius: 8px; box-shadow: 0 8px 28px rgba(17,64,94,0.18); overflow: hidden; }
+#resource-graph-v2 .rg-tt { padding: 10px 12px; font-family: 'Lato', sans-serif; font-size: 12px; color: #fff; min-width: 150px; }
+#resource-graph-v2 .rg-tt-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+#resource-graph-v2 .rg-tt-row { display: flex; align-items: center; gap: 6px; line-height: 1.6; }
+#resource-graph-v2 .rg-tt-dot { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+#resource-graph-v2 .rg-tt-label { flex: 1; }
+#resource-graph-v2 .rg-tt-val { font-weight: 600; margin-left: 12px; }
+#resource-graph-v2 .rg-tt-footer { margin-top: 8px; font-size: 11px; color: rgb(190,205,212); }
 
 /* ── Custom work-type dropdown (replaces native <select>) ──────────────── */
 #resource-graph-v2 .wt-filter { position: relative; }

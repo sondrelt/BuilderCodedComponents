@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.3.0 — 2026-06-23
+
+- Migrated chart rendering from Chart.js to **ApexCharts** (same `cdn.jsdelivr.net`
+  domain, so no new CSP whitelist). All data aggregation, the week axis, and the
+  custom work-type dropdown are unchanged.
+- **Behov renders as solid black circles** in the graph (strokeWidth 0 removes
+  ApexCharts' default white ring), and its **legend marker is a matching circle**
+  (the five bar series stay as squares), via per-series `legend.markers.shape`.
+  Chart.js's built-in legend couldn't size/shape one marker independently — the
+  reason for the move.
+- The work-type filter is overlaid top-right, **inline with the legend row**.
+- Behov is the **leftmost legend item** via `legend.inverseOrder` (the line stays
+  last in the series array so column stacking and the on-top line render
+  correctly; the other five legend items appear reversed as a result).
+- Source colours use resource-req-v2's work-type bar fills (`--rp-*-bar`), the
+  exact colours of the planner's resource-need spans, rendered at full strength
+  (`fill.opacity: 1`, overriding ApexCharts' 0.85 default) and boosted with a
+  `filter: saturate(2)` on the chart (mirrors the planner's own saturate trick)
+  so the bars read twice as colourful (Behov stays near-black as the reference
+  line; grey axes and the black line are neutral to saturation).
+- Legend click toggles series visibility (`onItemClick.toggleDataSeries`).
+- In-place updates via `chart.updateOptions()` instead of destroy/recreate.
+- Tooltip footer (`Behov: X · Dekket: egne+innleide`) reimplemented as a custom
+  dark tooltip; per-series rows still skip zero values. Same palette, stacked
+  semantics, and trailing-empty-week trim.
+- **Action required when syncing:** change the Resources Script URL in Appfarm
+  Create from `chart.js` to `https://cdn.jsdelivr.net/npm/apexcharts`. The HTML
+  tab now mounts a `<div id="resourceChart">` instead of a `<canvas>`.
+
 ## 1.2.0 — 2026-06-19
 
 - Egne ansatte now nets out absence. Was: count of overlapping allocation
