@@ -14,17 +14,20 @@
 - Behov is the **leftmost legend item** via `legend.inverseOrder` (the line stays
   last in the series array so column stacking and the on-top line render
   correctly; the other five legend items appear reversed as a result).
-- Source colours use resource-req-v2's work-type bar fills (`--rp-*-bar`), the
-  exact colours of the planner's resource-need spans, rendered at full strength
-  (`fill.opacity: 1`, overriding ApexCharts' 0.85 default) and boosted with a
-  `filter: saturate(2)` on the chart (mirrors the planner's own saturate trick)
-  so the bars read twice as colourful (Behov stays near-black as the reference
-  line; grey axes and the black line are neutral to saturation).
+- Source colours use resource-req-v2's work-type bar fills (`--rp-*-bar`) — the
+  exact colours of the planner's resource-need spans — rendered at full strength
+  (`fill.opacity: 1`, overriding ApexCharts' 0.85 default) so the chart bars match
+  the planner spans (Behov stays near-black as the reference line).
 - Legend click toggles series visibility (`onItemClick.toggleDataSeries`).
 - In-place updates via `chart.updateOptions()` instead of destroy/recreate.
-- Tooltip footer (`Behov: X · Dekket: egne+innleide`) reimplemented as a custom
-  dark tooltip; per-series rows still skip zero values. Same palette, stacked
-  semantics, and trailing-empty-week trim.
+- Custom dark tooltip: a row per **stacked source** (zero values skipped) with a
+  colour dot matching its bar, plus a `Behov: X · Dekket: egne+innleide` footer.
+  Behov is footer-only (it's the reference line, not a stack component). Hover no
+  longer recolours the column (`states.hover/active: none`). ApexCharts' built-in
+  tooltip is disabled (`tooltip.enabled: false`) — we render our own `rg-tt-pop`
+  element (`showTooltip`) so it shows continuously while hovering and sits next to
+  the cursor/bar (flipping left near the right edge); `pointer-events: none` keeps
+  it from stealing hover. Same stacked semantics and trailing-empty-week trim.
 - **Action required when syncing:** change the Resources Script URL in Appfarm
   Create from `chart.js` to `https://cdn.jsdelivr.net/npm/apexcharts`. The HTML
   tab now mounts a `<div id="resourceChart">` instead of a `<canvas>`.

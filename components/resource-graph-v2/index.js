@@ -36,16 +36,16 @@ const ApexCharts = /** @type {any} */ (window).ApexCharts;
 // ═══ 1. CONFIG ════════════════════════════════════════════════════════════
 const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35, UDEKT: 40, OVERSKUDD: 50 };
 
-// Source palette = resource-req-v2's work-type bar fills (--rp-*-bar), i.e. the
-// exact colours of the bars that mark a resource need in the planner, so the two
-// views match. Behov stays near-black — it's the reference line/circles here,
-// not a stacked source.
+// Source palette = resource-req-v2's work-type bar fills (--rp-*-bar) so the two
+// views match, with egne (green) and udekt (red) nudged up slightly in saturation
+// (≈saturate 1.3) for a touch more punch. Behov stays near-black — it's the
+// reference line/circles here, not a stacked source.
 const COLORS = {
     behov:     'rgb(31,41,46)',
-    egne:      '#bcefd6',
+    egne:      '#b1f3d2',
     innleide:  '#fde68a',
     utleide:   '#c4b5fd',
-    udekt:     '#fecaca',
+    udekt:     '#ffc7c7',
     overskudd: '#a3e3f0'
 };
 
@@ -310,10 +310,19 @@ function renderChart() {
         chart: {
             type: 'line', height: '100%', stacked: true,
             fontFamily: 'Lato, sans-serif',
-            toolbar: { show: false }, zoom: { enabled: false }
+            toolbar: { show: false }, zoom: { enabled: false },
+            // We render our own popover (showTooltip) — shown while hovering a
+            // column, positioned next to the cursor, hidden when leaving the chart.
+            events: {
+                dataPointMouseEnter: (e, ctx, opts) => showTooltip(e, ctx, opts.dataPointIndex),
+                mouseMove: (e, ctx, opts) => { if (opts && opts.dataPointIndex >= 0) showTooltip(e, ctx, opts.dataPointIndex); },
+                mouseLeave: () => hideTooltip()
+            }
         },
+        // Don't lighten/recolour the hovered column — only the tooltip should react.
+        states: { hover: { filter: { type: 'none' } }, active: { filter: { type: 'none' } } },
         colors: [COLORS.egne, COLORS.innleide, COLORS.utleide, COLORS.udekt, COLORS.overskudd, COLORS.behov],
-        plotOptions: { bar: { columnWidth: '70%', borderRadius: 2 } },
+        plotOptions: { bar: { columnWidth: '70%', borderRadius: 0 } },
         // Per-series (Behov last): the columns have no stroke/marker; Behov is a
         // 2.5px smooth line with solid black circle dots (strokeWidth 0 drops
         // ApexCharts' default white ring, so the circles read as "hele svarte
@@ -354,23 +363,59 @@ function renderChart() {
             markers: { shape: ['square', 'square', 'square', 'square', 'square', 'circle'], size: 5, strokeWidth: 0 },
             onItemClick: { toggleDataSeries: true }
         },
-        tooltip: { shared: true, intersect: false, custom: renderTooltip }
+        // ApexCharts' own tooltip is disabled — we render rg-tt-pop ourselves
+        // (showTooltip) for full control over position and visibility.
+        tooltip: { enabled: false }
     });
     chartInstance.render();
 }
 
+// We render our OWN popover (rg-tt-pop) instead of ApexCharts' tooltip, so we
+// fully control when it shows and where it sits. ApexCharts' built-in tooltip
+// fought our repositioning and vanished on every mouse move; owning the element
+// sidesteps that. It's appended to .chart-body (which ApexCharts never re-renders)
+// so it survives in-place chart updates.
+let ttEl = null;
+function getTooltipEl() {
+    if (ttEl && ttEl.isConnected) return ttEl;
+    const host = ns.element.querySelector('.chart-body');
+    if (!host) return null;
+    ttEl = document.createElement('div');
+    ttEl.className = 'rg-tt-pop';
+    host.appendChild(ttEl);
+    return ttEl;
+}
+function hideTooltip() { if (ttEl) ttEl.style.display = 'none'; }
+// Position the popover next to the cursor (which is over the hovered bar),
+// flipping to the left when near the right edge, clamped inside the plot.
+function showTooltip(e, ctx, i) {
+    if (i == null || i < 0 || !lastView) return;
+    const host = ns.element.querySelector('.chart-body');
+    const el = getTooltipEl();
+    if (!host || !el) return;
+    el.innerHTML = renderTooltip({ dataPointIndex: i });
+    el.style.display = 'block';
+    const rect = host.getBoundingClientRect();
+    const ttW = el.offsetWidth, ttH = el.offsetHeight;
+    let x = (e.clientX - rect.left) + 16;                       // right of the cursor
+    if (x + ttW > rect.width - 4) x = (e.clientX - rect.left) - 16 - ttW; // flip left near edge
+    let y = (e.clientY - rect.top) - ttH / 2;                   // vertically centred on cursor
+    x = Math.max(4, Math.min(x, rect.width - ttW - 4));
+    y = Math.max(4, Math.min(y, rect.height - ttH - 4));
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+}
+
 // Per-week values aren't carried in the ApexCharts hover payload reliably for a
 // stacked+line mix, so read straight from `lastView.data` (what's on screen).
-// Rows skip zero values — same as the old Chart.js `label` callback returning
-// null — then a footer surfaces demand vs. covered, since the stacked total
-// isn't itself a meaningful number.
+// Only the five stacked sources get a row — Behov is the demand reference line,
+// not a stacked component, so it lives in the footer (Behov / Dekket) instead.
 const SERIES_META = [
     { key: 'egne',      label: 'Egne ansatte', color: COLORS.egne },
     { key: 'innleide',  label: 'Innleide',     color: COLORS.innleide },
     { key: 'utleide',   label: 'Utleide',      color: COLORS.utleide },
     { key: 'udekt',     label: 'Udekt behov',  color: COLORS.udekt },
-    { key: 'overskudd', label: 'Overskudd',    color: COLORS.overskudd },
-    { key: 'behov',     label: 'Behov',        color: COLORS.behov }
+    { key: 'overskudd', label: 'Overskudd',    color: COLORS.overskudd }
 ];
 
 function renderTooltip({ dataPointIndex }) {
