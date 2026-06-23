@@ -296,14 +296,14 @@ function renderChart() {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Egne ansatte', data: data.egne,      backgroundColor: COLORS.egne,      stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Innleide',     data: data.innleide,   backgroundColor: COLORS.innleide,  stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Utleide',      data: data.utleide,    backgroundColor: COLORS.utleide,   stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Udekt behov',  data: data.udekt,      backgroundColor: COLORS.udekt,     stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Overskudd',    data: data.overskudd,  backgroundColor: COLORS.overskudd, stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
+                { label: 'Egne ansatte', data: data.egne,      backgroundColor: COLORS.egne,      stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
+                { label: 'Innleide',     data: data.innleide,   backgroundColor: COLORS.innleide,  stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
+                { label: 'Utleide',      data: data.utleide,    backgroundColor: COLORS.utleide,   stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
+                { label: 'Udekt behov',  data: data.udekt,      backgroundColor: COLORS.udekt,     stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
+                { label: 'Overskudd',    data: data.overskudd,  backgroundColor: COLORS.overskudd, stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8, pointStyle: 'rect' },
                 { label: 'Behov', data: data.behov, type: 'line', borderColor: COLORS.behov, backgroundColor: 'transparent',
                   pointBackgroundColor: COLORS.behov, pointRadius: 4, pointHoverRadius: 6,
-                  borderWidth: 2.5, tension: 0.25, order: 1, fill: false }
+                  borderWidth: 2.5, tension: 0.25, order: 1, fill: false, pointStyle: 'line' }
             ]
         },
         options: {
@@ -315,7 +315,7 @@ function renderChart() {
                 // click — that's the "legend toggles" feature, no hand-rolled legend.
                 legend: {
                     position: 'top', align: 'start',
-                    labels: { font: { family: 'Lato', size: 12 }, color: 'rgb(31,41,46)', boxWidth: 12, boxHeight: 12 }
+                    labels: { font: { family: 'Lato', size: 12 }, color: 'rgb(31,41,46)', boxWidth: 12, boxHeight: 12, usePointStyle: true }
                 },
                 tooltip: {
                     backgroundColor: 'rgb(31,41,46)',
