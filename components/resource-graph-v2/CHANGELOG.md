@@ -5,9 +5,12 @@
 - Migrated chart rendering from Chart.js to **ApexCharts** (same `cdn.jsdelivr.net`
   domain, so no new CSP whitelist). All data aggregation, the week axis, and the
   custom work-type dropdown are unchanged.
-- **Behov legend marker is now a line** (the five bar series stay as squares),
-  via ApexCharts' per-series `legend.markers.shape`. Chart.js's built-in legend
-  couldn't size/shape one marker independently — the reason for the move.
+- **Behov renders as solid black circles** in the graph (strokeWidth 0 removes
+  ApexCharts' default white ring), and its **legend marker is a matching circle**
+  (the five bar series stay as squares), via per-series `legend.markers.shape`.
+  Chart.js's built-in legend couldn't size/shape one marker independently — the
+  reason for the move.
+- The work-type filter is overlaid top-right, **inline with the legend row**.
 - Legend click toggles series visibility (`onItemClick.toggleDataSeries`).
 - In-place updates via `chart.updateOptions()` instead of destroy/recreate.
 - Tooltip footer (`Behov: X · Dekket: egne+innleide`) reimplemented as a custom

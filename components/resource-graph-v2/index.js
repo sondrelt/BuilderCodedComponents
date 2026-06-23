@@ -309,9 +309,10 @@ function renderChart() {
         colors: [COLORS.egne, COLORS.innleide, COLORS.utleide, COLORS.udekt, COLORS.overskudd, COLORS.behov],
         plotOptions: { bar: { columnWidth: '70%', borderRadius: 2 } },
         // Per-series: columns have no stroke/marker; Behov is a 2.5px smooth line
-        // with 4px point dots.
+        // with solid black circle dots (strokeWidth 0 drops ApexCharts' default
+        // white ring, so the circles read as "hele svarte sirkler").
         stroke: { width: [0, 0, 0, 0, 0, 2.5], curve: 'smooth' },
-        markers: { size: [0, 0, 0, 0, 0, 4], hover: { sizeOffset: 2 } },
+        markers: { size: [0, 0, 0, 0, 0, 5], strokeWidth: 0, hover: { sizeOffset: 2 } },
         dataLabels: { enabled: false },
         xaxis: {
             categories: labels,
@@ -332,10 +333,11 @@ function renderChart() {
             yaxis: { lines: { show: true } }
         },
         legend: {
-            position: 'top', horizontalAlign: 'left', fontSize: '12px',
+            position: 'top', horizontalAlign: 'left', fontSize: '12px', offsetY: 4,
             labels: { colors: 'rgb(31,41,46)' },
-            // The whole point of v1.3: columns render a square swatch, Behov a line.
-            markers: { shape: ['square', 'square', 'square', 'square', 'square', 'line'] },
+            // Columns render square swatches; Behov a solid circle that matches the
+            // graph dots in size (5) and design (filled, no stroke ring).
+            markers: { shape: ['square', 'square', 'square', 'square', 'square', 'circle'], size: 5, strokeWidth: 0 },
             onItemClick: { toggleDataSeries: true }
         },
         tooltip: { shared: true, intersect: false, custom: renderTooltip }
