@@ -36,14 +36,17 @@ const ApexCharts = /** @type {any} */ (window).ApexCharts;
 // ═══ 1. CONFIG ════════════════════════════════════════════════════════════
 const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35, UDEKT: 40, OVERSKUDD: 50 };
 
-// Solid chart palette (carried over from resource-graph v1)
+// Source palette = resource-req-v2's work-type bar fills (--rp-*-bar), i.e. the
+// exact colours of the bars that mark a resource need in the planner, so the two
+// views match. Behov stays near-black — it's the reference line/circles here,
+// not a stacked source.
 const COLORS = {
     behov:     'rgb(31,41,46)',
-    egne:      'rgb(149,187,134)',
-    innleide:  'rgb(78,173,228)',
-    utleide:   'rgb(252,207,151)',
-    udekt:     'rgb(214,116,113)',
-    overskudd: 'rgb(87,128,71)'
+    egne:      '#bcefd6',
+    innleide:  '#fde68a',
+    utleide:   '#c4b5fd',
+    udekt:     '#fecaca',
+    overskudd: '#a3e3f0'
 };
 
 const FALLBACK_WEEKS = 20;   // window when viewFrom/viewTo are unset
@@ -216,7 +219,7 @@ function buildFilterOptions() {
     });
 
     const opts = [{ value: '', label: 'Alle arbeidstyper' }];
-    safeGet(ns.data.workTypeEnum).forEach(item => {
+    safeGet(ns.data.workType).forEach(item => {
         const v = toInt(item?.enum_value);
         if (v == null || !used.has(v)) return;
         opts.push({ value: String(v), label: item.enum_name || String(v) });
@@ -278,8 +281,11 @@ function renderChart() {
     const { labels, data } = view;
     lastView = view;
 
-    // Series order is fixed and must match `colors`, legend marker shapes, and
-    // SERIES_META below: five stacked columns, then the Behov line on top.
+    // Series order is fixed and must match `colors`, stroke/marker arrays, and
+    // legend marker shapes below. Columns come first and CONTIGUOUS so ApexCharts
+    // stacks them; the Behov line is last so it draws on top of the bars. Behov is
+    // pulled to the leftmost legend slot via `legend.inverseOrder` (which flips
+    // only the legend display order, not the stack/draw order).
     const series = [
         { name: 'Egne ansatte', type: 'column', data: data.egne },
         { name: 'Innleide',     type: 'column', data: data.innleide },
@@ -308,12 +314,17 @@ function renderChart() {
         },
         colors: [COLORS.egne, COLORS.innleide, COLORS.utleide, COLORS.udekt, COLORS.overskudd, COLORS.behov],
         plotOptions: { bar: { columnWidth: '70%', borderRadius: 2 } },
-        // Per-series: columns have no stroke/marker; Behov is a 2.5px smooth line
-        // with solid black circle dots (strokeWidth 0 drops ApexCharts' default
-        // white ring, so the circles read as "hele svarte sirkler").
+        // Per-series (Behov last): the columns have no stroke/marker; Behov is a
+        // 2.5px smooth line with solid black circle dots (strokeWidth 0 drops
+        // ApexCharts' default white ring, so the circles read as "hele svarte
+        // sirkler").
         stroke: { width: [0, 0, 0, 0, 0, 2.5], curve: 'smooth' },
         markers: { size: [0, 0, 0, 0, 0, 5], strokeWidth: 0, hover: { sizeOffset: 2 } },
         dataLabels: { enabled: false },
+        // ApexCharts dilutes fills to 0.85 by default, which washes the bars out
+        // vs the planner's solid spans — render the --rp-*-bar colours at full
+        // strength so the two views match.
+        fill: { opacity: 1 },
         xaxis: {
             categories: labels,
             axisBorder: { color: 'rgb(157,178,189)' },
@@ -334,9 +345,12 @@ function renderChart() {
         },
         legend: {
             position: 'top', horizontalAlign: 'left', fontSize: '12px', offsetY: 4,
+            // inverseOrder pulls Behov (last series, drawn on top) to the leftmost
+            // legend slot without disturbing the stack/draw order.
+            inverseOrder: true,
             labels: { colors: 'rgb(31,41,46)' },
-            // Columns render square swatches; Behov a solid circle that matches the
-            // graph dots in size (5) and design (filled, no stroke ring).
+            // Behov (last series) a solid circle matching the graph dots in size (5)
+            // and design (filled, no stroke ring); the columns render square swatches.
             markers: { shape: ['square', 'square', 'square', 'square', 'square', 'circle'], size: 5, strokeWidth: 0 },
             onItemClick: { toggleDataSeries: true }
         },

@@ -1,14 +1,18 @@
 /* Resource Graph v2 — scope everything under #resource-graph-v2. ApexCharts
    renders into #resourceChart, so this is the shell, the custom filter control,
    and the custom tooltip. */
-#resource-graph-v2 { width: 100%; height: 100%; min-height: 360px; display: flex; flex-direction: column;
+#resource-graph-v2 { width: 100%; height: 100%; min-height: 240px; display: flex; flex-direction: column;
   position: relative; font-family: 'Lato', 'Hind Madurai', sans-serif; background: transparent; }
 /* Overlay the filter at the top-right so it sits inline with ApexCharts'
    top-left legend row (the legend renders inside the chart at the top). */
 #resource-graph-v2 .chart-header { position: absolute; top: 6px; right: 16px; z-index: 5;
   display: flex; align-items: center; }
 #resource-graph-v2 .chart-body { flex: 1; position: relative; min-height: 0; padding: 0 12px 12px; }
-#resource-graph-v2 #resourceChart { height: 100%; }
+/* Twice as colourful — same trick resource-req-v2 uses on its bars
+   (filter: saturate). Applied to the whole chart so bars and their legend
+   swatches stay in sync; the black Behov line and grey axes/grid are neutral,
+   so saturation leaves them untouched. */
+#resource-graph-v2 #resourceChart { height: 100%; filter: saturate(2); }
 
 /* ── Custom tooltip (ApexCharts `tooltip.custom`) ──────────────────────── */
 /* Override ApexCharts' light wrapper so our dark tooltip shows through. */

@@ -11,6 +11,15 @@
   Chart.js's built-in legend couldn't size/shape one marker independently — the
   reason for the move.
 - The work-type filter is overlaid top-right, **inline with the legend row**.
+- Behov is the **leftmost legend item** via `legend.inverseOrder` (the line stays
+  last in the series array so column stacking and the on-top line render
+  correctly; the other five legend items appear reversed as a result).
+- Source colours use resource-req-v2's work-type bar fills (`--rp-*-bar`), the
+  exact colours of the planner's resource-need spans, rendered at full strength
+  (`fill.opacity: 1`, overriding ApexCharts' 0.85 default) and boosted with a
+  `filter: saturate(2)` on the chart (mirrors the planner's own saturate trick)
+  so the bars read twice as colourful (Behov stays near-black as the reference
+  line; grey axes and the black line are neutral to saturation).
 - Legend click toggles series visibility (`onItemClick.toggleDataSeries`).
 - In-place updates via `chart.updateOptions()` instead of destroy/recreate.
 - Tooltip footer (`Behov: X · Dekket: egne+innleide`) reimplemented as a custom
