@@ -12,12 +12,14 @@
 
 /* ── Custom tooltip (ApexCharts `tooltip.custom`) ──────────────────────── */
 /* Override ApexCharts' light wrapper so our dark tooltip shows through.
-   transition:none kills ApexCharts' slide animation — placeTooltip re-sets
-   `left` as the cursor moves, and the default transition animates every move
-   into a flickering slide-in/out. With it off the popover snaps into place. */
+   The tooltip is pinned (tooltip.fixed), so only fade it in/out — never animate
+   position — and let it ignore the pointer so it can't steal hover from a bar. */
 #resource-graph-v2 .apexcharts-tooltip { background: rgb(31,41,46); border: none;
   border-radius: 8px; box-shadow: 0 8px 28px rgba(17,64,94,0.18); overflow: hidden;
-  transition: none !important; }
+  pointer-events: none; transition: opacity .12s ease !important; }
+/* Right-half hover (tt-left set by flipTooltipSide) → pin to the left edge so
+   the popover sits opposite the hovered column. */
+#resource-graph-v2 #resourceChart.tt-left .apexcharts-tooltip { left: 12px !important; right: auto !important; }
 #resource-graph-v2 .rg-tt { padding: 10px 12px; font-family: 'Lato', sans-serif; font-size: 12px; color: #fff; min-width: 150px; }
 #resource-graph-v2 .rg-tt-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 #resource-graph-v2 .rg-tt-row { display: flex; align-items: center; gap: 6px; line-height: 1.6; }

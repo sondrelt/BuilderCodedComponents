@@ -311,11 +311,11 @@ function renderChart() {
             type: 'line', height: '100%', stacked: true,
             fontFamily: 'Lato, sans-serif',
             toolbar: { show: false }, zoom: { enabled: false },
-            // Place the shared tooltip just to the side of the hovered column
-            // (ApexCharts has no per-point position) — see placeTooltip.
+            // The tooltip is pinned (tooltip.fixed) so ApexCharts keeps it steady
+            // and continuously shown on hover. We only flip which side it pins to,
+            // by which half of the chart is hovered, via a CSS class (see flipTooltipSide).
             events: {
-                dataPointMouseEnter: (e, ctx, opts) => placeTooltip(ctx, opts.dataPointIndex),
-                mouseMove: (e, ctx, opts) => { if (opts && opts.dataPointIndex >= 0) placeTooltip(ctx, opts.dataPointIndex); }
+                dataPointMouseEnter: (e, ctx, opts) => flipTooltipSide(opts.dataPointIndex)
             }
         },
         // Don't lighten/recolour the hovered column — only the tooltip should react.
@@ -362,35 +362,28 @@ function renderChart() {
             markers: { shape: ['square', 'square', 'square', 'square', 'square', 'circle'], size: 5, strokeWidth: 0 },
             onItemClick: { toggleDataSeries: true }
         },
-        tooltip: { shared: true, intersect: false, custom: renderTooltip }
+        // fixed: pin the tooltip to a top corner so ApexCharts keeps it steady and
+        // continuously shown while hovering (no per-frame jumping/flicker). Default
+        // corner is top-right; flipTooltipSide flips it left for the right half via
+        // a CSS class so it never covers the hovered column.
+        tooltip: { shared: true, intersect: false, custom: renderTooltip,
+                   fixed: { enabled: true, position: 'topRight', offsetX: -8, offsetY: 34 } }
     });
     chartInstance.render();
 }
 
-// Per-week values aren't carried in the ApexCharts hover payload reliably for a
-// stacked+line mix, so read straight from `lastView.data` (what's on screen).
-// Rows skip zero values — same as the old Chart.js `label` callback returning
-// null — then a footer surfaces demand vs. covered, since the stacked total
-// isn't itself a meaningful number.
-// Pin the shared tooltip just beside the hovered column, flipping to whichever
-// side has room (left half of the plot → tooltip on the right, and vice versa)
-// so it never covers the bar being read. Uses ApexCharts layout globals
-// (gridWidth/translateX) — undocumented, so verify visually.
-function placeTooltip(ctx, i) {
-    const w = ctx && ctx.w;
-    if (!w) return;
-    const n = (lastView && lastView.labels.length) || (w.globals.labels && w.globals.labels.length);
-    if (i == null || i < 0 || !n) return;
-    const tt = w.globals.dom.baseEl.querySelector('.apexcharts-tooltip');
-    if (!tt) return;
-    const pointW = w.globals.gridWidth / n;
-    const colX   = w.globals.translateX + pointW * (i + 0.5);
-    const gap    = 12;
-    const x = i < n / 2 ? colX + gap : colX - gap - tt.offsetWidth;
-    tt.style.left = Math.max(4, x) + 'px';
-    tt.style.top  = '12px';
+// Flip which side the pinned tooltip sits on so it never covers the hovered
+// column: left half of the chart keeps it top-right; right half moves it left.
+// The `tt-left` class on the chart root drives the CSS position override.
+function flipTooltipSide(i) {
+    const root = ns.element.querySelector('#resourceChart');
+    if (!root) return;
+    const n = (lastView && lastView.labels.length) || 0;
+    root.classList.toggle('tt-left', n > 0 && i != null && i >= n / 2);
 }
 
+// Per-week values aren't carried in the ApexCharts hover payload reliably for a
+// stacked+line mix, so read straight from `lastView.data` (what's on screen).
 // Only the five stacked sources get a row — Behov is the demand reference line,
 // not a stacked component, so it lives in the footer (Behov / Dekket) instead.
 const SERIES_META = [
