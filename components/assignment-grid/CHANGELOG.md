@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.2.0 — 2026-06-19
+## 1.3.0 — 2026-06-25
+
+- Merge of two parallel 1.2.0 lines: in-component editor popover + project colour marking.
 
 - In-component allocation/absence editor popover (replaces the native
   `openAllocationAbsenceEditor` dialog). One popover with a Tildeling/Fravær toggle:
@@ -14,6 +16,12 @@
   from `projectId` vs `absenceType`); move/resize now save through it too. Delete uses
   `deleteAllocation` / `deleteAbsence`
 - Rebuild guard added: an open popover survives datasource changes, then flushes on close
+- Project colour marking in the group-by-project view: each project group header is
+  now a muted tint of the project colour with a pinned left accent stripe, and a
+  full-width line in the project colour sits directly under the title row, spanning
+  the whole timeline. Replaces the previous heavy saturated header fill. Existing PM / site
+  manager role stripes on the resource cells are preserved. New `--proj-color` +
+  `.pl-group-sep`; `groupHeader(label, color)` (dropped the separate `fg` arg).
 
 ## 1.1.1 — 2026-06-19
 

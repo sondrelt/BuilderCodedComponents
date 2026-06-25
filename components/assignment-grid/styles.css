@@ -381,6 +381,18 @@
   font-weight: 700; font-size: 13px;
   padding: 5px 16px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
+  /* Muted tint of the project colour with a pinned left accent stripe; the
+     saturated colour reads as the stripe + the bottom line, not a heavy fill. */
+  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
+  color: #374151;
+  box-shadow: inset 4px 0 0 0 var(--proj-color, #94a3b8);
+}
+
+/* Full-width line closing each project group, across the whole timeline. */
+.pl-group-sep {
+  flex: 0 0 auto;
+  height: 3px;
+  background: var(--proj-color, #94a3b8);
 }
 
 /* ==========================================================================

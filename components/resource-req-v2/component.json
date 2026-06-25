@@ -1,6 +1,6 @@
 {
   "name": "resource-req-v2",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "description": "Interactive Gantt-style project requirements planner. Drag to create/resize/move requirement bars per work type, with quantity popovers, optimistic UI, and per-week aggregate summaries per source category.",
   "appfarmApp": "",
   "environment": "Development",
@@ -26,5 +26,5 @@
     "viewBuilderAds"
   ],
   "externalResources": [],
-  "lastSynced": "2026-06-19T18:08:01+02:00"
+  "lastSynced": "2026-06-23T15:36:00+02:00"
 }

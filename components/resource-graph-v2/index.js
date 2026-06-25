@@ -21,7 +21,7 @@
 //    Overskudd              = max(0, −(behov − egne − innleide))
 //    (Utleide is NOT part of the coverage diff — same as the planner.)
 //
-//  External dependency: Chart.js via CDN (add as Script URL in Resources).
+//  External dependency: ApexCharts via CDN (add as Script URL in Resources).
 // =============================================================================
 
 // NOTE: No 'use strict' — Appfarm wraps this in a generated function with a
@@ -29,21 +29,24 @@
 
 const ns = appfarm;
 
-// Chart.js is loaded globally from the CDN (Resources section); the type-checker
-// can't see it, so grab it off window with an `any` cast to silence checkJs.
-const Chart = /** @type {any} */ (window).Chart;
+// ApexCharts is loaded globally from the CDN (Resources section); the
+// type-checker can't see it, so grab it off window with an `any` cast.
+const ApexCharts = /** @type {any} */ (window).ApexCharts;
 
 // ═══ 1. CONFIG ════════════════════════════════════════════════════════════
 const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35, UDEKT: 40, OVERSKUDD: 50 };
 
-// Solid chart palette (carried over from resource-graph v1)
+// Source palette = resource-req-v2's work-type bar fills (--rp-*-bar) so the two
+// views match, with egne (green) and udekt (red) nudged up slightly in saturation
+// (≈saturate 1.3) for a touch more punch. Behov stays near-black — it's the
+// reference line/circles here, not a stacked source.
 const COLORS = {
     behov:     'rgb(31,41,46)',
-    egne:      'rgb(149,187,134)',
-    innleide:  'rgb(78,173,228)',
-    utleide:   'rgb(252,207,151)',
-    udekt:     'rgb(214,116,113)',
-    overskudd: 'rgb(87,128,71)'
+    egne:      '#b1f3d2',
+    innleide:  '#fde68a',
+    utleide:   '#c4b5fd',
+    udekt:     '#ffc7c7',
+    overskudd: '#a3e3f0'
 };
 
 const FALLBACK_WEEKS = 20;   // window when viewFrom/viewTo are unset
@@ -216,7 +219,7 @@ function buildFilterOptions() {
     });
 
     const opts = [{ value: '', label: 'Alle arbeidstyper' }];
-    safeGet(ns.data.workTypeEnum).forEach(item => {
+    safeGet(ns.data.workType).forEach(item => {
         const v = toInt(item?.enum_value);
         if (v == null || !used.has(v)) return;
         opts.push({ value: String(v), label: item.enum_name || String(v) });
@@ -278,76 +281,166 @@ function renderChart() {
     const { labels, data } = view;
     lastView = view;
 
-    // Update in place when the chart already exists — avoids the destroy/recreate
-    // flicker and keeps Chart.js's transition animations on data change.
+    // Series order is fixed and must match `colors`, stroke/marker arrays, and
+    // legend marker shapes below. Columns come first and CONTIGUOUS so ApexCharts
+    // stacks them; the Behov line is last so it draws on top of the bars. Behov is
+    // pulled to the leftmost legend slot via `legend.inverseOrder` (which flips
+    // only the legend display order, not the stack/draw order).
+    const series = [
+        { name: 'Egne ansatte', type: 'column', data: data.egne },
+        { name: 'Innleide',     type: 'column', data: data.innleide },
+        { name: 'Utleide',      type: 'column', data: data.utleide },
+        { name: 'Udekt behov',  type: 'column', data: data.udekt },
+        { name: 'Overskudd',    type: 'column', data: data.overskudd },
+        { name: 'Behov',        type: 'line',   data: data.behov }
+    ];
+
+    // Update in place when the chart already exists — avoids destroy/recreate
+    // flicker and keeps ApexCharts' transition animations on data change.
     if (chartInstance) {
-        const series = [data.egne, data.innleide, data.utleide, data.udekt, data.overskudd, data.behov];
-        chartInstance.data.labels = labels;
-        series.forEach((arr, i) => { chartInstance.data.datasets[i].data = arr; });
-        chartInstance.update();
+        chartInstance.updateOptions({ series, xaxis: { categories: labels } }, false, true);
         return;
     }
 
-    const canvas = /** @type {HTMLCanvasElement} */ (ns.element.querySelector('#resourceChart'));
-    if (!canvas) return;
+    const el = ns.element.querySelector('#resourceChart');
+    if (!el) return;
 
-    chartInstance = new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'Egne ansatte', data: data.egne,      backgroundColor: COLORS.egne,      stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Innleide',     data: data.innleide,   backgroundColor: COLORS.innleide,  stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Utleide',      data: data.utleide,    backgroundColor: COLORS.utleide,   stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Udekt behov',  data: data.udekt,      backgroundColor: COLORS.udekt,     stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Overskudd',    data: data.overskudd,  backgroundColor: COLORS.overskudd, stack: 'stack1', order: 3, borderRadius: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
-                { label: 'Behov', data: data.behov, type: 'line', borderColor: COLORS.behov, backgroundColor: 'transparent',
-                  pointBackgroundColor: COLORS.behov, pointRadius: 4, pointHoverRadius: 6,
-                  borderWidth: 2.5, tension: 0.25, order: 1, fill: false }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                // ponytail: Chart.js's built-in legend already toggles datasets on
-                // click — that's the "legend toggles" feature, no hand-rolled legend.
-                legend: {
-                    position: 'top', align: 'start',
-                    labels: { font: { family: 'Lato', size: 12 }, color: 'rgb(31,41,46)', boxWidth: 12, boxHeight: 12 }
-                },
-                tooltip: {
-                    backgroundColor: 'rgb(31,41,46)',
-                    titleFont: { family: 'Lato', size: 13, weight: '600' },
-                    bodyFont: { family: 'Lato', size: 12 },
-                    padding: 12, cornerRadius: 8,
-                    callbacks: {
-                        label: (ctx) => {
-                            const v = ctx.parsed.y;
-                            if (!v) return null;
-                            return ctx.dataset.label + ': ' + v;
-                        },
-                        // The stacked total isn't itself meaningful — surface the
-                        // numbers that are: demand vs. covered (egne + innleide).
-                        footer: (items) => {
-                            if (!items.length || !lastView) return '';
-                            const i = items[0].dataIndex;
-                            const d = lastView.data;
-                            return 'Behov: ' + d.behov[i] + '  ·  Dekket: ' + (d.egne[i] + d.innleide[i]);
-                        }
-                    },
-                    footerFont: { family: 'Lato', size: 11, weight: '400' },
-                    footerColor: 'rgb(190,205,212)',
-                    footerMarginTop: 8
-                }
-            },
-            scales: {
-                x: { stacked: true, grid: { display: false }, ticks: { font: { family: 'Lato', size: 11 }, color: 'rgb(77,100,112)', maxRotation: 0 }, border: { color: 'rgb(157,178,189)' } },
-                y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(157,178,189,0.3)', drawBorder: false }, ticks: { font: { family: 'Lato', size: 11 }, color: 'rgb(77,100,112)', stepSize: 1, precision: 0 }, border: { display: false } }
+    chartInstance = new ApexCharts(el, {
+        series,
+        chart: {
+            type: 'line', height: '100%', stacked: true,
+            fontFamily: 'Lato, sans-serif',
+            toolbar: { show: false }, zoom: { enabled: false },
+            // We render our own popover (showTooltip) — shown while hovering a
+            // column, positioned next to the cursor, hidden when leaving the chart.
+            events: {
+                dataPointMouseEnter: (e, ctx, opts) => showTooltip(e, ctx, opts.dataPointIndex),
+                mouseMove: (e, ctx, opts) => { if (opts && opts.dataPointIndex >= 0) showTooltip(e, ctx, opts.dataPointIndex); },
+                mouseLeave: () => hideTooltip()
             }
-        }
+        },
+        // Don't lighten/recolour the hovered column — only the tooltip should react.
+        states: { hover: { filter: { type: 'none' } }, active: { filter: { type: 'none' } } },
+        colors: [COLORS.egne, COLORS.innleide, COLORS.utleide, COLORS.udekt, COLORS.overskudd, COLORS.behov],
+        plotOptions: { bar: { columnWidth: '70%', borderRadius: 0 } },
+        // Per-series (Behov last): the columns have no stroke/marker; Behov is a
+        // 2.5px smooth line with solid black circle dots (strokeWidth 0 drops
+        // ApexCharts' default white ring, so the circles read as "hele svarte
+        // sirkler").
+        stroke: { width: [0, 0, 0, 0, 0, 2.5], curve: 'smooth' },
+        markers: { size: [0, 0, 0, 0, 0, 5], strokeWidth: 0, hover: { sizeOffset: 2 } },
+        dataLabels: { enabled: false },
+        // ApexCharts dilutes fills to 0.85 by default, which washes the bars out
+        // vs the planner's solid spans — render the --rp-*-bar colours at full
+        // strength so the two views match.
+        fill: { opacity: 1 },
+        xaxis: {
+            categories: labels,
+            axisBorder: { color: 'rgb(157,178,189)' },
+            axisTicks: { color: 'rgb(157,178,189)' },
+            labels: { style: { colors: 'rgb(77,100,112)', fontSize: '11px' } }
+        },
+        yaxis: {
+            min: 0, forceNiceScale: true,
+            labels: {
+                formatter: (v) => String(Math.round(v)),
+                style: { colors: 'rgb(77,100,112)', fontSize: '11px' }
+            }
+        },
+        grid: {
+            borderColor: 'rgba(157,178,189,0.3)',
+            xaxis: { lines: { show: false } },
+            yaxis: { lines: { show: true } }
+        },
+        legend: {
+            position: 'top', horizontalAlign: 'left', fontSize: '12px', offsetY: 4,
+            // inverseOrder pulls Behov (last series, drawn on top) to the leftmost
+            // legend slot without disturbing the stack/draw order.
+            inverseOrder: true,
+            labels: { colors: 'rgb(31,41,46)' },
+            // Behov (last series) a solid circle matching the graph dots in size (5)
+            // and design (filled, no stroke ring); the columns render square swatches.
+            markers: { shape: ['square', 'square', 'square', 'square', 'square', 'circle'], size: 5, strokeWidth: 0 },
+            onItemClick: { toggleDataSeries: true }
+        },
+        // ApexCharts' own tooltip is disabled — we render rg-tt-pop ourselves
+        // (showTooltip) for full control over position and visibility.
+        tooltip: { enabled: false }
     });
+    chartInstance.render();
+}
+
+// We render our OWN popover (rg-tt-pop) instead of ApexCharts' tooltip, so we
+// fully control when it shows and where it sits. ApexCharts' built-in tooltip
+// fought our repositioning and vanished on every mouse move; owning the element
+// sidesteps that. It's appended to .chart-body (which ApexCharts never re-renders)
+// so it survives in-place chart updates.
+let ttEl = null;
+function getTooltipEl() {
+    if (ttEl && ttEl.isConnected) return ttEl;
+    const host = ns.element.querySelector('.chart-body');
+    if (!host) return null;
+    ttEl = document.createElement('div');
+    ttEl.className = 'rg-tt-pop';
+    host.appendChild(ttEl);
+    return ttEl;
+}
+function hideTooltip() { if (ttEl) ttEl.style.display = 'none'; }
+// Position the popover next to the cursor (which is over the hovered bar),
+// flipping to the left when near the right edge, clamped inside the plot.
+function showTooltip(e, ctx, i) {
+    if (i == null || i < 0 || !lastView) return;
+    const host = ns.element.querySelector('.chart-body');
+    const el = getTooltipEl();
+    if (!host || !el) return;
+    el.innerHTML = renderTooltip({ dataPointIndex: i });
+    el.style.display = 'block';
+    const rect = host.getBoundingClientRect();
+    const ttW = el.offsetWidth, ttH = el.offsetHeight;
+    let x = (e.clientX - rect.left) + 16;                       // right of the cursor
+    if (x + ttW > rect.width - 4) x = (e.clientX - rect.left) - 16 - ttW; // flip left near edge
+    let y = (e.clientY - rect.top) - ttH / 2;                   // vertically centred on cursor
+    x = Math.max(4, Math.min(x, rect.width - ttW - 4));
+    y = Math.max(4, Math.min(y, rect.height - ttH - 4));
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+}
+
+// Per-week values aren't carried in the ApexCharts hover payload reliably for a
+// stacked+line mix, so read straight from `lastView.data` (what's on screen).
+// Only the five stacked sources get a row — Behov is the demand reference line,
+// not a stacked component, so it lives in the footer (Behov / Dekket) instead.
+const SERIES_META = [
+    { key: 'egne',      label: 'Egne ansatte', color: COLORS.egne },
+    { key: 'innleide',  label: 'Innleide',     color: COLORS.innleide },
+    { key: 'utleide',   label: 'Utleide',      color: COLORS.utleide },
+    { key: 'udekt',     label: 'Udekt behov',  color: COLORS.udekt },
+    { key: 'overskudd', label: 'Overskudd',    color: COLORS.overskudd }
+];
+
+function renderTooltip({ dataPointIndex }) {
+    if (!lastView) return '';
+    const d = lastView.data;
+    const i = dataPointIndex;
+    const title = lastView.labels[i] || '';
+
+    const rows = SERIES_META
+        .filter(s => d[s.key][i])
+        .map(s =>
+            '<div class="rg-tt-row">' +
+              '<span class="rg-tt-dot" style="background:' + s.color + '"></span>' +
+              '<span class="rg-tt-label">' + s.label + '</span>' +
+              '<span class="rg-tt-val">' + d[s.key][i] + '</span>' +
+            '</div>'
+        ).join('');
+
+    const footer = 'Behov: ' + d.behov[i] + '  ·  Dekket: ' + (d.egne[i] + d.innleide[i]);
+
+    return '<div class="rg-tt">' +
+             '<div class="rg-tt-title">' + title + '</div>' +
+             rows +
+             '<div class="rg-tt-footer">' + footer + '</div>' +
+           '</div>';
 }
 
 // ═══ 8. LIFECYCLE ═════════════════════════════════════════════════════════════

@@ -1,5 +1,7 @@
 # Builder — Appfarm Coded Components
 
+> **Always operate under the `ponytail` skill (full mode)** — see `.claude/skills/ponytail/SKILL.md`. Lazy = efficient: climb the YAGNI ladder, shortest working diff, mark deliberate simplifications with `ponytail:` comments. Stays on unless told "stop ponytail" / "normal mode".
+
 This repo is the source of truth for all Appfarm coded components. Each component lives in its own folder under `components/`. The code is hand-pasted into Appfarm Create; there is no automated sync.
 
 ## Appfarm documentation
