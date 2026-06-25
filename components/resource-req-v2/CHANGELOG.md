@@ -1,5 +1,19 @@
 # Changelog — resource-req-v2
 
+## 1.12.0 — 2026-06-25
+
+- Count popover restyled to match the assignment-grid editor (number logic unchanged):
+  - **Fra dato / Til dato** fields replace the Fra/Til chips; clicking a field opens the
+    day picker in a collapsible panel below (no longer an always-visible inline calendar).
+  - Calendar highlight (selected day, hover, year) now uses the component navy instead of
+    amber; the active date field gets a navy ring.
+  - Action row is **Slett** (left, low-emphasis ghost text+icon, red on hover) + **Lagre**
+    (right, amber). Dropped the Avbryt button and the hint line; Esc / outside-click still
+    cancel.
+  - Line-style SVG calendar / trash icons replace the prior markup.
+  - Popover capped to the viewport (scrolls internally) and re-clamps when the calendar
+    opens/closes, so it can't pop off-screen.
+
 ## 1.11.0 — 2026-06-25
 
 - **Egne aggregates by the resource's own trade, one row per person.** An allocation's

@@ -690,45 +690,56 @@ function showCountPopover(opts) {
                            : opts.dateFrom ? new Date(opts.dateFrom) : seedFrom)
     };
 
+    // Line-style icons (stroke, currentColor) matching the component's iconography.
+    const CAL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>';
+    const TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M10 11v6M14 11v6"></path></svg>';
+
     popoverEl = document.createElement('div');
     popoverEl.className = 'rp-popover rp-popover-wide';
     popoverEl.innerHTML =
         '<div class="rp-popover-title">Antall ressurser</div>' +
         '<input class="rp-popover-input" type="number" min="0" step="1" value="' + (opts.defaultCount ?? 1) + '" />' +
-        '<div class="rp-popover-section">Periode</div>' +
-        '<div class="rp-popover-dates">' +
-            '<span class="rp-date-chip" data-end="from">Fra <b class="rp-chip-from">–</b></span>' +
-            '<span class="rp-date-chip" data-end="to">Til <b class="rp-chip-to">–</b></span>' +
+        '<div class="rp-popover-datefields">' +
+            '<span class="rp-datefield" data-end="from"><span class="rp-df-label">Fra dato</span>' +
+                '<span class="rp-df-val rp-chip-from">–</span><span class="rp-df-cal">' + CAL_ICON + '</span></span>' +
+            '<span class="rp-datefield" data-end="to"><span class="rp-df-label">Til dato</span>' +
+                '<span class="rp-df-val rp-chip-to">–</span><span class="rp-df-cal">' + CAL_ICON + '</span></span>' +
         '</div>' +
-        '<div class="rp-cal"></div>' +
-        '<div class="rp-popover-hint">Enter for å lagre &nbsp;·&nbsp; Esc for å avbryte</div>' +
+        '<div class="rp-datepop"></div>' +
         '<div class="rp-popover-actions">' +
-            '<button class="rp-popover-cancel">Avbryt</button>' +
+            (showDelete ? '<button type="button" class="rp-popover-delete">' + TRASH_ICON + '<span>Slett</span></button>' : '') +
             '<button class="rp-popover-confirm">Lagre</button>' +
-        '</div>' +
-        (showDelete ? '<button class="rp-popover-delete">Slett periode</button>' : '');
+        '</div>';
     document.body.appendChild(popoverEl);
 
-    // Position: prefer right of cursor, flip left near the window edge
-    const pw = 280;
-    let left = opts.anchorX + 10;
-    if (left + pw > window.innerWidth - 10) left = opts.anchorX - pw - 10;
-    popoverEl.style.left = Math.max(8, left) + 'px';
-    popoverEl.style.top  = (opts.anchorY - 16) + 'px';
+    // Position: prefer right of cursor, flip left near the window edge, and clamp
+    // into the viewport (re-callable so the collapsible calendar can't push it off).
+    function placePopover() {
+        const pw = popoverEl.offsetWidth  || 280;
+        const ph = popoverEl.offsetHeight || 360;
+        const M = 8;
+        let left = opts.anchorX + 10;
+        if (left + pw > window.innerWidth - M) left = opts.anchorX - pw - 10;
+        let top = opts.anchorY - 16;
+        if (top + ph > window.innerHeight - M) top = window.innerHeight - ph - M;
+        popoverEl.style.left = Math.max(M, left) + 'px';
+        popoverEl.style.top  = Math.max(M, top) + 'px';
+    }
 
     const input = /** @type {HTMLInputElement} */ (popoverEl.querySelector('.rp-popover-input'));
 
-    // Period chips + calendar. One calendar edits the active end (`open`).
+    // Fra/Til fields open a collapsible calendar that edits the active end (`open`).
     const chipFrom   = popoverEl.querySelector('.rp-chip-from');
     const chipTo     = popoverEl.querySelector('.rp-chip-to');
-    const chipFromEl = popoverEl.querySelector('.rp-date-chip[data-end="from"]');
-    const chipToEl   = popoverEl.querySelector('.rp-date-chip[data-end="to"]');
-    const calMount   = popoverEl.querySelector('.rp-cal');
+    const fieldFrom  = popoverEl.querySelector('.rp-datefield[data-end="from"]');
+    const fieldTo    = popoverEl.querySelector('.rp-datefield[data-end="to"]');
+    const calMount   = popoverEl.querySelector('.rp-datepop');
+    let calOpen = false;
     function updateChips() {
         chipFrom.textContent = calState.from ? fmtDate(calState.from) : '–';
         chipTo.textContent   = calState.to   ? fmtDate(calState.to)   : '–';
-        chipFromEl.classList.toggle('active', calState.open === 'from');
-        chipToEl.classList.toggle('active', calState.open === 'to');
+        fieldFrom.classList.toggle('active', calOpen && calState.open === 'from');
+        fieldTo.classList.toggle('active', calOpen && calState.open === 'to');
     }
     function renderCalendar() {
         const isFrom = calState.open === 'from';
@@ -745,7 +756,7 @@ function showCountPopover(opts) {
                     if (calState.from && +d < +calState.from) calState.from = d;
                 }
                 if (isFrom) calState.viewFrom = d; else calState.viewTo = d;
-                renderCalendar();
+                closeCal();
                 updateChips();
             },
             onNavigate(viewDate) {
@@ -753,10 +764,19 @@ function showCountPopover(opts) {
             }
         });
     }
-    chipFromEl.addEventListener('click', () => { calState.open = 'from'; renderCalendar(); updateChips(); });
-    chipToEl.addEventListener('click',   () => { calState.open = 'to';   renderCalendar(); updateChips(); });
-    renderCalendar();
+    function openCal(end) {
+        calState.open = end;
+        calOpen = true;
+        calMount.classList.add('open');
+        renderCalendar();
+        updateChips();
+        placePopover();   // height changed → re-clamp into viewport
+    }
+    function closeCal() { calOpen = false; calMount.classList.remove('open'); updateChips(); placePopover(); }
+    fieldFrom.addEventListener('click', () => calOpen && calState.open === 'from' ? closeCal() : openCal('from'));
+    fieldTo.addEventListener('click',   () => calOpen && calState.open === 'to'   ? closeCal() : openCal('to'));
     updateChips();
+    placePopover();
 
     input.focus();
     input.select();
@@ -786,7 +806,6 @@ function showCountPopover(opts) {
     }
 
     popoverEl.querySelector('.rp-popover-confirm').addEventListener('click', confirm);
-    popoverEl.querySelector('.rp-popover-cancel').addEventListener('click', cancel);
     if (showDelete) {
         popoverEl.querySelector('.rp-popover-delete').addEventListener('click', () => {
             removeOutsideHandler();
