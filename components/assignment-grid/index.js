@@ -665,27 +665,23 @@ function removePopover() {
     flushQueuedRebuild();
 }
 
-// ── Searchable single-select (custom, on-brand — not a native <select>) ─────────
+// ── Searchable flat list (custom, on-brand) ─────────────────────────────────────
+// Always-visible list with a Søk filter; selected row gets the dashed-orange
+// outline. Height-capped to ~5 rows then scrolls.
 // opts: { items:[{id,label,color?}], value, placeholder, onPick(id) }
-function makeSearchSelect(mount, opts) {
+function makeFlatList(mount, opts) {
     let value = opts.value ?? null;
     let query = '';
     mount.innerHTML = '';
     mount.classList.remove('pl-pop-invalid');
 
-    const box = document.createElement('div');
-    box.className = 'pl-select';
     const input = /** @type {HTMLInputElement} */ (document.createElement('input'));
     input.className = 'pl-select-input';
     input.placeholder = opts.placeholder || 'Søk…';
     const list = document.createElement('div');
-    list.className = 'pl-select-list';
-    box.appendChild(input);
-    box.appendChild(list);
-    mount.appendChild(box);
-
-    const labelOf = (id) => opts.items.find(it => String(it.id) === String(id))?.label || '';
-    const setInputToSelection = () => { input.value = value != null ? labelOf(value) : ''; };
+    list.className = 'pl-list';
+    mount.appendChild(input);
+    mount.appendChild(list);
 
     let firstId = null;
     function renderList() {
@@ -700,43 +696,32 @@ function makeSearchSelect(mount, opts) {
             list.appendChild(e);
             return;
         }
-        matches.slice(0, 60).forEach((it, i) => {
+        matches.forEach((it) => {
             const row = document.createElement('div');
-            row.className = 'pl-select-opt'
-                + (String(it.id) === String(value) ? ' sel' : '')
-                + (i === 0 ? ' active' : '');
-            if (it.color) {
-                const sw = document.createElement('span');
-                sw.className = 'pl-select-sw';
-                sw.style.background = it.color;
-                row.appendChild(sw);
-            }
+            row.className = 'pl-list-opt' + (String(it.id) === String(value) ? ' sel' : '');
+            const sw = document.createElement('span');
+            sw.className = 'pl-list-dot';
+            sw.style.background = it.color || '#d1d5db';
+            row.appendChild(sw);
             const t = document.createElement('span');
             t.className = 'pl-select-opt-label';
             t.textContent = it.label;
             row.appendChild(t);
-            // mousedown (not click) so we pick before the input's blur fires.
-            row.addEventListener('mousedown', e => { e.preventDefault(); pick(it.id); });
+            row.addEventListener('click', () => pick(it.id));
             list.appendChild(row);
         });
     }
     function pick(id) {
         value = id;
-        query = '';
-        box.classList.remove('open');
-        setInputToSelection();
+        mount.classList.remove('pl-pop-invalid');
+        renderList();
         opts.onPick?.(id);
     }
-    input.addEventListener('focus', () => { query = ''; box.classList.add('open'); renderList(); });
-    input.addEventListener('input', () => { query = input.value; box.classList.add('open'); renderList(); });
+    input.addEventListener('input', () => { query = input.value; renderList(); });
     input.addEventListener('keydown', e => {
-        if (e.key === 'Enter')  { e.preventDefault(); e.stopPropagation(); if (firstId != null) pick(firstId); }
-        if (e.key === 'Escape') { e.stopPropagation(); box.classList.remove('open'); setInputToSelection(); }
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (firstId != null) pick(firstId); }
     });
-    input.addEventListener('blur', () =>
-        setTimeout(() => { box.classList.remove('open'); setInputToSelection(); }, 120));
 
-    setInputToSelection();
     renderList();
 }
 
@@ -844,7 +829,7 @@ function applyOptimisticBar(opts, kind, selId, fromISO, toISO) {
 }
 
 // ── Allocation / absence editor popover ─────────────────────────────────────────
-// One popover, Tildeling/Fravær toggle. Tildeling → project select (projectId);
+// One popover, Allokering/Fravær toggle. Allokering → project select (projectId);
 // Fravær → absence-type select (absenceType). On edit, kind is fixed to the bar.
 // opts: { resourceId, kind, recordId, projectId, absenceType, dateFrom, dateTo,
 //         anchorX, anchorY, onCancel?, onDelete? }
@@ -853,8 +838,10 @@ function showAllocAbsencePopover(opts) {
     activeEdit = true;
 
     const isEdit = !!opts.recordId;
-    let kind  = opts.kind || 'allocation';
-    let selId = kind === 'allocation' ? (opts.projectId ?? null) : (opts.absenceType ?? null);
+    // New entries must pick a kind first → start with none selected.
+    let kind  = isEdit ? (opts.kind || 'allocation') : null;
+    let selId = kind === 'allocation' ? (opts.projectId ?? null)
+              : kind === 'absence'    ? (opts.absenceType ?? null) : null;
 
     const seed = opts.dateFrom ? new Date(opts.dateFrom) : new Date();
     const calState = {
@@ -866,27 +853,30 @@ function showAllocAbsencePopover(opts) {
                            : opts.dateFrom ? new Date(opts.dateFrom) : seed)
     };
 
+    // Line-style icons matching the resource-edit pencil (stroke, currentColor).
+    const CAL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>';
+    const TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M10 11v6M14 11v6"></path></svg>';
+
     popoverEl = document.createElement('div');
     popoverEl.className = 'pl-popover';
+    // On edit the kind is fixed → render only the matching toggle button.
+    const toggleBtnsHtml =
+        (!isEdit || kind === 'allocation' ? '<button type="button" data-kind="allocation">Allokering</button>' : '') +
+        (!isEdit || kind === 'absence'    ? '<button type="button" data-kind="absence">Fravær</button>' : '');
     popoverEl.innerHTML =
-        '<div class="pl-pop-toggle' + (isEdit ? ' locked' : '') + '">' +
-            '<button type="button" data-kind="allocation">Tildeling</button>' +
-            '<button type="button" data-kind="absence">Fravær</button>' +
+        '<div class="pl-pop-toggle' + (isEdit ? ' locked' : '') + '">' + toggleBtnsHtml + '</div>' +
+        '<div class="pl-pop-datefields">' +
+            '<span class="pl-datefield" data-end="from"><span class="pl-df-label">Fra dato</span>' +
+                '<span class="pl-df-val pl-chip-from">–</span><span class="pl-df-cal">' + CAL_ICON + '</span></span>' +
+            '<span class="pl-datefield" data-end="to"><span class="pl-df-label">Til dato</span>' +
+                '<span class="pl-df-val pl-chip-to">–</span><span class="pl-df-cal">' + CAL_ICON + '</span></span>' +
         '</div>' +
-        '<div class="pl-pop-section pl-pop-sellabel"></div>' +
-        '<div class="pl-pop-select"></div>' +
-        '<div class="pl-pop-section">Periode</div>' +
-        '<div class="pl-pop-dates">' +
-            '<span class="pl-date-chip" data-end="from">Fra <b class="pl-chip-from">–</b></span>' +
-            '<span class="pl-date-chip" data-end="to">Til <b class="pl-chip-to">–</b></span>' +
-        '</div>' +
-        '<div class="pl-cal"></div>' +
-        '<div class="pl-pop-hint">Enter for å lagre &nbsp;·&nbsp; Esc for å avbryte</div>' +
+        '<div class="pl-datepop"></div>' +
+        '<div class="pl-pop-list"></div>' +
         '<div class="pl-pop-actions">' +
-            '<button class="pl-pop-cancel">Avbryt</button>' +
+            (isEdit ? '<button type="button" class="pl-pop-delete">' + TRASH_ICON + '<span>Slett</span></button>' : '') +
             '<button class="pl-pop-confirm">Lagre</button>' +
-        '</div>' +
-        (isEdit ? '<button class="pl-pop-delete">Slett</button>' : '');
+        '</div>';
     document.body.appendChild(popoverEl);
 
     // Position: prefer right of / below the cursor, but clamp into the viewport so a
@@ -904,19 +894,21 @@ function showAllocAbsencePopover(opts) {
         popoverEl.style.top  = Math.max(M, top) + 'px';
     }
 
-    const selMount   = popoverEl.querySelector('.pl-pop-select');
-    const selLabel   = popoverEl.querySelector('.pl-pop-sellabel');
-    const toggleBtns = popoverEl.querySelectorAll('.pl-pop-toggle button');
+    const selMount   = popoverEl.querySelector('.pl-pop-list');
+    const toggleBtns = /** @type {NodeListOf<HTMLElement>} */ (popoverEl.querySelectorAll('.pl-pop-toggle button'));
 
     function itemsForKind(k) {
         if (k === 'allocation')
-            return [...projectsById.values()].map(p => ({ id: p._id, label: p.bepmnX || p.name || 'Prosjekt' }));
+            return [...projectsById.values()].map(p => ({ id: p._id, label: p.bepmnX || p.name || 'Prosjekt', color: getBadgeColor(p) }));
         return Object.entries(absenceTypeMap).map(([v, info]) => ({ id: v, label: info.name, color: info.color }));
     }
-    function renderSelect() {
-        selLabel.textContent = kind === 'allocation' ? 'Prosjekt' : 'Fraværstype';
+    function renderList() {
         toggleBtns.forEach(b => b.classList.toggle('active', b.dataset.kind === kind));
-        makeSearchSelect(selMount, {
+        if (!kind) {   // new entry: must pick a kind first
+            selMount.innerHTML = '<div class="pl-list-prompt">Velg allokering eller fravær</div>';
+            return;
+        }
+        makeFlatList(selMount, {
             items: itemsForKind(kind),
             value: selId,
             placeholder: kind === 'allocation' ? 'Søk prosjekt…' : 'Søk fraværstype…',
@@ -927,20 +919,21 @@ function showAllocAbsencePopover(opts) {
         if (isEdit || kind === b.dataset.kind) return;   // kind is fixed while editing
         kind = b.dataset.kind;
         selId = null;
-        renderSelect();
+        renderList();
     }));
-    renderSelect();
+    renderList();
 
     const chipFrom   = popoverEl.querySelector('.pl-chip-from');
     const chipTo     = popoverEl.querySelector('.pl-chip-to');
-    const chipFromEl = popoverEl.querySelector('.pl-date-chip[data-end="from"]');
-    const chipToEl   = popoverEl.querySelector('.pl-date-chip[data-end="to"]');
-    const calMount   = popoverEl.querySelector('.pl-cal');
+    const fieldFrom  = popoverEl.querySelector('.pl-datefield[data-end="from"]');
+    const fieldTo    = popoverEl.querySelector('.pl-datefield[data-end="to"]');
+    const calMount   = popoverEl.querySelector('.pl-datepop');
+    let calOpen = false;
     function updateChips() {
         chipFrom.textContent = calState.from ? fmtDate(calState.from) : '–';
         chipTo.textContent   = calState.to   ? fmtDate(calState.to)   : '–';
-        chipFromEl.classList.toggle('active', calState.open === 'from');
-        chipToEl.classList.toggle('active', calState.open === 'to');
+        fieldFrom.classList.toggle('active', calOpen && calState.open === 'from');
+        fieldTo.classList.toggle('active', calOpen && calState.open === 'to');
     }
     function renderCalendar() {
         const isFrom = calState.open === 'from';
@@ -951,19 +944,28 @@ function showAllocAbsencePopover(opts) {
                 const r = applyPick(calState.from, calState.to, calState.open, day);
                 calState.from = r.from; calState.to = r.to;
                 if (isFrom) calState.viewFrom = startOfDay(day); else calState.viewTo = startOfDay(day);
-                renderCalendar();
+                closeCal();
                 updateChips();
             },
             onNavigate(v) { if (isFrom) calState.viewFrom = v; else calState.viewTo = v; }
         });
     }
-    chipFromEl.addEventListener('click', () => { calState.open = 'from'; renderCalendar(); updateChips(); });
-    chipToEl.addEventListener('click',   () => { calState.open = 'to';   renderCalendar(); updateChips(); });
-    renderCalendar();
+    function openCal(end) {
+        calState.open = end;
+        calOpen = true;
+        calMount.classList.add('open');
+        renderCalendar();
+        updateChips();
+        placePopover();   // height changed → re-clamp into viewport
+    }
+    function closeCal() { calOpen = false; calMount.classList.remove('open'); updateChips(); placePopover(); }
+    fieldFrom.addEventListener('click', () => calOpen && calState.open === 'from' ? closeCal() : openCal('from'));
+    fieldTo.addEventListener('click',   () => calOpen && calState.open === 'to'   ? closeCal() : openCal('to'));
     updateChips();
     placePopover();   // measure & clamp once content height is final
 
     function confirm() {
+        if (!kind) { popoverEl.querySelector('.pl-pop-toggle').classList.add('pl-pop-invalid'); return; }
         if (selId == null) { selMount.classList.add('pl-pop-invalid'); return; }
         const from = startOfDay(calState.from || seed);
         let to = endOfDay(calState.to || calState.from || (opts.dateTo ? new Date(opts.dateTo) : seed));
@@ -985,7 +987,6 @@ function showAllocAbsencePopover(opts) {
     }
 
     popoverEl.querySelector('.pl-pop-confirm').addEventListener('click', confirm);
-    popoverEl.querySelector('.pl-pop-cancel').addEventListener('click', cancel);
     if (isEdit) popoverEl.querySelector('.pl-pop-delete').addEventListener('click', () => {
         removeOutsideHandler();
         if (kind === 'allocation')
