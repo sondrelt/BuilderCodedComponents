@@ -509,6 +509,8 @@
   box-sizing: border-box;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
+  max-height: calc(100vh - 16px);   /* never taller than the viewport… */
+  overflow-y: auto;                 /* …scroll internally if content grows */
 }
 
 .rp-popover-title {
@@ -540,107 +542,85 @@
 .rp-popover-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .rp-popover-input[type=number] { -moz-appearance: textfield; }
 
-.rp-popover-hint {
-  font-size: 10px;
-  color: var(--rp-text-muted);
-  text-align: center;
-  margin-top: 6px;
-}
-
+/* Actions: amber Lagre (right), low-emphasis Slett (left) — separated so delete
+   is never adjacent to the primary action. */
 .rp-popover-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 12px;
 }
-
-.rp-popover-cancel,
-.rp-popover-confirm,
-.rp-popover-delete {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
+.rp-popover-confirm {
+  margin-left: auto;   /* always right, even when Slett is absent */
+  padding: 8px 22px;
+  font: 600 13px 'Inter', sans-serif;
   cursor: pointer;
-  border-radius: 999px;          /* pill, like "Nytt prosjekt" / "I dag" */
+  border-radius: 999px;
+  background: var(--rp-amber-500);
+  border: 1px solid var(--rp-amber-500);
+  color: #fff;
   transition: background .12s, border-color .12s;
 }
-
-.rp-popover-cancel,
-.rp-popover-confirm {
-  flex: 1;
-  padding: 7px 0;
-}
-
-.rp-popover-cancel {
-  background: #fff;
-  border: 1px solid var(--rp-border);
-  color: var(--rp-text-muted);
-}
-.rp-popover-cancel:hover { background: #f3f4f6; }
-
-.rp-popover-confirm {
-  background: var(--rp-navy);
-  border: 1px solid var(--rp-navy);
-  color: #fff;
-}
 .rp-popover-confirm:hover {
-  background: var(--rp-navy-hover);
-  border-color: var(--rp-navy-hover);
+  background: var(--rp-amber-600);
+  border-color: var(--rp-amber-600);
 }
 
-/* Danger action — contained inside the popover, full width below the actions */
+/* Destructive Slett — ghost text+icon, red only on hover */
 .rp-popover-delete {
-  display: block;
-  width: 100%;
-  margin-top: 8px;
-  padding: 6px 0;
-  background: #fff;
-  border: 1px solid #fecaca;
-  color: var(--rp-red-700);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font: 600 12px 'Inter', sans-serif;
+  color: var(--rp-text-muted);
+  transition: background .12s, color .12s;
 }
-.rp-popover-delete:hover {
-  background: #fef2f2;
-  border-color: var(--rp-red-700);
-}
+.rp-popover-delete svg { width: 15px; height: 15px; display: block; }
+.rp-popover-delete:hover { background: #fef2f2; color: var(--rp-red-700); }
 
 /* ── 8b. PERIOD PICKER (custom day calendar inside the popover) ───────────── */
 .rp-popover-wide { width: 280px; }
 
-.rp-popover-section {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--rp-text-muted);
-  margin: 14px 0 6px;
-}
-
-.rp-popover-dates {
+/* Fra dato / Til dato fields */
+.rp-popover-datefields {
   display: flex;
   gap: 8px;
-  margin-bottom: 8px;
+  margin: 12px 0 10px;
 }
-.rp-date-chip {
+.rp-datefield {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 5px 8px;
+  gap: 2px;
+  padding: 6px 10px;
   border: 1px solid var(--rp-border);
   border-radius: 8px;
-  font-size: 10px;
-  color: var(--rp-text-muted);
   cursor: pointer;
   user-select: none;
+  position: relative;
   transition: border-color .12s, box-shadow .12s;
 }
-.rp-date-chip b {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--rp-navy);
+.rp-df-label { font-size: 10px; color: var(--rp-text-muted); }
+.rp-df-val { font-size: 13px; font-weight: 600; color: var(--rp-navy); }
+.rp-df-cal { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--rp-text-muted); }
+.rp-df-cal svg { width: 14px; height: 14px; display: block; }
+.rp-datefield.active {
+  border-color: var(--rp-navy);
+  box-shadow: 0 0 0 2px rgba(17, 64, 94, 0.18);
 }
-.rp-date-chip.active {
-  border-color: var(--rp-amber-600);
-  box-shadow: 0 0 0 2px rgba(232, 154, 58, 0.18);
+
+/* Date picker panel (collapsible, under the fields) */
+.rp-datepop { display: none; margin-bottom: 10px; }
+.rp-datepop.open {
+  display: block;
+  border: 1px solid var(--rp-border);
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .rp-cal-nav {
@@ -715,13 +695,13 @@
   transition: background .1s;
 }
 .rp-cal-day.muted { color: #c7ccd1; }
-.rp-cal-day:hover { background: rgba(232, 154, 58, 0.16); }
+.rp-cal-day:hover { background: rgba(17, 64, 94, 0.14); }
 .rp-cal-day.sel {
-  background: var(--rp-amber-600);
+  background: var(--rp-navy);
   color: #fff;
   font-weight: 700;
 }
-.rp-cal-day.sel:hover { background: var(--rp-amber-600); }
+.rp-cal-day.sel:hover { background: var(--rp-navy); }
 
 /* Year quick-jump grid (opened from the calendar title) */
 .rp-cal-yeargrid {
@@ -742,9 +722,9 @@
   cursor: pointer;
   transition: background .1s;
 }
-.rp-cal-year:hover { background: rgba(232, 154, 58, 0.16); }
+.rp-cal-year:hover { background: rgba(17, 64, 94, 0.14); }
 .rp-cal-year.sel {
-  background: var(--rp-amber-600);
+  background: var(--rp-navy);
   color: #fff;
   font-weight: 700;
 }
