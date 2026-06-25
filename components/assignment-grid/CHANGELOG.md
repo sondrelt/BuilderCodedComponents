@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.4.0 — 2026-06-25
+
+- Editor popover redesigned closer to the reference "Allokering" dialog:
+  - Header row with a title (Allokering / Fravær) and a trash **icon** for delete
+    (replaces the bottom "Slett" button).
+  - **Date From / Date To** fields replace the Fra/Til chips; clicking a field
+    opens the day picker in a collapsible panel right below (no longer an
+    always-visible inline calendar).
+  - Project / absence-type picker is now a **flat list** with colored dots and a
+    Søk filter, capped to ~5 visible rows then scrolls; the selected row gets a
+    dashed-orange outline (`makeFlatList` replaces the dropdown `makeSearchSelect`).
+    Projects now show their colour dot too (`getBadgeColor`).
+  - Single orange **Lagre** button (Esc / outside-click still cancels).
+- Toggle behaviour: a **new** entry must pick Tildeling *eller* Fravær first (no
+  kind preselected; the list shows a prompt and Lagre is blocked until chosen).
+  Editing an existing record shows **only** the matching toggle button (the other
+  kind is hidden, not just locked).
+
 ## 1.3.0 — 2026-06-25
 
 - Merge of two parallel 1.2.0 lines: in-component editor popover + project colour marking.
