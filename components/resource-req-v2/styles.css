@@ -235,6 +235,14 @@
 }
 .rp-row-derived .rp-wt-label { background: #fafafa; }
 
+/* Egne exception row: own person whose trade the project didn't list as needed. */
+.rp-row-exception .rp-wt-label {
+  font-style: italic;
+  color: var(--rp-amber-800);
+  background: var(--rp-amber-50);
+  box-shadow: inset 3px 0 0 var(--rp-amber-500);
+}
+
 /* ── 6. TRACKS ────────────────────────────────────────────────────────────── */
 .rp-track {
   flex: 0 0 auto;

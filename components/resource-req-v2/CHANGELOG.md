@@ -1,21 +1,22 @@
 # Changelog — resource-req-v2
 
-## 1.10.1 — 2026-06-25
+## 1.11.0 — 2026-06-25
 
-- **Egne aggregates strictly per tagged work type.** Each allocation carries exactly
-  one work type, so a person now lands in **only that work-type row** — never duplicated
-  across rows. Reverts the 1.10.0 untagged-fallback that counted a work-type-less (or
-  unlisted-work-type) person toward *every* row, which made the same person appear in
-  both Anleggsgartner and Banemontør.
-- **Egne total = sum of the per-work-type rows.** Dropped the separate project-wide
-  distinct-person header (`egneAllSets`); Egne now sums its detail rows like every other
-  source. Since no person spans two rows, sum == distinct, so the total stays correct
-  and now always equals the rows above it.
-- Absence netting unchanged: a person absent in a given week is still excluded from that
-  column in their row (and therefore the total).
-- Trade-off: an Egne allocation whose `workType` isn't one of the project's configured
-  work-type rows no longer appears in any row or the total (matches the data model where
-  every allocation has a listed work type).
+- **Egne aggregates by the resource's own trade, one row per person.** An allocation's
+  `workType` is the resource's own trade (independent of the work types the project lists
+  as needed), so each present person now lands in exactly the row for their trade — never
+  duplicated across rows. Reverts the 1.10.0 untagged-fallback that counted an off-trade
+  person toward *every* needed-type row (the same person showing in both Anleggsgartner
+  and Banemontør).
+- **Exception rows for off-plan trades.** When an own person's trade isn't one the project
+  listed as needed, Egne now shows an extra row for that trade, marked as an exception
+  (italic amber label + ⚠), instead of silently dropping the person or smearing them
+  across the needed-type rows. New `agg.egneExtraWTs`; `.rp-row-exception` style.
+- **Egne total = sum of all its rows (needed + exception).** Since every person sits in
+  exactly one row, the total equals the distinct present persons project-wide and always
+  equals the rows beneath it.
+- Absence netting unchanged: a person absent in a given week is excluded from that column
+  in their row (and therefore the total).
 
 ## 1.10.0 — 2026-06-23
 

@@ -297,18 +297,17 @@ function computeAggregates(projectId, workTypes) {
         if (!a) egneSets.set(wt, (a = Array.from({ length: N }, () => new Set())));
         return a;
     };
-    // Each allocation carries exactly one work type, so a person belongs to one row
-    // only — never duplicated across rows. Place each present person into the row of
-    // their allocation's workType; the EGNE header is the plain cross-wt sum of these
-    // rows (see header builder below), so total == sum of rows == distinct persons.
-    // ponytail: drops the 1.10.0 untagged-fallback (which counted a person toward every
-    // row). An allocation whose workType isn't a configured projectWorkType row shows in
-    // no row and isn't totalled — correct given every allocation has a listed work type.
+    // Each allocation carries the resource's own trade (workType), independent of the
+    // work types the project lists as needed. Place each present person into the row of
+    // their own trade — exactly one row, never duplicated. A trade the project didn't
+    // list as needed still gets a row (rendered as an "exception" below), so off-trade
+    // own people are never silently dropped. EGNE header = sum across all trades; since
+    // every person sits in exactly one row, sum == distinct persons present.
     (allocsByProject.get(projectId) || []).forEach(a => {
         const rid = resolveId(a.resource);
         if (rid == null) return;
         const aWt = toInt(a.workType);
-        if (aWt === null || !workTypes.includes(aWt)) return;          // no listed-WT row → skip
+        if (aWt === null) return;                                      // no trade → can't place
         const from = startOfDay(new Date(a.dateFrom));
         const to   = endOfDay(new Date(a.dateTo));
         if (isNaN(+from) || isNaN(+to)) return;
@@ -321,7 +320,12 @@ function computeAggregates(projectId, workTypes) {
             sets[i].add(rid);
         }
     });
-    workTypes.forEach(wt => {
+    // Trades present among own people but NOT listed as a project need — rendered as
+    // extra "exception" Egne rows. Sorted for stable row order.
+    const egneExtraWTs = [...egneSets.keys()]
+        .filter(wt => !workTypes.includes(wt))
+        .sort((a, b) => a - b);
+    [...workTypes, ...egneExtraWTs].forEach(wt => {
         const egne = detailArr(SRC.EGNE, wt);
         const sets = egneSetFor(wt);
         for (let i = 0; i < N; i++) egne[i] = sets[i].size;
@@ -342,9 +346,11 @@ function computeAggregates(projectId, workTypes) {
     });
 
     // Headers = column-wise sums across work types (incl. Utleide, fixed in v2).
+    // EGNE also sums its exception trades, so the total counts every own person present.
     Object.values(SRC).forEach(src => {
+        const wts = src === SRC.EGNE ? [...workTypes, ...egneExtraWTs] : workTypes;
         const h = new Array(N).fill(0);
-        workTypes.forEach(wt => {
+        wts.forEach(wt => {
             const d = detail.get(src + '_' + wt);
             if (d) for (let i = 0; i < N; i++) h[i] += d[i];
         });
@@ -352,6 +358,7 @@ function computeAggregates(projectId, workTypes) {
     });
 
     return {
+        egneExtraWTs,
         detail: (src, wt, i) => detail.get(src + '_' + wt)?.[i] || 0,
         header: (src, i)     => header.get(src)?.[i] || 0
     };
@@ -619,6 +626,25 @@ function buildAll() {
                     : makeDerivedTrack(agg, srcEnum, wtId));
                 frag.appendChild(wtRow);
             });
+
+            // Egne exception rows: own people whose trade the project didn't list as
+            // needed. Marked so it reads as off-plan rather than a normal Egne row.
+            if (srcEnum === SRC.EGNE) {
+                (agg.egneExtraWTs || []).forEach(wtId => {
+                    const wtRow = document.createElement('div');
+                    wtRow.style.setProperty('--proj-color', projColor);
+                    wtRow.className = 'rp-row rp-row-wt rp-row-derived rp-row-exception';
+
+                    const wtLabel = document.createElement('div');
+                    wtLabel.className = 'rp-label-cell rp-wt-label';
+                    wtLabel.textContent = (wtNameMap[wtId] || String(wtId)) + ' ⚠';
+                    wtLabel.title = 'Ikke planlagt arbeidstype på dette prosjektet';
+
+                    wtRow.appendChild(wtLabel);
+                    wtRow.appendChild(makeDerivedTrack(agg, srcEnum, wtId));
+                    frag.appendChild(wtRow);
+                });
+            }
         });
     });
 
