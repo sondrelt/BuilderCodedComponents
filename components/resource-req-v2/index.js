@@ -297,39 +297,35 @@ function computeAggregates(projectId, workTypes) {
         if (!a) egneSets.set(wt, (a = Array.from({ length: N }, () => new Set())));
         return a;
     };
-    // Project-wide present-person set per column — drives the EGNE summary header.
-    // The per-wt detail rows below filter by workType; the header must NOT, or it
-    // (a) silently drops allocations whose workType isn't a configured projectWorkType
-    // row — the "Egne shows 0" bug — and (b) double-counts a workType-less person
-    // across every wt. Counting distinct persons project-wide matches resource-graph-v2.
-    const egneAllSets = Array.from({ length: N }, () => new Set());
+    // Each allocation carries the resource's own trade (workType), independent of the
+    // work types the project lists as needed. Place each present person into the row of
+    // their own trade — exactly one row, never duplicated. A trade the project didn't
+    // list as needed still gets a row (rendered as an "exception" below), so off-trade
+    // own people are never silently dropped. EGNE header = sum across all trades; since
+    // every person sits in exactly one row, sum == distinct persons present.
     (allocsByProject.get(projectId) || []).forEach(a => {
         const rid = resolveId(a.resource);
         if (rid == null) return;
+        const aWt = toInt(a.workType);
+        if (aWt === null) return;                                      // no trade → can't place
         const from = startOfDay(new Date(a.dateFrom));
         const to   = endOfDay(new Date(a.dateTo));
         if (isNaN(+from) || isNaN(+to)) return;
         if (+to < +rangeStart || +from > +rangeEnd) return;
         const s = clampIdx(colIndexForDate(from));
         const e = clampIdx(colIndexForDate(to));
-        // Per-wt placement: if the allocation is tagged with one of THIS project's
-        // work types, it belongs to that row only. Otherwise (no workType, or a
-        // workType the project doesn't list) we can't pin it to a single row, so it
-        // counts toward every work-type row — keeping the per-wt bars from going
-        // blank when allocations aren't tagged with the project's exact work types.
-        // The summary header stays distinct (egneAllSets), so no double-count there.
-        const aWt = toInt(a.workType);
-        const tagged = aWt !== null && workTypes.includes(aWt);
+        const sets = egneSetFor(aWt);
         for (let i = s; i <= e; i++) {
             if (absentByCol[i] && absentByCol[i].has(rid)) continue;   // present only
-            egneAllSets[i].add(rid);                                   // project-wide total
-            workTypes.forEach(wt => {                                  // per-wt detail
-                if (tagged && aWt !== wt) return;
-                egneSetFor(wt)[i].add(rid);
-            });
+            sets[i].add(rid);
         }
     });
-    workTypes.forEach(wt => {
+    // Trades present among own people but NOT listed as a project need — rendered as
+    // extra "exception" Egne rows. Sorted for stable row order.
+    const egneExtraWTs = [...egneSets.keys()]
+        .filter(wt => !workTypes.includes(wt))
+        .sort((a, b) => a - b);
+    [...workTypes, ...egneExtraWTs].forEach(wt => {
         const egne = detailArr(SRC.EGNE, wt);
         const sets = egneSetFor(wt);
         for (let i = 0; i < N; i++) egne[i] = sets[i].size;
@@ -350,15 +346,11 @@ function computeAggregates(projectId, workTypes) {
     });
 
     // Headers = column-wise sums across work types (incl. Utleide, fixed in v2).
-    // EGNE is the exception: its header is distinct present persons project-wide
-    // (egneAllSets), not the cross-wt sum of the detail rows — see egneAllSets above.
+    // EGNE also sums its exception trades, so the total counts every own person present.
     Object.values(SRC).forEach(src => {
-        if (src === SRC.EGNE) {
-            header.set(src, egneAllSets.map(set => set.size));
-            return;
-        }
+        const wts = src === SRC.EGNE ? [...workTypes, ...egneExtraWTs] : workTypes;
         const h = new Array(N).fill(0);
-        workTypes.forEach(wt => {
+        wts.forEach(wt => {
             const d = detail.get(src + '_' + wt);
             if (d) for (let i = 0; i < N; i++) h[i] += d[i];
         });
@@ -366,6 +358,7 @@ function computeAggregates(projectId, workTypes) {
     });
 
     return {
+        egneExtraWTs,
         detail: (src, wt, i) => detail.get(src + '_' + wt)?.[i] || 0,
         header: (src, i)     => header.get(src)?.[i] || 0
     };
@@ -633,6 +626,25 @@ function buildAll() {
                     : makeDerivedTrack(agg, srcEnum, wtId));
                 frag.appendChild(wtRow);
             });
+
+            // Egne exception rows: own people whose trade the project didn't list as
+            // needed. Marked so it reads as off-plan rather than a normal Egne row.
+            if (srcEnum === SRC.EGNE) {
+                (agg.egneExtraWTs || []).forEach(wtId => {
+                    const wtRow = document.createElement('div');
+                    wtRow.style.setProperty('--proj-color', projColor);
+                    wtRow.className = 'rp-row rp-row-wt rp-row-derived rp-row-exception';
+
+                    const wtLabel = document.createElement('div');
+                    wtLabel.className = 'rp-label-cell rp-wt-label';
+                    wtLabel.textContent = (wtNameMap[wtId] || String(wtId)) + ' ⚠';
+                    wtLabel.title = 'Ikke planlagt arbeidstype på dette prosjektet';
+
+                    wtRow.appendChild(wtLabel);
+                    wtRow.appendChild(makeDerivedTrack(agg, srcEnum, wtId));
+                    frag.appendChild(wtRow);
+                });
+            }
         });
     });
 

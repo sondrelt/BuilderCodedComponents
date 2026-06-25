@@ -1,5 +1,23 @@
 # Changelog — resource-req-v2
 
+## 1.11.0 — 2026-06-25
+
+- **Egne aggregates by the resource's own trade, one row per person.** An allocation's
+  `workType` is the resource's own trade (independent of the work types the project lists
+  as needed), so each present person now lands in exactly the row for their trade — never
+  duplicated across rows. Reverts the 1.10.0 untagged-fallback that counted an off-trade
+  person toward *every* needed-type row (the same person showing in both Anleggsgartner
+  and Banemontør).
+- **Exception rows for off-plan trades.** When an own person's trade isn't one the project
+  listed as needed, Egne now shows an extra row for that trade, marked as an exception
+  (italic amber label + ⚠), instead of silently dropping the person or smearing them
+  across the needed-type rows. New `agg.egneExtraWTs`; `.rp-row-exception` style.
+- **Egne total = sum of all its rows (needed + exception).** Since every person sits in
+  exactly one row, the total equals the distinct present persons project-wide and always
+  equals the rows beneath it.
+- Absence netting unchanged: a person absent in a given week is excluded from that column
+  in their row (and therefore the total).
+
 ## 1.10.0 — 2026-06-23
 
 - **Fix Egne showing 0.** The Egne summary header was a cross-work-type sum of the
