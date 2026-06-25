@@ -519,6 +519,8 @@
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   color: var(--text-dark, #374151);
+  max-height: calc(100vh - 16px);   /* never taller than the viewport… */
+  overflow-y: auto;                 /* …scroll internally if content grows */
 }
 
 /* Tildeling / Fravær segmented toggle */

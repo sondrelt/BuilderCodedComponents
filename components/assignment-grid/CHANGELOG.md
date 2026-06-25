@@ -13,6 +13,9 @@
     dashed-orange outline (`makeFlatList` replaces the dropdown `makeSearchSelect`).
     Projects now show their colour dot too (`getBadgeColor`).
   - Single orange **Lagre** button (Esc / outside-click still cancels).
+- Popover is capped to the viewport height (scrolls internally) and re-clamps
+  when switching kind, so opening a date picker then switching can't push it
+  off-screen.
 - Toggle behaviour: a **new** entry must pick Tildeling *eller* Fravær first (no
   kind preselected; the list shows a prompt and Lagre is blocked until chosen).
   Editing an existing record shows **only** the matching toggle button (the other

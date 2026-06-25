@@ -920,6 +920,7 @@ function showAllocAbsencePopover(opts) {
         kind = b.dataset.kind;
         selId = null;
         renderList();
+        placePopover();   // list/height changed → re-clamp into viewport
     }));
     renderList();
 
