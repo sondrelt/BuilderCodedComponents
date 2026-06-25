@@ -297,36 +297,28 @@ function computeAggregates(projectId, workTypes) {
         if (!a) egneSets.set(wt, (a = Array.from({ length: N }, () => new Set())));
         return a;
     };
-    // Project-wide present-person set per column — drives the EGNE summary header.
-    // The per-wt detail rows below filter by workType; the header must NOT, or it
-    // (a) silently drops allocations whose workType isn't a configured projectWorkType
-    // row — the "Egne shows 0" bug — and (b) double-counts a workType-less person
-    // across every wt. Counting distinct persons project-wide matches resource-graph-v2.
-    const egneAllSets = Array.from({ length: N }, () => new Set());
+    // Each allocation carries exactly one work type, so a person belongs to one row
+    // only — never duplicated across rows. Place each present person into the row of
+    // their allocation's workType; the EGNE header is the plain cross-wt sum of these
+    // rows (see header builder below), so total == sum of rows == distinct persons.
+    // ponytail: drops the 1.10.0 untagged-fallback (which counted a person toward every
+    // row). An allocation whose workType isn't a configured projectWorkType row shows in
+    // no row and isn't totalled — correct given every allocation has a listed work type.
     (allocsByProject.get(projectId) || []).forEach(a => {
         const rid = resolveId(a.resource);
         if (rid == null) return;
+        const aWt = toInt(a.workType);
+        if (aWt === null || !workTypes.includes(aWt)) return;          // no listed-WT row → skip
         const from = startOfDay(new Date(a.dateFrom));
         const to   = endOfDay(new Date(a.dateTo));
         if (isNaN(+from) || isNaN(+to)) return;
         if (+to < +rangeStart || +from > +rangeEnd) return;
         const s = clampIdx(colIndexForDate(from));
         const e = clampIdx(colIndexForDate(to));
-        // Per-wt placement: if the allocation is tagged with one of THIS project's
-        // work types, it belongs to that row only. Otherwise (no workType, or a
-        // workType the project doesn't list) we can't pin it to a single row, so it
-        // counts toward every work-type row — keeping the per-wt bars from going
-        // blank when allocations aren't tagged with the project's exact work types.
-        // The summary header stays distinct (egneAllSets), so no double-count there.
-        const aWt = toInt(a.workType);
-        const tagged = aWt !== null && workTypes.includes(aWt);
+        const sets = egneSetFor(aWt);
         for (let i = s; i <= e; i++) {
             if (absentByCol[i] && absentByCol[i].has(rid)) continue;   // present only
-            egneAllSets[i].add(rid);                                   // project-wide total
-            workTypes.forEach(wt => {                                  // per-wt detail
-                if (tagged && aWt !== wt) return;
-                egneSetFor(wt)[i].add(rid);
-            });
+            sets[i].add(rid);
         }
     });
     workTypes.forEach(wt => {
@@ -350,13 +342,7 @@ function computeAggregates(projectId, workTypes) {
     });
 
     // Headers = column-wise sums across work types (incl. Utleide, fixed in v2).
-    // EGNE is the exception: its header is distinct present persons project-wide
-    // (egneAllSets), not the cross-wt sum of the detail rows — see egneAllSets above.
     Object.values(SRC).forEach(src => {
-        if (src === SRC.EGNE) {
-            header.set(src, egneAllSets.map(set => set.size));
-            return;
-        }
         const h = new Array(N).fill(0);
         workTypes.forEach(wt => {
             const d = detail.get(src + '_' + wt);
