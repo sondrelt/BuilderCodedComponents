@@ -6,6 +6,11 @@
   planned no longer expose editable Behov/Innleide/Utleide tracks — you can't draw
   or edit a requirement span on an unplanned trade. Their source rows render with
   the read-only derived renderer (no drag-to-create lane, no span editing).
+- **Continuous project stripe.** The project-colour left stripe on the title row and
+  the sticky label cells is now one unbroken line — the row separator is drawn as an
+  inset shadow *under* the stripe instead of a border that nicked it at every row.
+- **Beige pills.** Source span/derived bars are a warm beige toned with the app
+  background (`#f8f1e1`) instead of cold grey.
 
 ## 1.15.0 — 2026-06-26
 

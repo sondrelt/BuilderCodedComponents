@@ -144,7 +144,6 @@
   padding: 0 12px;
   font-weight: 700;
   font-size: 13px;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
   min-width: var(--rp-sticky-w);
   box-sizing: border-box;
   position: sticky;
@@ -154,7 +153,10 @@
      the left accent stripe + bottom line instead. */
   background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
   color: var(--rp-text);
-  box-shadow: inset 4px 0 0 0 var(--proj-color, #94a3b8);
+  /* Stripe first so it paints over the bottom separator — keeps the title row's
+     left stripe continuous with the rows below (same technique as .rp-label-cell). */
+  box-shadow: inset 4px 0 0 0 var(--proj-color, #94a3b8),
+              inset 0 -1px 0 0 rgba(0,0,0,0.1);
 }
 
 .rp-action-btn {
@@ -193,7 +195,6 @@
   z-index: 10;
   background: #fff;
   border-right: 1px solid var(--rp-border);
-  border-bottom: 1px solid var(--rp-border);
   padding: 0 12px;
   display: flex;
   align-items: center;
@@ -202,9 +203,12 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   font-size: 12px;
-  /* Left accent stripe in the project colour — pinned (cell is sticky-left) so it
-     stays visible while scrolling horizontally. --proj-color is set per row. */
-  box-shadow: inset 4px 0 0 0 var(--proj-color, transparent);
+  /* Project stripe + row separator as layered inset shadows. The stripe is listed
+     first so it paints OVER the bottom separator where they overlap — keeping the
+     left stripe one continuous line down the whole project instead of being nicked
+     by each row's horizontal border. --proj-color is set per row. */
+  box-shadow: inset 4px 0 0 0 var(--proj-color, transparent),
+              inset 0 -1px 0 0 var(--rp-border);
 }
 
 /* Full-width line in the project colour closing each project group — scrolls with
@@ -418,7 +422,7 @@
    derived rows add the diagonal hatch (rule below) to read as computed. */
 .rp-bar-behov, .rp-bar-egne, .rp-bar-innleide,
 .rp-bar-utleide, .rp-bar-udekt, .rp-bar-overskudd {
-  background-color: #eceff3;
+  background-color: #f8f1e1;   /* warm beige toned with the app background */
   color: var(--rp-text);
 }
 
