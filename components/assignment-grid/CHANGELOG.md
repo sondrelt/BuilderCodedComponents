@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0 — 2026-06-26
+
+- **Tier-prioritized job ads.** Job ghosts in a resource's free gaps are now ranked
+  **internt → partnere → alle** (by the ad's pre-computed `tier` field) before
+  collapsing, so the primary/clicked ad and the ghost's accent colour reflect the best
+  available tier (green = internt, amber = partner, blue = alle).
+- **Ghosts name the posting company.** The ghost label now shows which company posted
+  the ad (single company → its name; multiple → "Company +N andre"), with a per-company
+  breakdown (count + tier) in the tooltip. No new input — relies on `company` + `tier`
+  on the existing `jobs` source.
+
 ## 1.3.0 — 2026-06-25
 
 - Merge of two parallel 1.2.0 lines: in-component editor popover + project colour marking.

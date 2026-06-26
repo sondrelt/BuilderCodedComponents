@@ -371,6 +371,13 @@
   line-height: 13px;
 }
 
+/* Marketplace tier accent — best (lowest) tier in the collapsed ghost wins.
+   internt → green (own house), partner → amber, alle → blue (open market). */
+.pl-jobad.pl-tier-1 { --jobad-accent: #1a5c34; --jobad-fill: rgba(26, 92, 52, 0.10);  --jobad-fill-hover: rgba(26, 92, 52, 0.18); }
+.pl-jobad.pl-tier-2 { --jobad-accent: #7a5c00; --jobad-fill: rgba(122, 92, 0, 0.10);  --jobad-fill-hover: rgba(122, 92, 0, 0.18); }
+.pl-jobad.pl-tier-3 { --jobad-accent: #1e86c4; --jobad-fill: rgba(30, 134, 196, 0.10); --jobad-fill-hover: rgba(30, 134, 196, 0.18); }
+/* .pl-tier-x keeps the default purple accent. */
+
 /* ==========================================================================
    8. GROUP HEADERS
    ========================================================================== */

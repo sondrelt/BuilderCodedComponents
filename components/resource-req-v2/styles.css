@@ -390,6 +390,49 @@
 .rp-track-agg:hover .rp-popover-btn { opacity: 0.7; }
 .rp-popover-btn:hover { opacity: 1 !important; }
 
+/* ── Marketplace availability markers on the coverage band ────────────────────
+   Deficit runs surface lease-IN supply (Resource Available ads, ↓ "ledige"),
+   surplus runs surface lease-OUT demand (Job ads, ↗ "oppdrag"). Recessive until
+   the row is hovered; the accent colour encodes the best available tier
+   (internt → partner → alle). Each marker names the posting company. */
+.rp-avail {
+  position: absolute;
+  bottom: 3px;            /* sit just above the state band, clear of the centred number */
+  height: 14px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 5px 0 4px;
+  border: none;
+  border-left: 3px solid var(--tier-accent, var(--rp-text-muted));
+  border-radius: 0 7px 7px 0;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--rp-text);
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0.55;
+  transition: opacity .15s, background .15s, box-shadow .15s;
+}
+.rp-track-gap:hover .rp-avail { opacity: 0.9; }
+.rp-avail:hover { opacity: 1; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); }
+
+.rp-avail-arrow { font-weight: 800; color: var(--tier-accent, var(--rp-text-muted)); }
+.rp-avail-count { font-weight: 800; }
+.rp-avail-who   { overflow: hidden; text-overflow: ellipsis; color: var(--rp-text-muted); }
+
+/* Tier accent — best (lowest) tier present in the marker wins. */
+.rp-avail.rp-tier-1 { --tier-accent: #1a5c34; }   /* internt — green (own house)  */
+.rp-avail.rp-tier-2 { --tier-accent: #7a5c00; }   /* partner — amber              */
+.rp-avail.rp-tier-3 { --tier-accent: #1e86c4; }   /* alle    — blue (open market) */
+.rp-avail.rp-tier-x { --tier-accent: var(--rp-text-muted); }
+
 /* ── 7. BARS ──────────────────────────────────────────────────────────────── */
 .rp-bar {
   position: absolute;

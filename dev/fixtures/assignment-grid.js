@@ -48,8 +48,11 @@ window.FIXTURES['assignment-grid'] = {
   ],
 
   // Open ads: shown in free gaps of resources with the matching workType.
+  // tier (1 internt, 2 partner, 3 alle) ranks ads in a gap; company names the poster.
+  // Two Tømrer ads share res1/res2 gaps → collapse to "Bygg & Co +1 andre", green (internt).
   jobs: [
-    { _id: 'j1', workType: 250, numberOfResources: 2, dateStart: '2026-07-06', dateEnd: '2026-08-02' },
-    { _id: 'j2', workType: 190, numberOfResources: 1, dateStart: '2026-06-01', dateEnd: '2026-06-21' },
+    { _id: 'j1', workType: 250, company: { _id: 'c2', name: 'Bygg & Co' },        tier: 1, numberOfResources: 2, dateStart: '2026-07-06', dateEnd: '2026-08-02' },
+    { _id: 'j3', workType: 250, company: { _id: 'c4', name: 'SørBygg' },          tier: 3, numberOfResources: 1, dateStart: '2026-07-13', dateEnd: '2026-07-26' },
+    { _id: 'j2', workType: 190, company: { _id: 'c3', name: 'Nord Entreprenør' }, tier: 2, numberOfResources: 1, dateStart: '2026-06-01', dateEnd: '2026-06-21' },
   ],
 };

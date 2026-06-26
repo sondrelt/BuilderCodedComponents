@@ -72,6 +72,12 @@ const STATUS_SOURCES   = new Set([SRC.UDEKT, SRC.OVERSKUDD]);             // gap
 // (see .rp-row-derived muting in the CSS). Order within each group is enum value.
 const SOURCE_ORDER = [SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE, SRC.EGNE, SRC.UDEKT, SRC.OVERSKUDD];
 
+// Marketplace tier priority (internt → partnere → alle). Ads arrive pre-tagged with
+// `tier` (1/2/3) from Appfarm — the component never resolves partnerships itself.
+// Lower tier wins (shown first / used for the marker colour).
+const TIER_LABEL = { 1: 'internt', 2: 'partner', 3: 'alle' };
+const TIER_MAX   = 9;   // unknown/untagged ad sinks below 'alle'
+
 const STICKY_W          = 280;   // left panel width (px) — keep in sync with CSS --rp-sticky-w
 const DEFAULT_COL_W     = 60;
 const FALLBACK_WEEKS    = 20;    // window when viewFrom/viewTo are unset
@@ -92,6 +98,13 @@ const ICONS = {
 const safeGet   = (ds) => ds?.get?.() || [];
 const resolveId = (ref) => (ref && typeof ref === 'object' ? ref._id : ref);
 const toInt     = (v) => { const n = parseInt(v, 10); return Number.isNaN(n) ? null : n; };
+// Display name of a referenced object (Company etc.) however Appfarm hands it over:
+// a flat string field, an expanded object, or a display value. Falls back gracefully.
+const refName   = (ref) => {
+    if (ref == null) return '';
+    if (typeof ref === 'string') return ref;
+    return ref.name || ref.label || ref._displayValue || ref.fullName || '';
+};
 const clampIdx  = (i) => Math.max(0, Math.min(columns.length - 1, i));
 
 // Appfarm actions are invoked directly with optional chaining, e.g.
@@ -137,6 +150,8 @@ let reqsByKey       = new Map(); // reqKey() → [record] sorted by dateFrom
 let allocsByProject = new Map(); // projectId → [allocation]
 let absentByCol     = [];        // column index → Set<resourceId> absent that week
 let wtNameMap       = {};        // workType enum_value → enum_name
+let jobsByWT        = new Map(); // workType → [Job ad]               (lease-OUT demand; surplus weeks)
+let availByWT       = new Map(); // workType → [Resource Available ad] (lease-IN supply; deficit weeks)
 
 let activeDrag    = null;
 let liftedBar     = null;        // editable span currently lifted by lane-hover
@@ -256,6 +271,61 @@ function indexData() {
         const e = clampIdx(colIndexForDate(to));
         for (let i = s; i <= e; i++) absentByCol[i].add(rid);
     });
+
+    // Marketplace ads, bucketed by work type so a band column can surface matching
+    // availability. Each record is expected to carry a pre-computed `tier` (1/2/3).
+    jobsByWT  = bucketAdsByWT(appfarm.data.jobs);                // lease-OUT (surplus → oppdrag)
+    availByWT = bucketAdsByWT(appfarm.data.resourcesAvailable);  // lease-IN  (deficit → ledige)
+}
+
+// Bucket an ad data source (Job ad / Resource Available ad) by work type, dropping
+// records with no work type or unparsable dates. Mirrors assignment-grid's jobsByWorkType.
+function bucketAdsByWT(ds) {
+    const map = new Map();
+    safeGet(ds).forEach(ad => {
+        const wt = toInt(ad.workType);
+        if (wt == null) return;
+        if (isNaN(+new Date(ad.dateStart)) || isNaN(+new Date(ad.dateEnd))) return;
+        let list = map.get(wt);
+        if (!list) map.set(wt, (list = []));
+        list.push(ad);
+    });
+    return map;
+}
+
+// Marketplace availability for one band column. dir 'in' = lease in (deficit → Resource
+// Available ads), 'out' = lease out (surplus → Job ads). Returns null when nothing matches.
+// Companies are de-duped and sorted best-tier-first; total sums numberOfResources.
+function availabilityForColumn(wt, ci, dir) {
+    const list = (dir === 'in' ? availByWT : jobsByWT).get(wt);
+    if (!list || !list.length) return null;
+    const cs = +columns[ci].start, ce = +columns[ci].end;
+    const hits = list.filter(ad =>
+        +new Date(ad.dateEnd) >= cs && +new Date(ad.dateStart) <= ce);
+    if (!hits.length) return null;
+
+    const byCompany = new Map();
+    let total = 0, bestTier = TIER_MAX;
+    hits.forEach(ad => {
+        const tier = toInt(ad.tier) || TIER_MAX;
+        const n    = Number(ad.numberOfResources) || 0;
+        total += n;
+        if (tier < bestTier) bestTier = tier;
+        const name = ad.companyName || refName(ad.company) || 'Ukjent selskap';
+        const cur  = byCompany.get(name) || { name, tier: TIER_MAX, count: 0 };
+        cur.tier  = Math.min(cur.tier, tier);
+        cur.count += n;
+        byCompany.set(name, cur);
+    });
+    const companies = [...byCompany.values()].sort((a, b) => a.tier - b.tier || b.count - a.count);
+    return { dir, total, bestTier, companies, ids: hits.map(h => h._id) };
+}
+
+// Signature so adjacent columns with identical availability collapse into one marker.
+function availSignature(av) {
+    if (!av) return '';
+    return av.dir + '|' + av.total + '|' +
+        av.companies.map(c => c.name + ':' + c.tier + ':' + c.count).join(',');
 }
 
 // ═══ 6. AGGREGATES ══════════════════════════════════════════════════════════
@@ -479,7 +549,7 @@ const magBucket = (v) => { const a = Math.abs(v); return a <= 1 ? '1' : a <= 3 ?
 // Unlike makeRunBarTrack this keys on the gap STATE, so a stretch of unplanned
 // weeks ('none') renders as one continuous number-less block instead of gaps,
 // and covered/deficit/surplus never merge across a state change.
-function makeGapBandTrack(agg, wtId) {
+function makeGapBandTrack(agg, wtId, projectId) {
     const track = document.createElement('div');
     track.className = 'rp-track rp-track-agg rp-track-gap';
     track.style.width          = gridWidth + 'px';
@@ -506,7 +576,74 @@ function makeGapBandTrack(agg, wtId) {
         track.appendChild(bar);
         i = j + 1;
     }
+
+    // Availability overlay: deficit weeks → lease-in supply (Resource Available ads),
+    // surplus weeks → lease-out demand (Job ads). Adjacent columns with identical
+    // availability collapse into one marker. Sits below the gap number, never merges
+    // across a change in available companies/count.
+    appendAvailabilityMarkers(track, states, wtId, projectId);
     return track;
+}
+
+// Second pass over the band columns: render a marketplace-availability marker on each
+// deficit/surplus run that has matching ads, showing the posting company and tier.
+function appendAvailabilityMarkers(track, states, wtId, projectId) {
+    let i = 0;
+    while (i < states.length) {
+        const st  = states[i].state;
+        const dir = st === 'deficit' ? 'in' : st === 'surplus' ? 'out' : null;
+        if (!dir) { i++; continue; }
+
+        const av  = availabilityForColumn(wtId, i, dir);
+        const sig = availSignature(av);
+        // Extend the run while same state AND identical availability signature.
+        let j = i;
+        while (j + 1 < states.length
+            && states[j + 1].state === st
+            && availSignature(availabilityForColumn(wtId, j + 1, dir)) === sig) j++;
+
+        if (av) {
+            const left  = columns[i].left;
+            const width = columns[j].left + columns[j].width - left;
+            track.appendChild(makeAvailMarker(av, left, width, wtId, projectId));
+        }
+        i = j + 1;
+    }
+}
+
+function makeAvailMarker(av, left, width, wtId, projectId) {
+    const single = av.companies.length === 1;
+    const arrow  = av.dir === 'in' ? '↓' : '↗';                   // ↓ ledige · ↗ oppdrag
+    const who    = single ? av.companies[0].name
+                          : av.companies.length + ' selskaper';
+
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'rp-avail rp-avail-' + av.dir + ' rp-tier-' + (av.bestTier <= 3 ? av.bestTier : 'x');
+    el.style.left  = left + 'px';
+    el.style.width = Math.max(width, 1) + 'px';
+    el.innerHTML =
+        '<span class="rp-avail-arrow">' + arrow + '</span>' +
+        '<span class="rp-avail-count">' + av.total + '</span>' +
+        '<span class="rp-avail-who">' + escapeHtml(who) + '</span>';
+
+    const wtName = wtNameMap[wtId] || String(wtId);                 // int → trade name
+    const verb = av.dir === 'in' ? 'Ledige ressurser å leie inn' : 'Oppdrag å leie ut til';
+    el.title = verb + ' · ' + wtName + ' (' + av.total + '):\n' +
+        av.companies.map(c => '• ' + c.name + ' — ' + c.count + ' (' + (TIER_LABEL[c.tier] || '–') + ')').join('\n');
+
+    el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        appfarm.actions?.viewBuilderAds?.(
+            { projectId, workType: wtId, direction: av.dir, tier: av.bestTier },
+            { event: e });
+    });
+    return el;
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
 // Work-type band row — the dominant grouping level, replacing the old source
@@ -515,7 +652,7 @@ function makeGapBandTrack(agg, wtId) {
 function makeWorkTypeBandRow(project, wtId, agg, isException) {
     const row = document.createElement('div');
     row.className = 'rp-row rp-row-wt-band' + (isException ? ' rp-row-exception' : '');
-    row.style.setProperty('--proj-color', project.colorHexCode || '#94a3b8');
+    row.style.setProperty('--proj-color', project.colorHexCode || '#d1eae0');
 
     const label = document.createElement('div');
     label.className = 'rp-label-cell rp-wt-band-label';
@@ -523,7 +660,7 @@ function makeWorkTypeBandRow(project, wtId, agg, isException) {
     if (isException) label.title = 'Ikke planlagt arbeidstype på dette prosjektet';
 
     row.appendChild(label);
-    row.appendChild(makeGapBandTrack(agg, wtId));
+    row.appendChild(makeGapBandTrack(agg, wtId, project._id));
     return row;
 }
 
@@ -550,7 +687,7 @@ function makeActionButton(icon, title, onClick) {
 
 function makeGroupHeader(project, showDetails) {
     const projectId = project._id;
-    const color     = project.colorHexCode || '#94a3b8';
+    const color     = project.colorHexCode || '#d1eae0';
 
     const row = document.createElement('div');
     row.className = 'rp-group-head';
@@ -655,7 +792,7 @@ function buildAll() {
     allProjects.forEach(project => {
         const projectId   = project._id;
         const showDetails = !!project.detailsShowBOL;
-        const projColor   = project.colorHexCode || '#94a3b8';   // left stripe + bottom line
+        const projColor   = project.colorHexCode || '#d1eae0';   // left stripe + bottom line
 
         const projectWTs = allWorkTypes
             .filter(wt => resolveId(wt.project) === projectId)
@@ -1276,7 +1413,8 @@ function init() {
     // Any structural or data change → guarded rebuild
     ['source', 'projects', 'projectWorkType', 'calendarWeekWidthPixel',
      'workTypeEnum', 'viewFrom', 'viewTo',
-     'projectRequirements', 'allocation', 'absence']
+     'projectRequirements', 'allocation', 'absence',
+     'jobs', 'resourcesAvailable']
         .forEach(name => appfarm.data[name]?.on?.('change', guardedBuildAll));
 }
 

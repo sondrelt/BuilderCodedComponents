@@ -79,6 +79,18 @@ const resolveId = (ref) => (ref && typeof ref === 'object' ? ref._id : ref);
 const clampIdx = (i) => Math.max(0, Math.min(columns.length - 1, i));
 const DAY_MS = 86400000;
 
+// Display name of a referenced object (Company etc.), however Appfarm hands it over.
+const refName = (ref) => {
+    if (ref == null) return '';
+    if (typeof ref === 'string') return ref;
+    return ref.name || ref.label || ref._displayValue || ref.fullName || '';
+};
+// Marketplace tier priority (internt → partnere → alle). Ads arrive pre-tagged with
+// `tier` (1/2/3) from Appfarm; lower wins. Unknown sinks below 'alle'.
+const TIER_LABEL = { 1: 'internt', 2: 'partner', 3: 'alle' };
+const TIER_MAX = 9;
+const jobTier = (j) => { const n = parseInt(j?.tier, 10); return Number.isNaN(n) ? TIER_MAX : n; };
+
 function getContrastColor(hex) {
     if (!hex) return '#1e293b';
     const h = hex.replace('#', '');
@@ -394,16 +406,32 @@ function makeJobGhost(gapFrom, gapTo, jobsInGap) {
     const left  = xForDate(startOfDay(new Date(gapFrom)));
     const right = xForDate(endOfDay(new Date(gapTo)));
     const n = jobsInGap.length;
-    const label = n > 1 ? `${n} ledige oppdrag` : (jobsInGap[0].title || 'Oppdrag');
     const count = jobsInGap.reduce((sum, j) => sum + (Number(j.numberOfResources) || 0), 0);
 
+    // Aggregate by posting company, best tier first (jobsInGap is pre-sorted by tier),
+    // so the ghost names who posted the ad and its accent reflects the best tier.
+    const byCompany = new Map();
+    jobsInGap.forEach(j => {
+        const name = j.companyName || refName(j.company) || 'Ukjent selskap';
+        const c = byCompany.get(name) || { name, tier: TIER_MAX, count: 0 };
+        c.tier  = Math.min(c.tier, jobTier(j));
+        c.count += Number(j.numberOfResources) || 0;
+        byCompany.set(name, c);
+    });
+    const companies = [...byCompany.values()];
+    const bestTier  = jobTier(jobsInGap[0]);
+    const label = companies.length === 1
+        ? companies[0].name
+        : `${companies[0].name} +${companies.length - 1} andre`;
+
     const ghost = document.createElement('div');
-    ghost.className = 'pl-jobad';
+    ghost.className = 'pl-jobad pl-tier-' + (bestTier <= 3 ? bestTier : 'x');
     ghost.style.left = left + 'px';
     ghost.style.width = Math.max(right - left, 1) + 'px';
     ghost.dataset.jobId = jobsInGap[0]._id;
     if (n > 1) ghost.dataset.jobIds = jobsInGap.map(j => j._id).join(',');
-    ghost.title = count ? `${label} · ${count} stk` : label;
+    ghost.title = `${n} ledige oppdrag · ${count} stk\n`
+        + companies.map(c => `• ${c.name} — ${c.count} (${TIER_LABEL[c.tier] || '–'})`).join('\n');
     ghost.innerHTML =
         `<span class="pl-jobad-mark">↗</span>` +
         `<span class="pl-jobad-label"></span>` +
@@ -434,6 +462,9 @@ function makeTrack(res) {
             const hits = jobs.filter(j =>
                 +endOfDay(new Date(j.dateEnd)) >= gf && +startOfDay(new Date(j.dateStart)) <= gt);
             if (!hits.length) return;
+            // Rank internt → partnere → alle so the collapsed ghost's primary (hits[0])
+            // and its accent are the best available tier.
+            hits.sort((a, b) => jobTier(a) - jobTier(b));
             // Clip the ghost to the part of the gap actually covered by the matching ads.
             const from = new Date(Math.max(gf, Math.min(...hits.map(j => +startOfDay(new Date(j.dateStart))))));
             const to   = new Date(Math.min(gt, Math.max(...hits.map(j => +endOfDay(new Date(j.dateEnd))))));

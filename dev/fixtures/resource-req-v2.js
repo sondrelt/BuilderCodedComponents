@@ -67,4 +67,20 @@ window.FIXTURES['resource-req-v2'] = {
   absence: [
     { _id: 'ab1', resource: 'res1', dateFrom: iso('2026-06-29'), dateTo: iso('2026-07-05') },
   ],
+
+  // Resource Available ads (lease-IN supply) — surface on DEFICIT band weeks.
+  // p1/Tømrer(250) runs deficit throughout; these span it across the three tiers.
+  // tier: 1 internt, 2 partner, 3 alle. company carries the posting company name.
+  resourcesAvailable: [
+    { _id: 'ra1', workType: 250, company: { _id: 'c2', name: 'Bygg & Co' },        tier: 1, numberOfResources: 2, dateStart: iso('2026-06-08'), dateEnd: iso('2026-06-28'), title: '2 tømrere ledig' },
+    { _id: 'ra2', workType: 250, company: { _id: 'c3', name: 'Nord Entreprenør' }, tier: 2, numberOfResources: 1, dateStart: iso('2026-06-22'), dateEnd: iso('2026-07-12'), title: 'Tømrer ledig' },
+    { _id: 'ra3', workType: 250, company: { _id: 'c4', name: 'SørBygg' },          tier: 3, numberOfResources: 3, dateStart: iso('2026-07-06'), dateEnd: iso('2026-07-19'), title: 'Tømrerlag' },
+  ],
+
+  // Job ads (lease-OUT demand) — surface on SURPLUS band weeks.
+  // p1/Betong(20) goes surplus 07-20..08-02; two companies overlap → "N selskaper".
+  jobs: [
+    { _id: 'j1', workType: 20, company: { _id: 'c5', name: 'Betong Spesialisten' }, tier: 1, numberOfResources: 1, dateStart: iso('2026-07-20'), dateEnd: iso('2026-08-02'), title: 'Betongoppdrag' },
+    { _id: 'j2', workType: 20, company: { _id: 'c6', name: 'Anlegg AS' },           tier: 3, numberOfResources: 2, dateStart: iso('2026-07-20'), dateEnd: iso('2026-08-09'), title: 'Stor betongjobb' },
+  ],
 };

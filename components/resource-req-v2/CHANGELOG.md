@@ -1,5 +1,20 @@
 # Changelog — resource-req-v2
 
+## 1.17.0 — 2026-06-26
+
+- **Marketplace availability on the coverage band.** Deficit (−N) and surplus (+N)
+  runs on a work-type band now surface matching marketplace ads inline: deficit weeks
+  show lease-IN supply (Resource Available ads, ↓ "ledige"), surplus weeks show
+  lease-OUT demand (Job ads, ↗ "oppdrag"). Each marker shows the total count and the
+  **posting company** (single name, or "N selskaper" with a per-company breakdown in
+  the tooltip), and clicking opens the marketplace (`viewBuilderAds`) filtered to that
+  work type + direction + best tier.
+- **Tier priority.** Ads are matched work-type-implicitly and ranked
+  **internt → partnere → alle**; the marker's accent colour reflects the best
+  available tier. Ads arrive pre-tagged with a `tier` field from Appfarm (the
+  component does not resolve partnerships itself).
+- **New inputs:** `jobs` (Job ads) and `resourcesAvailable` (Resource Available ads).
+
 ## 1.16.0 — 2026-06-26
 
 - **Editable sources first.** Source rows under each work-type band are reordered
