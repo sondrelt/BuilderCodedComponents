@@ -681,7 +681,9 @@ function buildAll() {
 
             SOURCE_ORDER.forEach(srcEnum => {
                 const srcClass   = SOURCE_CLASS[srcEnum] || 'behov';
-                const isEditable = EDITABLE_SOURCES.has(srcEnum);
+                // Exception trades are read-only: the project never planned this
+                // work type, so its requirement sources can't be drawn/edited.
+                const isEditable = EDITABLE_SOURCES.has(srcEnum) && !isException;
                 const isStatus   = STATUS_SOURCES.has(srcEnum);
 
                 const row = document.createElement('div');

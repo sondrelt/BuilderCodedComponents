@@ -1,5 +1,12 @@
 # Changelog — resource-req-v2
 
+## 1.15.1 — 2026-06-26
+
+- **Exception trades are read-only.** Own people on a work type the project never
+  planned no longer expose editable Behov/Innleide/Utleide tracks — you can't draw
+  or edit a requirement span on an unplanned trade. Their source rows render with
+  the read-only derived renderer (no drag-to-create lane, no span editing).
+
 ## 1.15.0 — 2026-06-26
 
 Built on master (1.11.0); supersedes the unmerged role-first WIP (1.12–1.14 on
