@@ -1,5 +1,40 @@
 # Changelog — resource-req-v2
 
+## 1.15.0 — 2026-06-26
+
+Built on master (1.11.0); supersedes the unmerged role-first WIP (1.12–1.14 on
+`feat/resource-req-v2`), which flipped the hierarchy but dropped the aggregation
+band so source and work type read as one undifferentiated block.
+
+- **Work-type-first layout.** Hierarchy pivoted from project → source → trade to
+  **project → work type → its source rows** (Behov, Egne, Innleide, Utleide, Udekt,
+  Overskudd in fixed order). Each trade is the dominant grouping level; collapsing a
+  project leaves just the trade bands.
+- **Coverage-balance band.** The work-type band shows the coverage balance per
+  week (`bal = Egne + Innleide − Behov`) so **surplus reads +N (Overskudd)** and
+  **deficit −N (Udekt)**. Four distinct states:
+  - **No demand** — no Behov record this week (project ended / not started / not
+    filled in): a faint hatch with **no number**, kept deliberately distinct from a
+    confident covered-0. Behov *presence* is tracked independently of count, so a
+    registered `0` still reads as covered.
+  - **Deficit (Udekt)** — `bal < 0`: warm underline, shows `−N`.
+  - **Surplus (Overskudd)** — `bal > 0`: cool underline, shows `+N`.
+  - **Covered** — `bal == 0` with Behov present: calm neutral `0`.
+  Designed like the source aggregation rows in the original layout — a faint band
+  tint with the value as a **floating underlined-number marker** plus short vertical
+  end-ticks per run, rather than a filled cell. State rides the underline + ticks
+  colour; magnitude deepens it across three steps.
+- **Colour as signal, not category.** The coverage band is the only saturated layer
+  (two semantic hues). Source rows are monochrome ink; category identity comes from
+  fixed row order, the label, and a 3px colour tick — removing five of the six
+  per-source fills to cut visual load in a dense grid.
+- **Bar species stay distinct without hue.** Editable span pills (border + shadow +
+  handles) vs. hatched derived rows vs. the colour-filled band — a three-way
+  structural separation that replaces per-source colour as the parsing cue.
+- **Marketplace entry moved.** `viewBuilderAds` ("Se detaljer") now lives on the
+  Udekt/Overskudd source detail rows. Dropped the cross-work-type source summary
+  rows (`makeSummaryTrack`) and the now-unused header aggregate.
+
 ## 1.11.0 — 2026-06-25
 
 - **Egne aggregates by the resource's own trade, one row per person.** An allocation's

@@ -23,6 +23,7 @@ window.FIXTURES['resource-req-v2'] = {
     { enum_value: 10, enum_name: 'Behov' },
     { enum_value: 20, enum_name: 'Egne' },
     { enum_value: 30, enum_name: 'Innleide' },
+    { enum_value: 35, enum_name: 'Utleide' },
     { enum_value: 40, enum_name: 'Udekt' },
     { enum_value: 50, enum_name: 'Overskudd' },
   ],
@@ -41,10 +42,13 @@ window.FIXTURES['resource-req-v2'] = {
   ],
 
   // Project Requirement: Behov bars per work type (the editable demand).
+  // p1/Betong(20) is tuned to walk the band through all four states across its
+  // Behov span: deficit → covered → surplus, bracketed by no-demand outside it.
   projectRequirements: [
     { _id: 'r1', project: 'p1', source: 10, workType: 250, resourceCount: 4, dateFrom: iso('2026-06-08'), dateTo: iso('2026-07-19') },
     { _id: 'r2', project: 'p1', source: 10, workType: 20, resourceCount: 2, dateFrom: iso('2026-06-15'), dateTo: iso('2026-08-02') },
     { _id: 'r3', project: 'p1', source: 30, workType: 250, resourceCount: 1, dateFrom: iso('2026-06-22'), dateTo: iso('2026-07-12') },
+    { _id: 'r5', project: 'p1', source: 30, workType: 20,  resourceCount: 1, dateFrom: iso('2026-06-22'), dateTo: iso('2026-07-12') }, // Innleide → covered window
     { _id: 'r4', project: 'p2', source: 10, workType: 190, resourceCount: 3, dateFrom: iso('2026-06-01'), dateTo: iso('2026-07-05') },
   ],
 
@@ -53,6 +57,9 @@ window.FIXTURES['resource-req-v2'] = {
     { _id: 'a1', project: 'p1', resource: 'res1', workType: 250, dateFrom: iso('2026-06-08'), dateTo: iso('2026-07-19') },
     { _id: 'a2', project: 'p1', resource: 'res2', workType: 250, dateFrom: iso('2026-06-08'), dateTo: iso('2026-07-19') },
     { _id: 'a3', project: 'p1', resource: 'res3', workType: 20, dateFrom: iso('2026-06-15'), dateTo: iso('2026-08-02') },
+    { _id: 'a5', project: 'p1', resource: 'res5', workType: 20, dateFrom: iso('2026-07-13'), dateTo: iso('2026-08-02') }, // 2nd own person → covered
+    { _id: 'a6', project: 'p1', resource: 'res6', workType: 20, dateFrom: iso('2026-07-20'), dateTo: iso('2026-08-02') }, // 3rd own person → surplus (-1)
+    { _id: 'a7', project: 'p1', resource: 'res7', workType: 190, dateFrom: iso('2026-06-15'), dateTo: iso('2026-07-19') }, // trade p1 never planned → exception band (all no-demand)
     { _id: 'a4', project: 'p2', resource: 'res4', workType: 190, dateFrom: iso('2026-06-01'), dateTo: iso('2026-07-05') },
   ],
 

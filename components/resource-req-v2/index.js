@@ -64,6 +64,10 @@ const SOURCE_CLASS = {
 
 const EDITABLE_SOURCES = new Set([SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE]); // user draws bars / sources stored as spans
 const POPOVER_SOURCES  = new Set([SRC.INNLEIDE, SRC.UTLEIDE, SRC.UDEKT, SRC.OVERSKUDD]);
+const STATUS_SOURCES   = new Set([SRC.UDEKT, SRC.OVERSKUDD]);             // gap rows — carry the "Se detaljer" marketplace entry
+// Fixed source row order under each work-type band. Always the same, so the eye
+// parses rows by position rather than colour.
+const SOURCE_ORDER = [SRC.BEHOV, SRC.EGNE, SRC.INNLEIDE, SRC.UTLEIDE, SRC.UDEKT, SRC.OVERSKUDD];
 
 const STICKY_W          = 280;   // left panel width (px) — keep in sync with CSS --rp-sticky-w
 const DEFAULT_COL_W     = 60;
@@ -258,11 +262,10 @@ function indexData() {
 //  Overskudd = max(0, Egne + Innleide − Behov)
 //
 //  Each record's span is painted onto a per-(source, workType) column array
-//  exactly once; headers are column-wise sums across work types.
+//  exactly once. The work-type band reads its coverage state from gap() below.
 function computeAggregates(projectId, workTypes) {
     const N      = columns.length;
     const detail = new Map(); // `${src}_${wt}` → number[N]
-    const header = new Map(); // src → number[N]
     const detailArr = (src, wt) => {
         const k = src + '_' + wt;
         let a = detail.get(k);
@@ -270,22 +273,39 @@ function computeAggregates(projectId, workTypes) {
         return a;
     };
 
-    function paint(arr, fromRaw, toRaw, val) {
-        if (!val) return;
+    // Behov *presence* per work type — 1 on every column a Behov record overlaps,
+    // independent of its resourceCount. This is what separates "covered (gap 0)"
+    // from "no demand registered" (project ended / not started / not filled in):
+    // a registered Behov of 0 still counts as present, a missing record does not.
+    const behovPresent = new Map(); // wt → number[N] (0/1)
+    const presentArr = (wt) => {
+        let a = behovPresent.get(wt);
+        if (!a) behovPresent.set(wt, (a = new Array(N).fill(0)));
+        return a;
+    };
+
+    function paintSpan(fromRaw, toRaw, onCol) {
         const from = startOfDay(new Date(fromRaw));
         const to   = endOfDay(new Date(toRaw));
         if (isNaN(+from) || isNaN(+to)) return;
         if (+to < +rangeStart || +from > +rangeEnd) return;
         const s = clampIdx(colIndexForDate(from));
         const e = clampIdx(colIndexForDate(to));
-        for (let i = s; i <= e; i++) arr[i] += val;
+        for (let i = s; i <= e; i++) onCol(i);
+    }
+    function paint(arr, fromRaw, toRaw, val) {
+        if (!val) return;
+        paintSpan(fromRaw, toRaw, i => { arr[i] += val; });
     }
 
     // Requirement bars (Behov / Innleide / Utleide)
     workTypes.forEach(wt => {
         [...EDITABLE_SOURCES].forEach(src => {
-            (reqsByKey.get(reqKey(projectId, src, wt)) || []).forEach(r =>
-                paint(detailArr(src, wt), r.dateFrom, r.dateTo, r.resourceCount || 0));
+            (reqsByKey.get(reqKey(projectId, src, wt)) || []).forEach(r => {
+                paint(detailArr(src, wt), r.dateFrom, r.dateTo, r.resourceCount || 0);
+                if (src === SRC.BEHOV)
+                    paintSpan(r.dateFrom, r.dateTo, i => { presentArr(wt)[i] = 1; });
+            });
         });
     });
 
@@ -345,22 +365,27 @@ function computeAggregates(projectId, workTypes) {
         }
     });
 
-    // Headers = column-wise sums across work types (incl. Utleide, fixed in v2).
-    // EGNE also sums its exception trades, so the total counts every own person present.
-    Object.values(SRC).forEach(src => {
-        const wts = src === SRC.EGNE ? [...workTypes, ...egneExtraWTs] : workTypes;
-        const h = new Array(N).fill(0);
-        wts.forEach(wt => {
-            const d = detail.get(src + '_' + wt);
-            if (d) for (let i = 0; i < N; i++) h[i] += d[i];
-        });
-        header.set(src, h);
-    });
+    // Coverage balance for the work-type band: bal = Egne + Innleide − Behov
+    // (Utleide is lease-out, not coverage). The displayed number is the balance, so
+    // surplus reads +N and deficit −N. Four states the band renders distinctly:
+    //   none     — no Behov record this column → unplanned, shown without a number
+    //   deficit  — short of demand (bal < 0, Udekt)     → warm underline, shows −N
+    //   surplus  — over demand     (bal > 0, Overskudd) → cool underline, shows +N
+    //   covered  — bal == 0 with Behov present          → calm 0
+    const gapAt = (wt, i) => {
+        if (!behovPresent.get(wt)?.[i]) return { state: 'none', value: 0 };
+        const bal = (detail.get(SRC.EGNE + '_' + wt)?.[i]     || 0)
+                  + (detail.get(SRC.INNLEIDE + '_' + wt)?.[i] || 0)
+                  - (detail.get(SRC.BEHOV + '_' + wt)?.[i]    || 0);
+        if (bal < 0) return { state: 'deficit', value: bal };   // −N
+        if (bal > 0) return { state: 'surplus', value: bal };   // +N
+        return { state: 'covered', value: 0 };
+    };
 
     return {
         egneExtraWTs,
         detail: (src, wt, i) => detail.get(src + '_' + wt)?.[i] || 0,
-        header: (src, i)     => header.get(src)?.[i] || 0
+        gap:    gapAt
     };
 }
 
@@ -404,12 +429,10 @@ function makeEditableTrack(projectId, srcEnum, srcClass, workType, srcName) {
     return track;
 }
 
-// Aggregate rows render as bars: collapse adjacent equal values into one
-// read-only bar (no handles) with the value shown once.
-// fillZeros (summary source rows only) renders 0 as a real span so the row reads
-// continuously; work-type detail rows leave 0 columns as blank gaps.
-// The source class already carries the colour (rp-bar-udekt = red etc.).
-function makeRunBarTrack(values, srcClass, fillZeros) {
+// Aggregate (read-only) detail rows render as bars: collapse adjacent equal
+// values into one bar (no handles) with the value shown once; 0 columns are left
+// as blank gaps. The source class carries the row identity (CSS hatch + tick).
+function makeRunBarTrack(values, srcClass) {
     const track = document.createElement('div');
     track.className = 'rp-track rp-track-agg';
     track.style.width          = gridWidth + 'px';
@@ -417,7 +440,7 @@ function makeRunBarTrack(values, srcClass, fillZeros) {
     let i = 0, runIdx = 0;
     while (i < values.length) {
         const v = values[i];
-        if (!v && !fillZeros) { i++; continue; }                     // 0 → gap
+        if (!v) { i++; continue; }                                   // 0 → gap
         let j = i;
         while (j + 1 < values.length && values[j + 1] === v) j++;    // extend run
         const left = columns[i].left;
@@ -439,19 +462,72 @@ function makeDerivedTrack(agg, srcEnum, workType) {
     return makeRunBarTrack(values, SOURCE_CLASS[srcEnum] || 'behov');
 }
 
-function makeSummaryTrack(agg, projectId, srcEnum, srcClass) {
-    const values = columns.map((_, ci) => agg.header(srcEnum, ci));
-    const track = makeRunBarTrack(values, srcClass, true);
-    if (POPOVER_SOURCES.has(srcEnum)) {
-        const btn = document.createElement('button');
-        btn.className = 'rp-popover-btn';
-        btn.innerHTML = ICONS.search;
-        btn.title = 'Se detaljer';
-        btn.addEventListener('click', e =>
-            appfarm.actions?.viewBuilderAds?.({ source: srcEnum, projectId }, { event: e }));
-        track.appendChild(btn);
+// Magnitude bucket for the gap band's intensity ramp (CSS deepens the fill by
+// data-mag, so severity is scannable without reading the digit): 1 · 2–3 · 4+.
+const magBucket = (v) => { const a = Math.abs(v); return a <= 1 ? '1' : a <= 3 ? '2' : '3'; };
+
+// The work-type coverage band: one run-bar per contiguous (state,value) run.
+// Unlike makeRunBarTrack this keys on the gap STATE, so a stretch of unplanned
+// weeks ('none') renders as one continuous number-less block instead of gaps,
+// and covered/deficit/surplus never merge across a state change.
+function makeGapBandTrack(agg, wtId) {
+    const track = document.createElement('div');
+    track.className = 'rp-track rp-track-agg rp-track-gap';
+    track.style.width          = gridWidth + 'px';
+    track.style.backgroundSize = COL_W + 'px 100%';
+
+    const states = columns.map((_, ci) => agg.gap(wtId, ci));
+    let i = 0;
+    while (i < states.length) {
+        const g = states[i];
+        let j = i;
+        while (j + 1 < states.length
+            && states[j + 1].state === g.state
+            && states[j + 1].value === g.value) j++;
+        const left = columns[i].left;
+        const bar = document.createElement('div');
+        bar.className = 'rp-bar rp-bar-agg rp-gap rp-gap-' + g.state;
+        bar.style.left  = left + 'px';
+        bar.style.width = (columns[j].left + columns[j].width - left) + 'px';
+        if (g.state === 'deficit' || g.state === 'surplus') bar.dataset.mag = magBucket(g.value);
+        if (g.state !== 'none') {                                           // 'none' = no number
+            const txt = g.value > 0 ? '+' + g.value : String(g.value);     // +N surplus, −N deficit, 0 covered
+            bar.innerHTML = '<span class="rp-bar-count">' + txt + '</span>';
+        }
+        track.appendChild(bar);
+        i = j + 1;
     }
     return track;
+}
+
+// Work-type band row — the dominant grouping level, replacing the old source
+// summary header. Carries the only saturated colour in the grid (the gap band);
+// everything beneath it is monochrome ink.
+function makeWorkTypeBandRow(project, wtId, agg, isException) {
+    const row = document.createElement('div');
+    row.className = 'rp-row rp-row-wt-band' + (isException ? ' rp-row-exception' : '');
+    row.style.setProperty('--proj-color', project.colorHexCode || '#94a3b8');
+
+    const label = document.createElement('div');
+    label.className = 'rp-label-cell rp-wt-band-label';
+    label.textContent = (wtNameMap[wtId] || String(wtId)) + (isException ? ' ⚠' : '');
+    if (isException) label.title = 'Ikke planlagt arbeidstype på dette prosjektet';
+
+    row.appendChild(label);
+    row.appendChild(makeGapBandTrack(agg, wtId));
+    return row;
+}
+
+// "Se detaljer" → marketplace ads for this source/project (lease-in / lease-out
+// path). Lives on the Udekt/Overskudd gap detail rows.
+function makeAdsButton(projectId, srcEnum) {
+    const btn = document.createElement('button');
+    btn.className = 'rp-popover-btn';
+    btn.innerHTML = ICONS.search;
+    btn.title = 'Se detaljer';
+    btn.addEventListener('click', e =>
+        appfarm.actions?.viewBuilderAds?.({ source: srcEnum, projectId }, { event: e }));
+    return btn;
 }
 
 function makeActionButton(icon, title, onClick) {
@@ -589,62 +665,45 @@ function buildAll() {
         sep.style.setProperty('--proj-color', projColor);
         frag.appendChild(sep);
 
-        allSources.forEach(src => {
-            const srcEnum = toInt(src.enum_value);
-            if (srcEnum == null) return;
-            const srcClass   = SOURCE_CLASS[srcEnum] || 'behov';
-            const isEditable = EDITABLE_SOURCES.has(srcEnum);
+        // Work-type-first: project → role (work type) → its source rows. The gap
+        // band always renders; the six source detail rows only when expanded.
+        const srcNameByEnum = {};
+        allSources.forEach(s => {
+            const e = toInt(s.enum_value);
+            if (e != null) srcNameByEnum[e] = s.enum_name || '';
+        });
 
-            // Source summary row (aggregate across all work types, read-only)
-            const srcRow = document.createElement('div');
-            srcRow.style.setProperty('--proj-color', projColor);
-            srcRow.className = 'rp-row rp-row-source-header rp-row-source-header-' + srcClass;
+        const extraWTs = agg.egneExtraWTs || [];
+        [...projectWTs, ...extraWTs].forEach(wtId => {
+            const isException = extraWTs.includes(wtId);
+            frag.appendChild(makeWorkTypeBandRow(project, wtId, agg, isException));
+            if (!showDetails) return;                        // collapsed = bands only
 
-            const srcLabel = document.createElement('div');
-            srcLabel.className = 'rp-label-cell rp-source-label rp-source-label-' + srcClass;
-            srcLabel.textContent = src.enum_name || '';
+            SOURCE_ORDER.forEach(srcEnum => {
+                const srcClass   = SOURCE_CLASS[srcEnum] || 'behov';
+                const isEditable = EDITABLE_SOURCES.has(srcEnum);
+                const isStatus   = STATUS_SOURCES.has(srcEnum);
 
-            srcRow.appendChild(srcLabel);
-            srcRow.appendChild(makeSummaryTrack(agg, projectId, srcEnum, srcClass));
-            frag.appendChild(srcRow);
+                const row = document.createElement('div');
+                row.style.setProperty('--proj-color', projColor);
+                row.className = 'rp-row rp-row-src rp-row-src-' + srcClass
+                    + (isEditable ? ' rp-row-editable' : ' rp-row-derived')
+                    + (isStatus ? ' rp-row-status' : '');
 
-            // Work-type detail rows (only when project is expanded)
-            if (!showDetails) return;
-            projectWTs.forEach(wtId => {
-                const wtRow = document.createElement('div');
-                wtRow.style.setProperty('--proj-color', projColor);
-                wtRow.className = 'rp-row rp-row-wt'
-                    + (isEditable ? ' rp-row-editable' : ' rp-row-derived');
+                const label = document.createElement('div');
+                label.className = 'rp-label-cell rp-source-label rp-source-label-' + srcClass;
+                label.textContent = srcNameByEnum[srcEnum] || srcClass;
+                row.appendChild(label);
 
-                const wtLabel = document.createElement('div');
-                wtLabel.className = 'rp-label-cell rp-wt-label';
-                wtLabel.textContent = wtNameMap[wtId] || String(wtId);
-
-                wtRow.appendChild(wtLabel);
-                wtRow.appendChild(isEditable
-                    ? makeEditableTrack(projectId, srcEnum, srcClass, wtId, src.enum_name)
-                    : makeDerivedTrack(agg, srcEnum, wtId));
-                frag.appendChild(wtRow);
+                const track = isEditable
+                    ? makeEditableTrack(projectId, srcEnum, srcClass, wtId, srcNameByEnum[srcEnum])
+                    : makeDerivedTrack(agg, srcEnum, wtId);
+                // Marketplace entry point (lease-in / lease-out leads) lives on the gap rows.
+                if (isStatus && POPOVER_SOURCES.has(srcEnum))
+                    track.appendChild(makeAdsButton(projectId, srcEnum));
+                row.appendChild(track);
+                frag.appendChild(row);
             });
-
-            // Egne exception rows: own people whose trade the project didn't list as
-            // needed. Marked so it reads as off-plan rather than a normal Egne row.
-            if (srcEnum === SRC.EGNE) {
-                (agg.egneExtraWTs || []).forEach(wtId => {
-                    const wtRow = document.createElement('div');
-                    wtRow.style.setProperty('--proj-color', projColor);
-                    wtRow.className = 'rp-row rp-row-wt rp-row-derived rp-row-exception';
-
-                    const wtLabel = document.createElement('div');
-                    wtLabel.className = 'rp-label-cell rp-wt-label';
-                    wtLabel.textContent = (wtNameMap[wtId] || String(wtId)) + ' ⚠';
-                    wtLabel.title = 'Ikke planlagt arbeidstype på dette prosjektet';
-
-                    wtRow.appendChild(wtLabel);
-                    wtRow.appendChild(makeDerivedTrack(agg, srcEnum, wtId));
-                    frag.appendChild(wtRow);
-                });
-            }
         });
     });
 
