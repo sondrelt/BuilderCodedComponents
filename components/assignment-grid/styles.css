@@ -15,6 +15,7 @@
   --amber-rgb: 250, 175, 82;
   --slate-50: #eef1f2; --slate-500: #4d6470; --slate-600: #415560; --slate-700: #34454e;
   --red-500: #a2332f;
+  --nav-blue: #1e3a5f; --nav-blue-rgb: 30, 58, 95;   /* header navy — toggle + calendar highlight */
 
   /* Builder job-ad ghost — indigo, distinct from project / absence / now-line hues. Tunable. */
   --jobad-accent: #6366c4;
@@ -525,6 +526,8 @@
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   color: var(--text-dark, #374151);
+  max-height: calc(100vh - 16px);   /* never taller than the viewport… */
+  overflow-y: auto;                 /* …scroll internally if content grows */
 }
 
 /* Tildeling / Fravær segmented toggle */
@@ -546,25 +549,18 @@
   cursor: pointer;
   transition: background .12s, color .12s;
 }
-.pl-pop-toggle button.active { background: var(--amber-500, #faaf52); color: #fff; }
-.pl-pop-toggle.locked button { cursor: default; opacity: 0.75; }
-.pl-pop-toggle.locked button.active { opacity: 1; }
-
-.pl-pop-section {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #6b7280;
-  margin: 12px 0 6px;
+.pl-pop-toggle button.active { background: var(--nav-blue, #1e3a5f); color: #fff; }
+.pl-pop-toggle.locked button { cursor: default; }
+.pl-pop-toggle.pl-pop-invalid {
+  border-color: var(--red-500, #a2332f);
+  box-shadow: 0 0 0 3px rgba(162, 51, 47, 0.12);
 }
-.pl-pop-sellabel { margin-top: 0; }
 
-/* Searchable select */
-.pl-select { position: relative; }
+/* Søk input + flat list */
 .pl-select-input {
   width: 100%;
   box-sizing: border-box;
+  margin-bottom: 8px;
   padding: 8px 10px;
   border: 1px solid var(--border-color, #d1d5db);
   border-radius: 8px;
@@ -577,57 +573,66 @@
   border-color: var(--slate-600, #415560);
   box-shadow: 0 0 0 3px rgba(77, 100, 112, 0.12);
 }
-.pl-pop-invalid .pl-select-input {
+.pl-pop-list.pl-pop-invalid .pl-list {
   border-color: var(--red-500, #a2332f);
   box-shadow: 0 0 0 3px rgba(162, 51, 47, 0.12);
 }
-.pl-select-list {
-  display: none;
-  position: absolute;
-  left: 0; right: 0; top: calc(100% + 4px);
-  z-index: 5;
-  max-height: 180px;
+.pl-list {
+  max-height: 200px;          /* ~5 rows then scroll */
   overflow-y: auto;
-  background: #fff;
   border: 1px solid var(--border-color, #d1d5db);
   border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(52, 69, 78, 0.16);
 }
-.pl-select.open .pl-select-list { display: block; }
-.pl-select-opt {
+.pl-list-opt {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  font-size: 12px;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
   cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 6px;
 }
-.pl-select-opt:hover, .pl-select-opt.active { background: var(--amber-50, #fef6ea); }
-.pl-select-opt.sel { font-weight: 700; }
+.pl-list-opt:hover { background: var(--amber-50, #fef6ea); }
+.pl-list-opt.sel {
+  border: 1px dashed var(--amber-600, #e89a3a);
+  background: var(--amber-50, #fef6ea);
+}
+.pl-list-dot { flex: 0 0 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12); }
 .pl-select-opt-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.pl-select-sw { flex: 0 0 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.12); }
-.pl-select-empty { padding: 8px 10px; font-size: 12px; font-style: italic; color: #9ca3af; }
+.pl-select-empty, .pl-list-prompt { padding: 10px 12px; font-size: 12px; font-style: italic; color: #9ca3af; }
 
-/* Period chips */
-.pl-pop-dates { display: flex; gap: 8px; margin-bottom: 8px; }
-.pl-date-chip {
+/* Date From / Date To fields */
+.pl-pop-datefields { display: flex; gap: 8px; margin-bottom: 10px; }
+.pl-datefield {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 5px 8px;
+  gap: 2px;
+  padding: 6px 10px;
   border: 1px solid var(--border-color, #d1d5db);
   border-radius: 8px;
-  font-size: 10px;
-  color: #6b7280;
   cursor: pointer;
   user-select: none;
+  position: relative;
   transition: border-color .12s, box-shadow .12s;
 }
-.pl-date-chip b { font-size: 12px; font-weight: 700; color: var(--text-dark, #374151); }
-.pl-date-chip.active {
-  border-color: var(--amber-600, #e89a3a);
-  box-shadow: 0 0 0 2px rgba(232, 154, 58, 0.18);
+.pl-df-label { font-size: 10px; color: #6b7280; }
+.pl-df-val { font-size: 13px; font-weight: 600; color: var(--text-dark, #374151); }
+.pl-df-cal { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #6b7280; }
+.pl-df-cal svg { width: 14px; height: 14px; display: block; }
+.pl-datefield.active {
+  border-color: var(--nav-blue, #1e3a5f);
+  box-shadow: 0 0 0 2px rgba(var(--nav-blue-rgb, 30, 58, 95), 0.18);
+}
+
+/* Date picker panel (collapsible, under the fields) */
+.pl-datepop { display: none; margin-bottom: 10px; }
+.pl-datepop.open {
+  display: block;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 /* Calendar */
@@ -660,8 +665,8 @@
 .pl-cal-cell { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
 .pl-cal-day { cursor: pointer; border-radius: 50%; width: 30px; margin: 0 auto; transition: background .1s; }
 .pl-cal-day.muted { color: #c7ccd1; }
-.pl-cal-day:hover { background: rgba(232, 154, 58, 0.16); }
-.pl-cal-day.sel { background: var(--amber-500, #faaf52); color: #fff; font-weight: 700; }
+.pl-cal-day:hover { background: rgba(var(--nav-blue-rgb, 30, 58, 95), 0.14); }
+.pl-cal-day.sel { background: var(--nav-blue, #1e3a5f); color: #fff; font-weight: 700; }
 .pl-cal-yeargrid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
   max-height: 200px; overflow-y: auto; padding: 4px 0;
@@ -671,24 +676,27 @@
   background: #fff; padding: 6px 0; font-size: 12px; cursor: pointer; transition: background .12s;
 }
 .pl-cal-year:hover { background: #f3f4f6; }
-.pl-cal-year.sel { background: var(--amber-500, #faaf52); color: #fff; font-weight: 700; border-color: var(--amber-600, #e89a3a); }
+.pl-cal-year.sel { background: var(--nav-blue, #1e3a5f); color: #fff; font-weight: 700; border-color: var(--nav-blue, #1e3a5f); }
 
-/* Hint + actions */
-.pl-pop-hint { font-size: 10px; color: #9ca3af; text-align: center; margin-top: 8px; }
-.pl-pop-actions { display: flex; gap: 8px; margin-top: 10px; }
-.pl-pop-cancel, .pl-pop-confirm {
-  flex: 1; padding: 7px 0;
-  font: 600 12px 'Inter', sans-serif; cursor: pointer; border-radius: 999px;
+/* Actions: orange Lagre (left), low-emphasis Slett (right) — separated so delete
+   is never adjacent to the primary action. */
+.pl-pop-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.pl-pop-confirm {
+  margin-left: auto;   /* always right, even when Slett is absent (new entry) */
+  padding: 8px 22px;
+  font: 600 13px 'Inter', sans-serif; cursor: pointer; border-radius: 999px;
+  background: var(--amber-500, #faaf52); border: 1px solid var(--amber-500, #faaf52); color: #fff;
   transition: background .12s, border-color .12s;
 }
-.pl-pop-cancel { background: #fff; border: 1px solid var(--border-color, #d1d5db); color: #6b7280; }
-.pl-pop-cancel:hover { background: #f3f4f6; }
-.pl-pop-confirm { background: var(--slate-600, #415560); border: 1px solid var(--slate-600, #415560); color: #fff; }
-.pl-pop-confirm:hover { background: var(--slate-700, #34454e); border-color: var(--slate-700, #34454e); }
+.pl-pop-confirm:hover { background: var(--amber-600, #e89a3a); border-color: var(--amber-600, #e89a3a); }
+
+/* Destructive Slett — ghost text+icon, red only on hover */
 .pl-pop-delete {
-  display: block; width: 100%; margin-top: 8px; padding: 6px 0;
-  background: #fff; border: 1px solid #fecaca; color: var(--red-500, #a2332f);
-  font: 600 12px 'Inter', sans-serif; cursor: pointer; border-radius: 999px;
-  transition: background .12s, border-color .12s;
+  display: inline-flex; align-items: center; gap: 5px;
+  border: none; background: none; cursor: pointer;
+  padding: 6px 8px; border-radius: 8px;
+  font: 600 12px 'Inter', sans-serif; color: #9ca3af;
+  transition: background .12s, color .12s;
 }
-.pl-pop-delete:hover { background: #fef2f2; border-color: var(--red-500, #a2332f); }
+.pl-pop-delete svg { width: 15px; height: 15px; display: block; }
+.pl-pop-delete:hover { background: #fef2f2; color: var(--red-500, #a2332f); }

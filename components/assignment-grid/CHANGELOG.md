@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0 — 2026-06-26
+
+- **Editor popover redesign** (restored from earlier lost work; number/save logic
+  unchanged):
+  - **Fra dato / Til dato** fields replace the Fra/Til chips; clicking a field opens the
+    day picker in a collapsible panel below (no longer an always-visible calendar) and
+    closes it on pick. The active field gets a navy ring; calendar highlight uses navy.
+  - Action row is a low-emphasis **Slett** (trash icon, red on hover) + amber **Lagre**.
+    Dropped the **Avbryt** button and the hint line — Esc / outside-click still cancel.
+  - Selection is a searchable **flat list** (Søk filter, colour dots, dashed-orange
+    selected row) instead of the dropdown select. New entries must pick
+    Allokering/Fravær first ("Velg allokering eller fravær" prompt).
+  - Popover capped to the viewport (scrolls internally) and re-clamps when the calendar
+    opens/closes or the kind changes, so it can't pop off-screen.
+
 ## 1.4.0 — 2026-06-26
 
 - **Tier-prioritized job ads.** Job ghosts in a resource's free gaps are now ranked

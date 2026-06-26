@@ -1,5 +1,17 @@
 # Changelog — resource-req-v2
 
+## 1.18.0 — 2026-06-26
+
+- **Count popover redesign** (restored from earlier lost work; count/save logic
+  unchanged) — now matches the assignment-grid editor:
+  - **Fra dato / Til dato** fields replace the Fra/Til chips; clicking a field opens the
+    day picker in a collapsible panel below (no longer an always-visible calendar) and
+    closes it on pick. Active field gets a navy ring; calendar highlight uses navy.
+  - Action row is a low-emphasis **Slett** (trash icon, red on hover) + amber **Lagre**.
+    Dropped the **Avbryt** button and the hint line — Esc / outside-click still cancel.
+  - Popover clamps to the viewport and re-clamps when the calendar opens/closes, so it
+    can't pop off-screen.
+
 ## 1.17.0 — 2026-06-26
 
 - **Marketplace availability on the coverage band.** Deficit (−N) and surplus (+N)
