@@ -18,6 +18,9 @@
   --rp-sticky-bg:    #fdfbf7;
   --rp-sticky-w:     280px;
   --rp-row-h:        36px;
+  /* Faint warm-grey fill for read-only (computed) source rows — recedes against
+     the white editable rows so the editable working surface reads as primary. */
+  --rp-readonly-bg:  #faf9f5;
 
   /* Source-category colours — one per enum value */
   --rp-behov-bg:     #e8f0fe; --rp-behov-text:     #1e3a5f; --rp-behov-bar:     #bad0f8;
@@ -185,6 +188,14 @@
   display: flex;
   height: var(--rp-row-h);
 }
+
+/* Read-only (computed) source rows — Egne / Udekt / Overskudd, grouped below the
+   editable rows. A faint warm-grey fill recedes them as a "computed zone"; the
+   editable rows stay white (transparent → scroll bg) and read as the working
+   surface. The track gridlines are transparent so the fill shows through; the
+   label cell is opaque (sticky) so it needs the colour set explicitly. */
+.rp-row-derived { background: var(--rp-readonly-bg); }
+.rp-row-derived .rp-label-cell { background: var(--rp-readonly-bg); }
 
 /* Label cell — sticky left panel */
 .rp-label-cell {

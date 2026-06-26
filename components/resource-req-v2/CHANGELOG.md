@@ -1,5 +1,21 @@
 # Changelog — resource-req-v2
 
+## 1.16.0 — 2026-06-26
+
+- **Editable sources first.** Source rows under each work-type band are reordered
+  so the editable ones (Behov, Innleide, Utleide — what you draw) sit at the top
+  and the computed/read-only rows (Egne, Udekt, Overskudd) below, instead of the
+  old demand→cover→gap interleave. Editability is now the primary row split.
+- **Read-only rows recede.** The computed rows carry a faint warm-grey fill
+  (`--rp-readonly-bg`) so they read as a recessed "computed zone"; editable rows
+  stay white as the working surface. Pairs with the existing diagonal hatch on
+  derived bars. CSS-only (`.rp-row-derived`); no behaviour change.
+- **Fix phantom out-of-window bar.** An editable requirement whose period fell
+  entirely outside the visible date range rendered as a stray column-wide bar
+  just past the grid's right (or left) edge — `makeBar`'s `Math.max(_, COL_W)`
+  width floor inflating a clamped zero-width span. `makeEditableTrack` now skips
+  records that don't overlap `[rangeStart, rangeEnd]`, matching the derived rows.
+
 ## 1.15.1 — 2026-06-26
 
 - **Exception trades are read-only.** Own people on a work type the project never

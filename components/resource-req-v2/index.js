@@ -65,9 +65,12 @@ const SOURCE_CLASS = {
 const EDITABLE_SOURCES = new Set([SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE]); // user draws bars / sources stored as spans
 const POPOVER_SOURCES  = new Set([SRC.INNLEIDE, SRC.UTLEIDE, SRC.UDEKT, SRC.OVERSKUDD]);
 const STATUS_SOURCES   = new Set([SRC.UDEKT, SRC.OVERSKUDD]);             // gap rows — carry the "Se detaljer" marketplace entry
-// Fixed source row order under each work-type band. Always the same, so the eye
-// parses rows by position rather than colour.
-const SOURCE_ORDER = [SRC.BEHOV, SRC.EGNE, SRC.INNLEIDE, SRC.UTLEIDE, SRC.UDEKT, SRC.OVERSKUDD];
+// Fixed source row order under each work-type band: EDITABLE sources first
+// (Behov, Innleide, Utleide — what the user draws), then the computed/read-only
+// rows (Egne, Udekt, Overskudd). The split is the primary parse cue — the
+// editable working surface sits at the top, the recessive computed zone below
+// (see .rp-row-derived muting in the CSS). Order within each group is enum value.
+const SOURCE_ORDER = [SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE, SRC.EGNE, SRC.UDEKT, SRC.OVERSKUDD];
 
 const STICKY_W          = 280;   // left panel width (px) — keep in sync with CSS --rp-sticky-w
 const DEFAULT_COL_W     = 60;
@@ -421,6 +424,12 @@ function makeEditableTrack(projectId, srcEnum, srcClass, workType, srcName) {
     track.style.width          = gridWidth + 'px';
     track.style.backgroundSize = COL_W + 'px 100%';
     (reqsByKey.get(reqKey(projectId, srcEnum, workType)) || [])
+        // Drop records that don't overlap the visible window. Otherwise makeBar
+        // clamps both edges to gridWidth (width 0) and its Math.max(_, COL_W)
+        // floor plants a phantom column-wide bar just past the grid's right edge.
+        // Mirrors the overlap guard the derived rows already get via paintSpan.
+        .filter(r => +endOfDay(new Date(r.dateTo))   >= +rangeStart
+                  && +startOfDay(new Date(r.dateFrom)) <= +rangeEnd)
         .forEach((r, idx) => {
             const bar = makeBar(r, srcClass);
             if (idx % 2) bar.classList.add('rp-bar-alt');   // alternate-shade spans
