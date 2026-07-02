@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.0 — 2026-07-02
+
+- **Updates use dedicated save actions.** Move/resize (drag) and popover edits of an
+  existing record now call `saveAllocationDates` / `saveAbsenceDates` instead of
+  `allocationAbsenceSave` (which is create-only and, being a merge action, no-oped on
+  edits). Both new actions registered in `component.json`.
+- **Absence type now persists on edit.** The type picker's value is coerced to the
+  numeric enum (`Number(...)`), and the type param is sent under the action's spelling
+  `abscenceType` — sending the correctly-spelled `absenceType` arrived as `undefined`
+  and silently no-oped the save.
+
 ## 1.5.0 — 2026-06-26
 
 - **Editor popover redesign** (restored from earlier lost work; number/save logic
