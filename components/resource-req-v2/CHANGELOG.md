@@ -3,7 +3,7 @@
 ## 1.19.0 — 2026-07-02
 
 - **Ads icon + popover on the coverage band.** The inline availability markers
-  (`.rp-avail`, company name + count) are replaced by a small ↓/↗ icon next to the
+  (`.rp-avail`, company name + count) are replaced by a small tag icon next to the
   gap number on deficit/surplus runs that have matching ads. Clicking it opens a
   self-contained popover (same shell as the count popover) listing each ad:
   company, tier badge (internt/partner/alle), resource count, date range, title.
