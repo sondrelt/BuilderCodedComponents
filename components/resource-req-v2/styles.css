@@ -373,65 +373,26 @@
 }
 .rp-gap-none::before, .rp-gap-none::after { display: none; }
 
-/* Popover trigger button — pinned to the track's right edge (last column) */
-.rp-popover-btn {
-  position: absolute;
-  right: 3px; top: 50%;
-  transform: translateY(-50%);
-  z-index: 4;
+/* ── Marketplace ads indicator on the coverage band ───────────────────────────
+   Deficit runs surface lease-IN supply (Resource Available ads, ↓ "ledige"),
+   surplus runs surface lease-OUT demand (Job ads, ↗ "oppdrag"). A small arrow
+   beside the gap number; recessive until the row is hovered. Click → ads popover. */
+.rp-ads-btn {
+  pointer-events: auto;   /* parent .rp-bar-count is pointer-events: none */
+  margin-left: 4px;
+  padding: 0 2px;
   background: none;
   border: none;
-  cursor: pointer;
-  opacity: 0;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
   color: var(--rp-text-muted);
-  padding: 2px;
+  cursor: pointer;
+  opacity: 0.55;
   transition: opacity .15s;
 }
-.rp-track-agg:hover .rp-popover-btn { opacity: 0.7; }
-.rp-popover-btn:hover { opacity: 1 !important; }
-
-/* ── Marketplace availability markers on the coverage band ────────────────────
-   Deficit runs surface lease-IN supply (Resource Available ads, ↓ "ledige"),
-   surplus runs surface lease-OUT demand (Job ads, ↗ "oppdrag"). Recessive until
-   the row is hovered; the accent colour encodes the best available tier
-   (internt → partner → alle). Each marker names the posting company. */
-.rp-avail {
-  position: absolute;
-  bottom: 3px;            /* sit just above the state band, clear of the centred number */
-  height: 14px;
-  z-index: 5;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 0 5px 0 4px;
-  border: none;
-  border-left: 3px solid var(--tier-accent, var(--rp-text-muted));
-  border-radius: 0 7px 7px 0;
-  background: rgba(255, 255, 255, 0.82);
-  color: var(--rp-text);
-  font-size: 9.5px;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-  overflow: hidden;
-  white-space: nowrap;
-  opacity: 0.55;
-  transition: opacity .15s, background .15s, box-shadow .15s;
-}
-.rp-track-gap:hover .rp-avail { opacity: 0.9; }
-.rp-avail:hover { opacity: 1; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); }
-
-.rp-avail-arrow { font-weight: 800; color: var(--tier-accent, var(--rp-text-muted)); }
-.rp-avail-count { font-weight: 800; }
-.rp-avail-who   { overflow: hidden; text-overflow: ellipsis; color: var(--rp-text-muted); }
-
-/* Tier accent — best (lowest) tier present in the marker wins. */
-.rp-avail.rp-tier-1 { --tier-accent: #1a5c34; }   /* internt — green (own house)  */
-.rp-avail.rp-tier-2 { --tier-accent: #7a5c00; }   /* partner — amber              */
-.rp-avail.rp-tier-3 { --tier-accent: #1e86c4; }   /* alle    — blue (open market) */
-.rp-avail.rp-tier-x { --tier-accent: var(--rp-text-muted); }
+.rp-track-gap:hover .rp-ads-btn { opacity: 0.9; }
+.rp-ads-btn:hover { opacity: 1; }
 
 /* ── 7. BARS ──────────────────────────────────────────────────────────────── */
 .rp-bar {
@@ -673,6 +634,54 @@
 
 /* ── 8b. PERIOD PICKER (custom day calendar inside the popover) ───────────── */
 .rp-popover-wide { width: 280px; }
+
+/* ── Ads popover — one row per marketplace ad, click jumps to the ad ───────── */
+.rp-popover-ads { width: 300px; }
+.rp-ads-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--rp-text);
+  cursor: pointer;
+}
+.rp-ads-row:hover { background: #f5f7f9; }
+.rp-ads-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rp-ads-company {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-ads-count { margin-left: auto; font-weight: 800; }
+.rp-ads-tier {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tier-accent, var(--rp-text-muted));
+}
+/* Tier accent (internt → partner → alle) — same hues as the old band markers. */
+.rp-ads-tier.rp-tier-1 { --tier-accent: #1a5c34; }   /* internt — green (own house)  */
+.rp-ads-tier.rp-tier-2 { --tier-accent: #7a5c00; }   /* partner — amber              */
+.rp-ads-tier.rp-tier-3 { --tier-accent: #1e86c4; }   /* alle    — blue (open market) */
+.rp-ads-sub {
+  display: block;
+  margin-top: 2px;
+  color: var(--rp-text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Fra dato / Til dato fields */
 .rp-popover-datefields {

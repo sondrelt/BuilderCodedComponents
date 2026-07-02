@@ -10,7 +10,8 @@
 //    createProjectRequirement { projectId, source, workType, dateFrom, dateTo, count }
 //    updateProjectRequirement { projectRequirementId, dateFrom, dateTo, count }  (project/source/workType never change after create — not passed)
 //    deleteProjectRequirement { projectRequirementId }
-//    toggleDetails / editProject / openGraph / viewBuilderAds (unchanged)
+//    toggleDetails / editProject / openGraph (unchanged)
+//    goToBuilderAd { jobId } (surplus/Job ad) or { resourceAvailableId } (deficit/Resource Available ad)
 //
 //  Changes vs v1 (no functionality or UX removed):
 //    • Ghost bar now STAYS VISIBLE while the count popover is open, and is
@@ -63,8 +64,7 @@ const SOURCE_CLASS = {
 };
 
 const EDITABLE_SOURCES = new Set([SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE]); // user draws bars / sources stored as spans
-const POPOVER_SOURCES  = new Set([SRC.INNLEIDE, SRC.UTLEIDE, SRC.UDEKT, SRC.OVERSKUDD]);
-const STATUS_SOURCES   = new Set([SRC.UDEKT, SRC.OVERSKUDD]);             // gap rows — carry the "Se detaljer" marketplace entry
+const STATUS_SOURCES   = new Set([SRC.UDEKT, SRC.OVERSKUDD]);             // gap rows — drive the rp-row-status styling
 // Fixed source row order under each work-type band: EDITABLE sources first
 // (Behov, Innleide, Utleide — what the user draws), then the computed/read-only
 // rows (Egne, Udekt, Overskudd). The split is the primary parse cue — the
@@ -90,8 +90,7 @@ const ICONS = {
     chevronDown: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
     chevronUp:   '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 8l4-4 4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
     edit:        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
-    graph:       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 17V13M12 17V9M16 17V13"/></svg>',
-    search:      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>'
+    graph:       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 17V13M12 17V9M16 17V13"/></svg>'
 };
 
 // ═══ 2. UTILITIES ═══════════════════════════════════════════════════════════
@@ -293,39 +292,14 @@ function bucketAdsByWT(ds) {
     return map;
 }
 
-// Marketplace availability for one band column. dir 'in' = lease in (deficit → Resource
-// Available ads), 'out' = lease out (surplus → Job ads). Returns null when nothing matches.
-// Companies are de-duped and sorted best-tier-first; total sums numberOfResources.
-function availabilityForColumn(wt, ci, dir) {
-    const list = (dir === 'in' ? availByWT : jobsByWT).get(wt);
-    if (!list || !list.length) return null;
-    const cs = +columns[ci].start, ce = +columns[ci].end;
-    const hits = list.filter(ad =>
-        +new Date(ad.dateEnd) >= cs && +new Date(ad.dateStart) <= ce);
-    if (!hits.length) return null;
-
-    const byCompany = new Map();
-    let total = 0, bestTier = TIER_MAX;
-    hits.forEach(ad => {
-        const tier = toInt(ad.tier) || TIER_MAX;
-        const n    = Number(ad.numberOfResources) || 0;
-        total += n;
-        if (tier < bestTier) bestTier = tier;
-        const name = ad.companyName || refName(ad.company) || 'Ukjent selskap';
-        const cur  = byCompany.get(name) || { name, tier: TIER_MAX, count: 0 };
-        cur.tier  = Math.min(cur.tier, tier);
-        cur.count += n;
-        byCompany.set(name, cur);
-    });
-    const companies = [...byCompany.values()].sort((a, b) => a.tier - b.tier || b.count - a.count);
-    return { dir, total, bestTier, companies, ids: hits.map(h => h._id) };
-}
-
-// Signature so adjacent columns with identical availability collapse into one marker.
-function availSignature(av) {
-    if (!av) return '';
-    return av.dir + '|' + av.total + '|' +
-        av.companies.map(c => c.name + ':' + c.tier + ':' + c.count).join(',');
+// Raw marketplace ads overlapping band columns ci..cj. dir 'in' = lease in (deficit →
+// Resource Available ads), 'out' = lease out (surplus → Job ads). Sorted best-tier-first.
+function adsForRange(wt, ci, cj, dir) {
+    const list = (dir === 'in' ? availByWT : jobsByWT).get(wt) || [];
+    const cs = +columns[ci].start, ce = +columns[cj].end;
+    return list
+        .filter(ad => +new Date(ad.dateEnd) >= cs && +new Date(ad.dateStart) <= ce)
+        .sort((a, b) => (toInt(a.tier) || TIER_MAX) - (toInt(b.tier) || TIER_MAX));
 }
 
 // ═══ 6. AGGREGATES ══════════════════════════════════════════════════════════
@@ -549,7 +523,7 @@ const magBucket = (v) => { const a = Math.abs(v); return a <= 1 ? '1' : a <= 3 ?
 // Unlike makeRunBarTrack this keys on the gap STATE, so a stretch of unplanned
 // weeks ('none') renders as one continuous number-less block instead of gaps,
 // and covered/deficit/surplus never merge across a state change.
-function makeGapBandTrack(agg, wtId, projectId) {
+function makeGapBandTrack(agg, wtId) {
     const track = document.createElement('div');
     track.className = 'rp-track rp-track-agg rp-track-gap';
     track.style.width          = gridWidth + 'px';
@@ -573,72 +547,37 @@ function makeGapBandTrack(agg, wtId, projectId) {
             const txt = g.value > 0 ? '+' + g.value : String(g.value);     // +N surplus, −N deficit, 0 covered
             bar.innerHTML = '<span class="rp-bar-count">' + txt + '</span>';
         }
+        // Marketplace indicator beside the number: deficit → lease-in supply (Resource
+        // Available ads), surplus → lease-out demand (Job ads). One icon per run bar,
+        // aggregating ads across the run's columns; per-ad date ranges live in the popover.
+        const dir = g.state === 'deficit' ? 'in' : g.state === 'surplus' ? 'out' : null;
+        if (dir) {
+            const ads = adsForRange(wtId, i, j, dir);
+            if (ads.length)
+                bar.querySelector('.rp-bar-count').appendChild(makeAdsIndicator(ads, dir, wtId));
+        }
         track.appendChild(bar);
         i = j + 1;
     }
-
-    // Availability overlay: deficit weeks → lease-in supply (Resource Available ads),
-    // surplus weeks → lease-out demand (Job ads). Adjacent columns with identical
-    // availability collapse into one marker. Sits below the gap number, never merges
-    // across a change in available companies/count.
-    appendAvailabilityMarkers(track, states, wtId, projectId);
     return track;
 }
 
-// Second pass over the band columns: render a marketplace-availability marker on each
-// deficit/surplus run that has matching ads, showing the posting company and tier.
-function appendAvailabilityMarkers(track, states, wtId, projectId) {
-    let i = 0;
-    while (i < states.length) {
-        const st  = states[i].state;
-        const dir = st === 'deficit' ? 'in' : st === 'surplus' ? 'out' : null;
-        if (!dir) { i++; continue; }
-
-        const av  = availabilityForColumn(wtId, i, dir);
-        const sig = availSignature(av);
-        // Extend the run while same state AND identical availability signature.
-        let j = i;
-        while (j + 1 < states.length
-            && states[j + 1].state === st
-            && availSignature(availabilityForColumn(wtId, j + 1, dir)) === sig) j++;
-
-        if (av) {
-            const left  = columns[i].left;
-            const width = columns[j].left + columns[j].width - left;
-            track.appendChild(makeAvailMarker(av, left, width, wtId, projectId));
-        }
-        i = j + 1;
-    }
-}
-
-function makeAvailMarker(av, left, width, wtId, projectId) {
-    const single = av.companies.length === 1;
-    const arrow  = av.dir === 'in' ? '↓' : '↗';                   // ↓ ledige · ↗ oppdrag
-    const who    = single ? av.companies[0].name
-                          : av.companies.length + ' selskaper';
-
+// Icon next to the gap number: click opens the ads popover for this run.
+function makeAdsIndicator(ads, dir, wtId) {
     const el = document.createElement('button');
     el.type = 'button';
-    el.className = 'rp-avail rp-avail-' + av.dir + ' rp-tier-' + (av.bestTier <= 3 ? av.bestTier : 'x');
-    el.style.left  = left + 'px';
-    el.style.width = Math.max(width, 1) + 'px';
-    el.innerHTML =
-        '<span class="rp-avail-arrow">' + arrow + '</span>' +
-        '<span class="rp-avail-count">' + av.total + '</span>' +
-        '<span class="rp-avail-who">' + escapeHtml(who) + '</span>';
-
-    const wtName = wtNameMap[wtId] || String(wtId);                 // int → trade name
-    const verb = av.dir === 'in' ? 'Ledige ressurser å leie inn' : 'Oppdrag å leie ut til';
-    el.title = verb + ' · ' + wtName + ' (' + av.total + '):\n' +
-        av.companies.map(c => '• ' + c.name + ' — ' + c.count + ' (' + (TIER_LABEL[c.tier] || '–') + ')').join('\n');
-
+    el.className = 'rp-ads-btn rp-ads-btn-' + dir;
+    el.textContent = dir === 'in' ? '↓' : '↗';                    // ↓ ledige · ↗ oppdrag
+    el.title = adsVerb(dir) + ' (' + ads.length + ')';
     el.addEventListener('click', (e) => {
         e.stopPropagation();
-        appfarm.actions?.viewBuilderAds?.(
-            { projectId, workType: wtId, direction: av.dir, tier: av.bestTier },
-            { event: e });
+        showAdsPopover({ anchorX: e.clientX, anchorY: e.clientY, ads, dir, wtId });
     });
     return el;
+}
+
+function adsVerb(dir) {
+    return dir === 'in' ? 'Ledige ressurser å leie inn' : 'Oppdrag å leie ut til';
 }
 
 function escapeHtml(s) {
@@ -660,20 +599,8 @@ function makeWorkTypeBandRow(project, wtId, agg, isException) {
     if (isException) label.title = 'Ikke planlagt arbeidstype på dette prosjektet';
 
     row.appendChild(label);
-    row.appendChild(makeGapBandTrack(agg, wtId, project._id));
+    row.appendChild(makeGapBandTrack(agg, wtId));
     return row;
-}
-
-// "Se detaljer" → marketplace ads for this source/project (lease-in / lease-out
-// path). Lives on the Udekt/Overskudd gap detail rows.
-function makeAdsButton(projectId, srcEnum) {
-    const btn = document.createElement('button');
-    btn.className = 'rp-popover-btn';
-    btn.innerHTML = ICONS.search;
-    btn.title = 'Se detaljer';
-    btn.addEventListener('click', e =>
-        appfarm.actions?.viewBuilderAds?.({ source: srcEnum, projectId }, { event: e }));
-    return btn;
 }
 
 function makeActionButton(icon, title, onClick) {
@@ -846,9 +773,6 @@ function buildAll() {
                 const track = isEditable
                     ? makeEditableTrack(projectId, srcEnum, srcClass, wtId, srcNameByEnum[srcEnum])
                     : makeDerivedTrack(agg, srcEnum, wtId);
-                // Marketplace entry point (lease-in / lease-out leads) lives on the gap rows.
-                if (isStatus && POPOVER_SOURCES.has(srcEnum))
-                    track.appendChild(makeAdsButton(projectId, srcEnum));
                 row.appendChild(track);
                 frag.appendChild(row);
             });
@@ -1032,6 +956,74 @@ function removePopover() {
     if (popoverEl) { popoverEl.remove(); popoverEl = null; }
     activeEdit = false;
     flushQueuedRebuild();
+}
+
+// ═══ 8a. ADS POPOVER ═════════════════════════════════════════════════════════
+//  Marketplace ads for one gap run — same shell/behaviour as the count popover
+//  (cursor-anchored, Esc / click-outside closes, activeEdit blocks rebuilds).
+//  Row click jumps to the ad via goToBuilderAd.
+function showAdsPopover(opts) {
+    // opts: { anchorX, anchorY, ads, dir ('in'|'out'), wtId }
+    removePopover();
+    activeEdit = true;
+
+    popoverEl = document.createElement('div');
+    popoverEl.className = 'rp-popover rp-popover-wide rp-popover-ads';
+    const wtName = wtNameMap[opts.wtId] || String(opts.wtId);
+    popoverEl.innerHTML =
+        '<div class="rp-popover-title">' + escapeHtml(adsVerb(opts.dir) + ' · ' + wtName) + '</div>';
+
+    opts.ads.forEach(ad => {
+        const tier = toInt(ad.tier) || TIER_MAX;
+        const name = ad.companyName || refName(ad.company) || 'Ukjent selskap';
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'rp-ads-row';
+        row.innerHTML =
+            '<span class="rp-ads-main">' +
+                '<span class="rp-ads-company">' + escapeHtml(name) + '</span>' +
+                '<span class="rp-ads-tier rp-tier-' + (tier <= 3 ? tier : 'x') + '">' +
+                    (TIER_LABEL[tier] || '–') + '</span>' +
+                '<span class="rp-ads-count">' + (Number(ad.numberOfResources) || 0) + '</span>' +
+            '</span>' +
+            '<span class="rp-ads-sub">' + escapeHtml(
+                fmtDate(ad.dateStart) + '–' + fmtDate(ad.dateEnd) +
+                (ad.title ? ' · ' + ad.title : '')) + '</span>';
+        row.addEventListener('click', (e) => {
+            e.stopPropagation();
+            appfarm.actions?.goToBuilderAd?.(
+                opts.dir === 'out' ? { jobId: ad._id } : { resourceAvailableId: ad._id },
+                { event: e });
+            close();
+        });
+        popoverEl.appendChild(row);
+    });
+    document.body.appendChild(popoverEl);
+
+    // Same clamp math as the count popover's placePopover (static — no calendar here).
+    const pw = popoverEl.offsetWidth || 280, ph = popoverEl.offsetHeight || 200, M = 8;
+    let left = opts.anchorX + 10;
+    if (left + pw > window.innerWidth - M) left = opts.anchorX - pw - 10;
+    let top = opts.anchorY - 16;
+    if (top + ph > window.innerHeight - M) top = window.innerHeight - ph - M;
+    popoverEl.style.left = Math.max(M, left) + 'px';
+    popoverEl.style.top  = Math.max(M, top) + 'px';
+
+    function close() {
+        document.removeEventListener('pointerdown', outsideHandler, { capture: true });
+        document.removeEventListener('keydown', keyHandler);
+        removePopover();
+    }
+    function outsideHandler(e) {
+        if (popoverEl && !popoverEl.contains(e.target)) close();
+    }
+    function keyHandler(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(); }
+    }
+    setTimeout(() => {
+        document.addEventListener('pointerdown', outsideHandler, { capture: true });
+        document.addEventListener('keydown', keyHandler);
+    }, 0);
 }
 
 // ═══ 8b. DAY PICKER (period picker inside the popover) ═══════════════════════

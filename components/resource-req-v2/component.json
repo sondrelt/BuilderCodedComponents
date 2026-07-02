@@ -1,6 +1,6 @@
 {
   "name": "resource-req-v2",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "description": "Interactive Gantt-style project requirements planner. Work-type-first layout: each trade is a coverage-gap band (deficit/surplus/covered/no-demand) over its source rows. Drag to create/resize/move requirement bars per source, with quantity popovers and optimistic UI. Colour reserved for the coverage band; source rows are monochrome with a category tick.",
   "appfarmApp": "",
   "environment": "Development",
@@ -25,7 +25,7 @@
     "toggleDetails",
     "editProject",
     "openGraph",
-    "viewBuilderAds"
+    "goToBuilderAd"
   ],
   "externalResources": [],
   "lastSynced": "2026-06-26T10:10:08+02:00"

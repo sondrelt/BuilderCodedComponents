@@ -1,5 +1,21 @@
 # Changelog — resource-req-v2
 
+## 1.19.0 — 2026-07-02
+
+- **Ads icon + popover on the coverage band.** The inline availability markers
+  (`.rp-avail`, company name + count) are replaced by a small ↓/↗ icon next to the
+  gap number on deficit/surplus runs that have matching ads. Clicking it opens a
+  self-contained popover (same shell as the count popover) listing each ad:
+  company, tier badge (internt/partner/alle), resource count, date range, title.
+  One icon per run bar — ads are aggregated across the run's columns; per-ad date
+  ranges in the popover carry the precision (the `availSignature` sub-segmentation
+  is gone).
+- **Row click → `goToBuilderAd`** with `{ jobId }` (surplus/Job ads) or
+  `{ resourceAvailableId }` (deficit/Resource Available ads).
+- **Removed** the "Se detaljer" search button on the Udekt/Overskudd detail rows
+  and **all `viewBuilderAds` calls** — the action can be unwired from the component
+  in Appfarm; wire up `goToBuilderAd` instead.
+
 ## 1.18.0 — 2026-06-26
 
 - **Count popover redesign** (restored from earlier lost work; count/save logic
