@@ -397,6 +397,13 @@
 .rp-track-gap:hover .rp-ads-btn { opacity: 0.9; }
 .rp-ads-btn:hover { opacity: 1; }
 
+/* The whole run bar opens the popover when it carries ads (aggregate bars are
+   otherwise pointer-events: none). Keep the generic .rp-bar grab/shadow out. */
+.rp-bar.rp-gap-has-ads { pointer-events: auto; cursor: pointer; }
+.rp-bar.rp-gap-has-ads:hover  { box-shadow: none; }
+.rp-bar.rp-gap-has-ads:active { cursor: pointer; }
+.rp-gap-has-ads:hover .rp-ads-btn { opacity: 1; }
+
 /* ── 7. BARS ──────────────────────────────────────────────────────────────── */
 .rp-bar {
   position: absolute;
