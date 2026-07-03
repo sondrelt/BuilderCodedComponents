@@ -99,6 +99,8 @@ const refName = (ref) => {
     if (typeof ref === 'string') return ref;
     return ref.name || ref.label || ref._displayValue || ref.fullName || '';
 };
+// Job-ad ghost mark — same info icon as resource-req-v2's ads indicator.
+const JOBAD_ICON = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>';
 function escapeHtml(s) {
     return String(s).replace(/[&<>"]/g, (c) =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -449,11 +451,11 @@ function makeJobGhost(gapFrom, gapTo, jobsInGap) {
     ghost.title = `${n} ledige oppdrag · ${count} stk\n`
         + companies.map(c => `• ${c.name} — ${c.count} (${TIER_LABEL[c.tier] || '–'})`).join('\n');
     ghost.innerHTML =
-        `<span class="pl-jobad-mark">↗</span>` +
+        `<span class="pl-jobad-mark">${JOBAD_ICON}</span>` +
         `<span class="pl-jobad-label"></span>` +
         (count ? `<span class="pl-jobad-count"></span>` : '');
     ghost.querySelector('.pl-jobad-label').textContent = label;
-    if (count) ghost.querySelector('.pl-jobad-count').textContent = count;
+    if (count) ghost.querySelector('.pl-jobad-count').textContent = count + ' stk';
 
     // Click opens the ads-list popover for every ad in this gap (jobsInGap is
     // already the full, tier-sorted hit list from makeTrack) — closure capture
@@ -1103,7 +1105,7 @@ function showJobAdsPopover(opts) {
                 '<span class="pl-ads-company">' + escapeHtml(name) + '</span>' +
                 '<span class="pl-ads-tier pl-tier-' + (tier <= 3 ? tier : 'x') + '">' +
                     (TIER_LABEL[tier] || '–') + '</span>' +
-                '<span class="pl-ads-count">' + (Number(ad.numberOfResources) || 0) + '</span>' +
+                '<span class="pl-ads-count">' + (Number(ad.numberOfResources) || 0) + ' stk</span>' +
             '</span>' +
             '<span class="pl-ads-sub">' + escapeHtml(
                 fmtDate(ad.dateStart) + '–' + fmtDate(ad.dateEnd) +

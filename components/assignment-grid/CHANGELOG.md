@@ -11,6 +11,11 @@
 - **`openJob` replaced by `goToBuilderAd`** (`{ jobId }`), matching resource-req-v2's
   action shape for parity — its `resourceAvailableId` branch is never exercised here
   since assignment-grid only ever surfaces Job ads.
+- **Ghost mark is now the same info icon as resource-req-v2's ads indicator**
+  (was a plain "↗" arrow character). Count badge sits directly next to the company
+  name instead of pinned to the far right of the (potentially date-range-wide) ghost
+  band, and reads "N stk" instead of a bare number — both in the ghost band and the
+  popover's per-ad count.
 
 ## 1.6.0 — 2026-07-02
 
