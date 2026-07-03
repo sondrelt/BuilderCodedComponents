@@ -1,5 +1,25 @@
 # Changelog — resource-req-v2
 
+## 1.20.0 — 2026-07-03
+
+- **Anonymized "probable capacity" signals in the ads popover.** New
+  `peerAllocations` input (same shape as `allocation`: resource, project,
+  workType, dateFrom, dateTo — resource identity stripped) surfaces peer-org
+  capacity that was never formally posted as a Resource Available ad. Only
+  records with no `project` (uncommitted/free) count as a signal; committed
+  peer records are ignored.
+- Probable capacity appears on the lease-in (deficit) side only, below a
+  "Sannsynlig kapasitet" divider, as up to 3 rows — one per tier — each an
+  aggregate count of overlapping free peer records, not a real posting. Rows
+  are informational only: no company name, no click action, no
+  `goToBuilderAd`. Real posted ads always sort ahead of probable rows
+  regardless of tier; probable rows are internally ranked
+  internt → partner → alle same as real ads.
+- **Ads indicator badge counts real ads only** — probable signals are visible
+  only inside the popover, so the badge number never promises more than is
+  actually postable/navigable. A gap with only probable capacity and zero real
+  ads shows no indicator (v1).
+
 ## 1.19.1 — 2026-07-03
 
 - **Ads popover count reads "N stk"** instead of a bare number, matching

@@ -83,4 +83,17 @@ window.FIXTURES['resource-req-v2'] = {
     { _id: 'j1', workType: 20, company: { _id: 'c5', name: 'Betong Spesialisten' }, tier: 1, numberOfResources: 1, dateStart: iso('2026-07-20'), dateEnd: iso('2026-08-02'), title: 'Betongoppdrag' },
     { _id: 'j2', workType: 20, company: { _id: 'c6', name: 'Anlegg AS' },           tier: 3, numberOfResources: 2, dateStart: iso('2026-07-20'), dateEnd: iso('2026-08-09'), title: 'Stor betongjobb' },
   ],
+
+  // Anonymized peer-org allocation windows — same shape as `allocation`
+  // (resource, project, workType, dateFrom, dateTo), resource identity stripped.
+  // No company/title/count — the component derives "N stk" by counting
+  // overlapping free (project: null) records per tier. Overlaps p1/Tømrer(250),
+  // same window as resourcesAvailable above, to exercise real-before-probable
+  // ordering directly against known real-ad tiers.
+  peerAllocations: [
+    { _id: 'pa1', project: null, workType: 250, tier: 1, dateFrom: iso('2026-06-10'), dateTo: iso('2026-06-24') },
+    { _id: 'pa2', project: null, workType: 250, tier: 1, dateFrom: iso('2026-06-15'), dateTo: iso('2026-06-29') },
+    { _id: 'pa3', project: null, workType: 250, tier: 3, dateFrom: iso('2026-07-01'), dateTo: iso('2026-07-15') },
+    { _id: 'pa4', project: 'p9', workType: 250, tier: 1, dateFrom: iso('2026-06-10'), dateTo: iso('2026-06-24') }, // committed elsewhere — must be excluded
+  ],
 };

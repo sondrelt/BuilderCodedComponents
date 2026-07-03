@@ -693,6 +693,23 @@
   white-space: nowrap;
 }
 
+/* Probable rows — anonymized peer capacity, informational only (no click). */
+.rp-ads-divider {
+  margin: 6px 8px 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rp-border, #e5e7eb);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  color: var(--rp-text-muted);
+}
+.rp-ads-row-probable {
+  opacity: 0.65;
+  cursor: default;
+}
+.rp-ads-row-probable:hover { background: none; }
+
 /* Fra dato / Til dato fields */
 .rp-popover-datefields {
   display: flex;
