@@ -1,5 +1,10 @@
 # Changelog — resource-req-v2
 
+## 1.19.1 — 2026-07-03
+
+- **Ads popover count reads "N stk"** instead of a bare number, matching
+  assignment-grid's job-ad popover/ghost wording.
+
 ## 1.19.0 — 2026-07-02
 
 - **Ads icon + popover on the coverage band.** The inline availability markers
