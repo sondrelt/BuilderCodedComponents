@@ -992,7 +992,7 @@ function showAdsPopover(opts) {
                 '<span class="rp-ads-company">' + escapeHtml(name) + '</span>' +
                 '<span class="rp-ads-tier rp-tier-' + (tier <= 3 ? tier : 'x') + '">' +
                     (TIER_LABEL[tier] || '–') + '</span>' +
-                '<span class="rp-ads-count">' + (Number(ad.numberOfResources) || 0) + '</span>' +
+                '<span class="rp-ads-count">' + (Number(ad.numberOfResources) || 0) + ' stk</span>' +
             '</span>' +
             '<span class="rp-ads-sub">' + escapeHtml(
                 fmtDate(ad.dateStart) + '–' + fmtDate(ad.dateEnd) +
