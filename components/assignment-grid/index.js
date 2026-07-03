@@ -58,6 +58,12 @@ const ACT = {
     allocIdParam:   'projectResourceId',     // allocation record id (delete only)
     absenceIdParam: 'resourceAbsenceId'      // absence record id (delete only)
 };
+// goToBuilderAd { jobId } — job-ad popover row click → navigate to the ad in
+// Builder. Called directly (appfarm.actions?.goToBuilderAd?.(...)), same
+// convention as openResourceEdit — not routed through ACT. Mirrors
+// resource-req-v2's goToBuilderAd (which also accepts { resourceAvailableId }
+// for Resource Available ads); that branch is never exercised here since
+// assignment-grid only surfaces Job ads. Replaces the old openJob action.
 
 const MONTHS_NB = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
 
@@ -93,6 +99,12 @@ const refName = (ref) => {
     if (typeof ref === 'string') return ref;
     return ref.name || ref.label || ref._displayValue || ref.fullName || '';
 };
+// Job-ad ghost mark — same info icon as resource-req-v2's ads indicator.
+const JOBAD_ICON = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>';
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
 // Marketplace tier priority (internt → partnere → alle). Ads arrive pre-tagged with
 // `tier` (1/2/3) from Appfarm; lower wins. Unknown sinks below 'alle'.
 const TIER_LABEL = { 1: 'internt', 2: 'partner', 3: 'alle' };
@@ -436,16 +448,22 @@ function makeJobGhost(gapFrom, gapTo, jobsInGap) {
     ghost.className = 'pl-jobad pl-tier-' + (bestTier <= 3 ? bestTier : 'x');
     ghost.style.left = left + 'px';
     ghost.style.width = Math.max(right - left, 1) + 'px';
-    ghost.dataset.jobId = jobsInGap[0]._id;
-    if (n > 1) ghost.dataset.jobIds = jobsInGap.map(j => j._id).join(',');
     ghost.title = `${n} ledige oppdrag · ${count} stk\n`
         + companies.map(c => `• ${c.name} — ${c.count} (${TIER_LABEL[c.tier] || '–'})`).join('\n');
     ghost.innerHTML =
-        `<span class="pl-jobad-mark">↗</span>` +
+        `<span class="pl-jobad-mark">${JOBAD_ICON}</span>` +
         `<span class="pl-jobad-label"></span>` +
         (count ? `<span class="pl-jobad-count"></span>` : '');
     ghost.querySelector('.pl-jobad-label').textContent = label;
-    if (count) ghost.querySelector('.pl-jobad-count').textContent = count;
+    if (count) ghost.querySelector('.pl-jobad-count').textContent = count + ' stk';
+
+    // Click opens the ads-list popover for every ad in this gap (jobsInGap is
+    // already the full, tier-sorted hit list from makeTrack) — closure capture
+    // since the whole tree is rebuilt fresh on every buildAll().
+    ghost.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showJobAdsPopover({ anchorX: e.clientX, anchorY: e.clientY, ads: jobsInGap });
+    });
     return ghost;
 }
 
@@ -1060,6 +1078,68 @@ function showAllocAbsencePopover(opts) {
         document.addEventListener('pointerdown', outsideHandler, { capture: true }), 0);
 }
 
+// ── Job-ad popover ────────────────────────────────────────────────────────
+// Ported from resource-req-v2's showAdsPopover — same shell/behaviour as the
+// alloc/absence editor popover above (shared popoverEl/activeEdit singleton +
+// removePopover(), cursor-anchored, Esc / click-outside closes). Simplified vs
+// the source: assignment-grid only ever surfaces Job ads, so every row
+// dispatches { jobId } (no dir branching).
+// opts: { anchorX, anchorY, ads }
+function showJobAdsPopover(opts) {
+    removePopover();
+    activeEdit = true;
+
+    popoverEl = document.createElement('div');
+    popoverEl.className = 'pl-popover pl-popover-ads';
+    popoverEl.innerHTML =
+        '<div class="pl-popover-title">Ledige oppdrag (' + opts.ads.length + ')</div>';
+
+    opts.ads.forEach(ad => {
+        const tier = jobTier(ad);
+        const name = ad.companyName || refName(ad.company) || 'Ukjent selskap';
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'pl-ads-row';
+        row.innerHTML =
+            '<span class="pl-ads-main">' +
+                '<span class="pl-ads-company">' + escapeHtml(name) + '</span>' +
+                '<span class="pl-ads-tier pl-tier-' + (tier <= 3 ? tier : 'x') + '">' +
+                    (TIER_LABEL[tier] || '–') + '</span>' +
+                '<span class="pl-ads-count">' + (Number(ad.numberOfResources) || 0) + ' stk</span>' +
+            '</span>' +
+            '<span class="pl-ads-sub">' + escapeHtml(
+                fmtDate(ad.dateStart) + '–' + fmtDate(ad.dateEnd) +
+                (ad.title ? ' · ' + ad.title : '')) + '</span>';
+        row.addEventListener('click', (e) => {
+            e.stopPropagation();
+            appfarm.actions?.goToBuilderAd?.({ jobId: ad._id }, { event: e });
+            close();
+        });
+        popoverEl.appendChild(row);
+    });
+    document.body.appendChild(popoverEl);
+
+    const pw = popoverEl.offsetWidth || 280, ph = popoverEl.offsetHeight || 200, M = 8;
+    let left = opts.anchorX + 10;
+    if (left + pw > window.innerWidth - M) left = opts.anchorX - pw - 10;
+    let top = opts.anchorY - 16;
+    if (top + ph > window.innerHeight - M) top = window.innerHeight - ph - M;
+    popoverEl.style.left = Math.max(M, left) + 'px';
+    popoverEl.style.top  = Math.max(M, top) + 'px';
+
+    function close() {
+        document.removeEventListener('pointerdown', outsideHandler, { capture: true });
+        document.removeEventListener('keydown', keyHandler);
+        removePopover();
+    }
+    function outsideHandler(e) { if (popoverEl && !popoverEl.contains(e.target)) close(); }
+    function keyHandler(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
+    setTimeout(() => {
+        document.addEventListener('pointerdown', outsideHandler, { capture: true });
+        document.addEventListener('keydown', keyHandler);
+    }, 0);
+}
+
 // ponytail: console-only self-check for the day-clamp logic — call demo() from the
 // browser console after pasting. Not auto-run (would log on every load).
 function demo() {
@@ -1257,10 +1337,7 @@ function onClick(e) {
     if (editWrap) {
         const rid = editWrap.closest('.pl-resource')?.dataset.resourceId;
         if (rid) appfarm.actions?.openResourceEdit?.({ resourceId: rid });
-        return;
     }
-    const ghost = e.target.closest('.pl-jobad');
-    if (ghost) appfarm.actions?.openJob?.({ jobId: ghost.dataset.jobId });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────

@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.7.0 — 2026-07-03
+
+- **Job-ad ghost opens a popover instead of navigating directly.** Clicking a
+  resource's free-gap "ghost" band no longer jumps straight to an ad — it opens a
+  popover listing every matching ad in that gap (company, tier badge, resource
+  count, date range, title). Clicking a row navigates to the ad; Esc / click-outside
+  closes. Same shell/behaviour as the allocation/absence editor popover. Ported
+  from resource-req-v2's ads popover (1.19.0).
+- **`openJob` replaced by `goToBuilderAd`** (`{ jobId }`), matching resource-req-v2's
+  action shape for parity — its `resourceAvailableId` branch is never exercised here
+  since assignment-grid only ever surfaces Job ads.
+- **Ghost mark is now the same info icon as resource-req-v2's ads indicator**
+  (was a plain "↗" arrow character). Count badge sits directly next to the company
+  name instead of pinned to the far right of the (potentially date-range-wide) ghost
+  band, and reads "N stk" instead of a bare number — both in the ghost band and the
+  popover's per-ad count.
+
 ## 1.6.0 — 2026-07-02
 
 - **Updates use dedicated save actions.** Move/resize (drag) and popover edits of an

@@ -358,11 +358,10 @@
   border-style: solid;
   box-shadow: 0 1px 6px rgba(99, 102, 196, 0.30);
 }
-.pl-jobad-mark  { flex: 0 0 auto; font-weight: 700; }
+.pl-jobad-mark  { flex: 0 0 auto; display: flex; align-items: center; }
 .pl-jobad-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
 .pl-jobad-count {
   flex: 0 0 auto;
-  margin-left: auto;
   padding: 0 5px;
   border-radius: 8px;
   background: var(--jobad-accent);
@@ -700,3 +699,58 @@
 }
 .pl-pop-delete svg { width: 15px; height: 15px; display: block; }
 .pl-pop-delete:hover { background: #fef2f2; color: var(--red-500, #a2332f); }
+
+/* ==========================================================================
+   14. JOB-AD POPOVER (ads list — click a job-ad ghost band)
+   Reuses the .pl-popover shell (section 13). Tier colours match the job-ghost
+   accent (.pl-jobad.pl-tier-*). Ported from resource-req-v2's .rp-popover-ads.
+   ========================================================================== */
+.pl-popover-ads { width: 300px; }
+
+.pl-popover-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: var(--nav-blue, #1e3a5f);
+}
+
+.pl-ads-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--text-dark, #374151);
+  cursor: pointer;
+}
+.pl-ads-row:hover { background: #f5f7f9; }
+.pl-ads-main { display: flex; align-items: center; gap: 6px; }
+.pl-ads-company {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pl-ads-count { margin-left: auto; font-weight: 800; }
+.pl-ads-tier {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tier-accent, #6b7280);
+}
+.pl-ads-tier.pl-tier-1 { --tier-accent: #1a5c34; }   /* internt — green */
+.pl-ads-tier.pl-tier-2 { --tier-accent: #7a5c00; }   /* partner — amber */
+.pl-ads-tier.pl-tier-3 { --tier-accent: #1e86c4; }   /* alle    — blue  */
+.pl-ads-sub {
+  display: block;
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
