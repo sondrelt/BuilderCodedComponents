@@ -411,9 +411,22 @@
    ========================================================================== */
 .pl-grouphead {
   height: 28px;
+  position: relative;
   /* Muted tint of the project colour, across the whole row (not just the sticky
      label) — reads as a title band over the full timeline, not just the panel. */
   background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
+}
+/* Column gridlines over the title row's timeline portion — a separate element
+   (not the row's own background) so the pattern anchors at the timeline's
+   left edge instead of tiling back under the sticky label. */
+.pl-group-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-image: linear-gradient(to right, var(--border-color) 0 1px, transparent 1px);
+  background-repeat: repeat-x;
+  background-position: left top;
+  pointer-events: none;
 }
 .pl-grouphead-label {
   position: sticky; left: 0; z-index: 11;
