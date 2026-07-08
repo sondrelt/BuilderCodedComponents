@@ -891,11 +891,15 @@
 }
 
 /* ── 10. NOW LINE ─────────────────────────────────────────────────────────── */
+/* top and height are set inline (JS) from the first title row's and last
+   row's actual offsets — the line only covers the project/work-type/source
+   rows, not the sticky calendar header above. z-index beats .rp-group-head
+   (20) so the line stays visible over the title row's colour tint instead of
+   disappearing behind it. */
 .rp-nowline {
   position: absolute;
-  top: 0; bottom: 0;
   width: 2px;
-  z-index: 5;
+  z-index: 21;
   background: var(--rp-amber-600);
   pointer-events: none;
 }

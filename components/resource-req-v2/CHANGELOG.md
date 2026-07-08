@@ -1,5 +1,14 @@
 # Changelog — resource-req-v2
 
+## 1.21.3 — 2026-07-08
+
+- **Now-line scoped to project/work-type/source rows, visible over the title
+  tint.** Ported from assignment-grid: the line now spans from 2px above the
+  first project title row to the bottom of the last row (reading real
+  offsets, not the sticky calendar header's height), and its z-index now
+  beats `.rp-group-head` (20) so it stays visible crossing the title row's
+  colour tint instead of disappearing behind it.
+
 ## 1.21.2 — 2026-07-08
 
 - **Week gridlines on the title row.** The full-width project tint (1.21.0) sat

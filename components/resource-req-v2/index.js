@@ -761,12 +761,23 @@ function buildHeader(inner) {
     inner.appendChild(header);
 }
 
+// Spans from 2px above the first project title row to the bottom of the last
+// row — not the sticky calendar header above it. Both boundary rows are
+// already in the DOM (called after frag is appended), so this reads real
+// offsets rather than guessing a fixed height.
 function renderNowLine(inner) {
     const today = new Date();
     if (!rangeStart || !rangeEnd || today < rangeStart || today > rangeEnd) return;
+    const firstTitle = inner.querySelector('.rp-group-head') || inner.querySelector('.rp-row');
+    const rows = inner.querySelectorAll('.rp-row');
+    const lastRow = rows[rows.length - 1];
+    if (!firstTitle || !lastRow) return;
+    const top = firstTitle.offsetTop - 2;
     const line = document.createElement('div');
     line.className = 'rp-nowline';
-    line.style.left = (STICKY_W + xForDate(today)) + 'px';
+    line.style.left   = (STICKY_W + xForDate(today)) + 'px';
+    line.style.top    = top + 'px';
+    line.style.height = (lastRow.offsetTop + lastRow.offsetHeight - top) + 'px';
     inner.appendChild(line);
 }
 
