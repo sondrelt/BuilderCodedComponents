@@ -1,5 +1,13 @@
 # Changelog — resource-req-v2
 
+## 1.21.2 — 2026-07-08
+
+- **Week gridlines on the title row.** The full-width project tint (1.21.0) sat
+  as a blank band with no gridlines; a new `.rp-group-grid` element draws the
+  same column lines over its timeline portion, anchored to the timeline's left
+  edge (not the row's own background, which would tile the pattern back under
+  the sticky label).
+
 ## 1.21.1 — 2026-07-08
 
 - **Gap-band number gets its own background pill** instead of the shared
