@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.11.0 — 2026-07-08
+
+- **Today flag on the now-line.** A small triangle now sits at the header's
+  bottom edge, tip on the exact day, so the now-line reads as pointed-to
+  instead of appearing to start out of nowhere right under the sticky header
+  (which otherwise hides it — higher z-index).
+- **Current-week header cell toned down.** Replaced the box-shadow ring +
+  bold-800 fill with just a soft tint + bottom underline — marks "this week"
+  without boxing the cell in, since the flag/line below already pinpoints the
+  exact day.
+
 ## 1.10.0 — 2026-07-08
 
 - **Project-colour left stripe continues down every resource row**, not just
