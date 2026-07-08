@@ -3,16 +3,50 @@
 // free gaps. References use raw id strings (resolveId handles strings).
 window.FIXTURES = window.FIXTURES || {};
 
+// Inline data-URI SVGs standing in for the real workTypeIcons.__fileContentLink
+// (a signed image URL) — just a colored circle + initial, one per work type.
+function svgIcon(letter, bg) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">` +
+    `<circle cx="12" cy="12" r="11" fill="${bg}"/>` +
+    `<text x="12" y="16" font-size="11" font-family="sans-serif" font-weight="700" fill="#fff" text-anchor="middle">${letter}</text></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
 window.FIXTURES['assignment-grid'] = {
   viewFrom: '2026-06-01',
   viewTo: '2026-08-09',
   viewGranularity: 'week',
-  sortByProjects: false,
+  sortByProjects: true,
 
   workTypeEnum: [
     { enum_value: 250, enum_name: 'Tømrer' },
     { enum_value: 20, enum_name: 'Betong' },
     { enum_value: 190, enum_name: 'Rørlegger' },
+  ],
+
+  // Stand-in for the real Appfarm file-field data — __fileContentLink is a
+  // signed GCS URL in production; any image URL works the same here.
+  workTypeIcons: [
+    { workType: 250, __fileContentLink: svgIcon('T', '#8b5e34') },
+    { workType: 20, __fileContentLink: svgIcon('B', '#6b7280') },
+    { workType: 190, __fileContentLink: svgIcon('R', '#1e86c4') },
+  ],
+
+  // Trade Skill catalog — resourceTradeSkills.tradeSkill below is a plain id
+  // string into this (not expanded by Appfarm), joined client-side in index.js.
+  tradeSkills: [
+    { _id: 'sk1', name: 'Trearbeid', description: 'Spesialisert på treskjæring (wood carving)' },
+    { _id: 'sk2', name: 'Sveising', description: 'Sertifisert TIG-sveiser' },
+    { _id: 'sk3', name: 'Muring', description: 'Naturstein og gammel-mur restaurering' },
+  ],
+
+  // Resource -> Trade Skill junction records (both fields plain id strings).
+  // res1 has two (tests chip overflow + ordering against a role tag, since
+  // p1.projectManager is res1 below); res2/res4 have none (no-chip case).
+  resourceTradeSkills: [
+    { _id: 'ts1', resource: 'res1', tradeSkill: 'sk1' },
+    { _id: 'ts2', resource: 'res1', tradeSkill: 'sk2' },
+    { _id: 'ts3', resource: 'res3', tradeSkill: 'sk3' },
   ],
 
   // Absence Type → colour. absenceValue matches absence.absenceType ids.
@@ -31,12 +65,12 @@ window.FIXTURES['assignment-grid'] = {
   ],
 
   projects: [
-    { _id: 'p1', name: 'Nytt Sykehus' },
+    { _id: 'p1', name: 'Nytt Sykehus', projectManager: 'res1' },
     { _id: 'p2', name: 'Boligfelt Vest' },
   ],
 
   allocation: [
-    { _id: 'a1', resource: 'res1', project: 'p1', workType: 250, dateFrom: '2026-06-08', dateTo: '2026-07-05' },
+    { _id: 'a1', resource: 'res1', project: 'p1', workType: 250, dateFrom: '2026-06-08', dateTo: '2026-08-09' },
     { _id: 'a2', resource: 'res2', project: 'p1', workType: 250, dateFrom: '2026-06-15', dateTo: '2026-07-26' },
     { _id: 'a3', resource: 'res3', project: 'p2', workType: 20, dateFrom: '2026-06-01', dateTo: '2026-06-28' },
     { _id: 'a4', resource: 'res4', project: 'p2', workType: 190, dateFrom: '2026-06-22', dateTo: '2026-08-02' },

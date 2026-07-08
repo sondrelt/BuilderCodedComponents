@@ -26,6 +26,13 @@ let absenceById = new Map();
 
 let jobsByWorkType = new Map();      // workType enum value -> [Job] (Builder lease-out ads)
 
+let skillsByResource = new Map();    // resourceId -> [{name, description}] (Trade Skill)
+let tradeSkillById = new Map();      // tradeSkill id -> {name, description} — joined client-side since
+                                      // resourceTradeSkills.tradeSkill is a plain id string, not expanded
+let iconByWorkType = new Map();      // workType enum value -> icon URL (workTypeIcons.__fileContentLink)
+let resourceById = new Map();        // resourceId -> Resource record (position/name lookups outside the render loop)
+let roleByResource = new Map();      // resourceId -> role {label, tagClass} — only set for PM/Anleggsleder rows
+
 let groupingAnchorDate = null;       // pinned once, for project grouping
 let activeDrag = null;               // see onPointerDown for shape
 let dragTooltipEl = null;
@@ -33,6 +40,9 @@ let dragTooltipEl = null;
 let popoverEl = null;                // alloc/absence editor popover (in document.body)
 let activeEdit = false;              // popover open → block rebuilds
 let rebuildQueued = false;           // a change arrived while blocked → flush later
+
+let rolePopoverEl = null;            // role/skills/stilling hover popover (independent of popoverEl —
+let roleHoverResourceId = null;      // non-modal, doesn't gate rebuilds like the editor/ads popovers do)
 
 let absenceTypeMap = {}; // Will dynamically store { value: { name, color } }
 
@@ -77,7 +87,7 @@ const CAL_YEAR_FWD  = 6;
 const RESOURCE_CELL_MARKUP = `
     <div class="resource-info">
         <div class="resource-name"></div>
-        <div class="resource-worktype"></div>
+        <div class="resource-worktype"><img class="resource-worktype-icon" alt="" /></div>
         <div class="resource-position"></div>
         <div class="resource-edit-wrapper">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -274,6 +284,7 @@ function indexData() {
         }
     });
     projectsById = new Map(safeGet(appfarm.data.projects).map(p => [p._id, p]));
+    resourceById = new Map(safeGet(appfarm.data.resources).map(r => [r._id, r]));
 
     allocsByResource = new Map();
     allocById = new Map();
@@ -305,6 +316,23 @@ function indexData() {
         if (wt == null) return;
         if (!jobsByWorkType.has(wt)) jobsByWorkType.set(wt, []);
         jobsByWorkType.get(wt).push(j);
+    });
+
+    tradeSkillById = new Map(safeGet(appfarm.data.tradeSkills).map(s => [s._id, s]));
+
+    skillsByResource = new Map();
+    safeGet(appfarm.data.resourceTradeSkills).forEach(rec => {
+        const rid = resolveId(rec.resource);
+        if (!rid) return;
+        const skill = tradeSkillById.get(resolveId(rec.tradeSkill));
+        if (!skill) return;
+        if (!skillsByResource.has(rid)) skillsByResource.set(rid, []);
+        skillsByResource.get(rid).push({ name: skill.name || '', description: skill.description || '' });
+    });
+
+    iconByWorkType = new Map();
+    safeGet(appfarm.data.workTypeIcons).forEach(rec => {
+        iconByWorkType.set(rec.workType, rec.__fileContentLink || '');
     });
 }
 
@@ -356,16 +384,42 @@ function buildResourceCell(res, role = null) {
     cell.dataset.resourceId = res._id;
     const wt = resolveWorkTypeName(res.workType);
     const nameEl = cell.querySelector('.resource-name');
-    const workEl = cell.querySelector('.resource-worktype');
+    const iconEl = /** @type {HTMLImageElement} */ (cell.querySelector('.resource-worktype-icon'));
     const posEl  = cell.querySelector('.resource-position');
     nameEl.textContent = res.fullNameFx || '';  nameEl.title = res.fullNameFx || '';
-    workEl.textContent = wt;                     workEl.title = wt;
-    posEl.textContent  = res.position || '';     posEl.title  = res.position || '';
+    iconEl.src = iconByWorkType.get(res.workType) || '';  iconEl.alt = wt;  iconEl.title = wt;
+
+    posEl.innerHTML = '';
+    posEl.title = res.position || '';
     if (role) {
         const tag = document.createElement('span');
         tag.className = `role-tag ${role.tagClass}`;
         tag.textContent = role.label; tag.title = role.label;
-        posEl.prepend(tag);
+        posEl.appendChild(tag);
+    }
+    // Hierarchy for this column's limited space: leder (role) > tradeskill (skill
+    // chips) > stilling (position text) — only the highest-priority tier that
+    // applies is shown inline; the hover popover below always shows all three
+    // regardless of what's inline. A role tag fully overrides skill chips
+    // inline (skills are hover-only for role rows) — how many chips actually
+    // fit for a skills-only row is only knowable once laid out in the live DOM,
+    // see fitSkillChips(), run once per buildAll() after attachment.
+    const skills = skillsByResource.get(res._id) || [];
+    posEl.classList.toggle('pl-has-info', !!(role || skills.length)); // hover popover only exists for these
+    if (!role) {
+        skills.forEach(skill => {
+            const chip = document.createElement('span');
+            chip.className = 'skill-chip';
+            chip.textContent = skill.name;
+            chip.title = skill.description || skill.name;
+            posEl.appendChild(chip);
+        });
+    }
+    if (!role && !skills.length) {
+        const posText = document.createElement('span');
+        posText.className = 'resource-position-text';
+        posText.textContent = res.position || '';
+        posEl.appendChild(posText);
     }
     return cell;
 }
@@ -633,10 +687,12 @@ function renderNowLine(inner) {
 function buildAll() {
     const inner = document.getElementById('planner-inner');
     if (!inner) return;
+    hideRolePopover(); // its anchor (a role-tag element) is about to be destroyed below
     loadTimeAxis();
     indexData();
     buildColumns();
     inner.innerHTML = '';
+    roleByResource = new Map();
 
     const resources = safeGet(appfarm.data.resources);
     const searchEl = document.getElementById('search-input');
@@ -645,7 +701,8 @@ function buildAll() {
         if (!q) return true;
         return (res.fullNameFx || '').toLowerCase().includes(q)
             || resolveWorkTypeName(res.workType).toLowerCase().includes(q)
-            || (res.position || '').toLowerCase().includes(q);
+            || (res.position || '').toLowerCase().includes(q)
+            || (skillsByResource.get(res._id) || []).some(s => s.name.toLowerCase().includes(q));
     });
 
     buildHeader(inner);
@@ -680,6 +737,7 @@ function buildAll() {
                 let role = null;
                 if (res._id === pmId) role = { label: 'Prosjektleder', rowClass: 'role-pm', tagClass: 'role-tag-pm' };
                 else if (res._id === smId) role = { label: 'Anleggsleder', rowClass: 'role-sm', tagClass: 'role-tag-sm' };
+                if (role) roleByResource.set(res._id, role);
                 renderRow(res, frag, role);
             });
         });
@@ -698,8 +756,104 @@ function buildAll() {
     }
 
     inner.appendChild(frag);
+    fitSkillChips(inner);
     buildSummary(inner, filtered);
     renderNowLine(inner);
+}
+
+// Trims skill chips that don't fit the (variable-width, role-tag-sharing)
+// position column into a single "+N" badge — can only be measured once the
+// row is laid out in the live DOM (buildResourceCell builds cells detached).
+function fitSkillChips(root) {
+    root.querySelectorAll('.resource-position').forEach(posEl => {
+        const allChips = Array.from(posEl.querySelectorAll('.skill-chip'));
+        if (allChips.length <= 2) return; // first 2 skills always show by name, no fit check
+        const chips = allChips.slice(2);  // only 3rd+ skill is subject to collapsing
+        // Position text is already omitted whenever skills exist (see
+        // buildResourceCell), so nothing else in this cell needs preserving —
+        // check each chip's own right edge (unaffected by the ancestor's
+        // overflow:hidden) against the column boundary.
+        const boundary = posEl.getBoundingClientRect().right;
+        const fits = (el) => el.getBoundingClientRect().right <= boundary;
+        const removedNames = [];
+        while (chips.length && !fits(chips[chips.length - 1])) {
+            const chip = chips.pop();
+            removedNames.unshift(chip.textContent);
+            chip.remove();
+        }
+        if (!removedNames.length) return;
+        const more = document.createElement('span');
+        more.className = 'skill-chip skill-chip-more';
+        posEl.appendChild(more); // no trailing text node to insert before — this cell has none
+        while (chips.length && !fits(more)) {
+            const chip = chips.pop();
+            removedNames.unshift(chip.textContent);
+            chip.remove();
+        }
+        more.textContent = `+${removedNames.length}`;
+        more.title = removedNames.join(', ');
+    });
+}
+
+// ── Role hover popover (Prosjektleder/Anleggsleder → skills → stilling) ────────
+// Hovering the position field shows this whenever there's a role or skills to
+// reveal — a plain stilling-only row has nothing hidden (its position text is
+// already visible inline), so no popover for those; the native `title` on
+// posEl still covers it. Independent of popoverEl/activeEdit (the editor/
+// ads-popover singleton): this is a passive read-only hover aid, not a modal,
+// so it must not gate rebuilds while shown.
+function showRolePopover(anchorEl, resourceId) {
+    if (rolePopoverEl) { rolePopoverEl.remove(); rolePopoverEl = null; } // clear stale DOM only —
+    const role = roleByResource.get(resourceId);                        // NOT roleHoverResourceId,
+                                                                          // the caller just set that
+    const skills = skillsByResource.get(resourceId) || [];
+    const res = resourceById.get(resourceId);
+    if (!res || (!role && !skills.length)) return;
+
+    rolePopoverEl = document.createElement('div');
+    rolePopoverEl.className = 'pl-popover pl-popover-role';
+    rolePopoverEl.innerHTML = role ? `<div class="pl-popover-title">${escapeHtml(role.label)}</div>` : '';
+
+    skills.forEach(skill => {
+        const row = document.createElement('div');
+        row.className = 'pl-role-skill';
+        row.innerHTML =
+            `<span class="pl-role-skill-name">${escapeHtml(skill.name)}</span>` +
+            (skill.description ? `<span class="pl-role-skill-desc">${escapeHtml(skill.description)}</span>` : '');
+        rolePopoverEl.appendChild(row);
+    });
+
+    const posRow = document.createElement('div');
+    posRow.className = 'pl-role-position';
+    posRow.textContent = res.position || '';
+    rolePopoverEl.appendChild(posRow);
+
+    document.body.appendChild(rolePopoverEl);
+
+    const anchor = anchorEl.getBoundingClientRect();
+    const pw = rolePopoverEl.offsetWidth || 220, ph = rolePopoverEl.offsetHeight || 100, M = 8;
+    let left = anchor.left;
+    if (left + pw > window.innerWidth - M) left = window.innerWidth - pw - M;
+    let top = anchor.bottom + 6;
+    if (top + ph > window.innerHeight - M) top = anchor.top - ph - 6;
+    rolePopoverEl.style.left = Math.max(M, left) + 'px';
+    rolePopoverEl.style.top = Math.max(M, top) + 'px';
+}
+function hideRolePopover() {
+    if (rolePopoverEl) { rolePopoverEl.remove(); rolePopoverEl = null; }
+    roleHoverResourceId = null;
+}
+function onRoleHoverMove(e) {
+    const field = e.target.closest?.('.resource-position');
+    const cell = field?.closest('.pl-resource');
+    const resourceId = cell?.dataset.resourceId;
+    if (!field || !resourceId) {
+        if (roleHoverResourceId) hideRolePopover();
+        return;
+    }
+    if (resourceId === roleHoverResourceId) return;
+    roleHoverResourceId = resourceId;
+    showRolePopover(field, resourceId);
 }
 
 // ── Rebuild guard ──────────────────────────────────────────────
@@ -1367,6 +1521,8 @@ function init() {
     const inner = document.getElementById('planner-inner');
     inner?.addEventListener('mousedown', onPointerDown);
     inner?.addEventListener('click', onClick);
+    inner?.addEventListener('mousemove', onRoleHoverMove);
+    inner?.addEventListener('mouseleave', hideRolePopover);
 
     let deb;
     document.getElementById('search-input')?.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(guardedBuildAll, 150); });

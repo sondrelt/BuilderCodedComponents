@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.8.0 — 2026-07-08
+
+- **Trade skills.** New `resourceTradeSkills` input (junction records:
+  `{ resource, tradeSkill }`, both plain id strings — not expanded by Appfarm)
+  joined client-side against a new `tradeSkills` input (the Trade Skill
+  catalog: `{ _id, name, description }`) surfaces each resource's specialized
+  skills (e.g. wood carving).
+  The position ("stilling") column has a strict display hierarchy for its
+  limited space — **leder (role tag) > tradeskill (skill chips) > stilling**
+  — only the single highest-priority tier that applies is shown inline (a
+  role tag fully replaces skill chips inline, which in turn replace the
+  position text; each is still reachable via `title`/the hover popover
+  below). For a skills-only row, the first 2 skills always show by name; a
+  3rd+ collapses into a "+N" badge (hover for the full list) once measured
+  post-render not to fit.
+- **Hovering the position field opens a popover** whenever there's a role or
+  skills to reveal, listing whatever applies, always in full: role label (if
+  any) → trade skills with descriptions (if any) → stilling. A plain
+  stilling-only row has nothing hidden (its position text is already visible
+  inline) so gets no popover there — just the default cursor and its
+  existing `title` tooltip; the help-cursor affordance only appears on rows
+  that actually have one. Moving off the field — including onto the name,
+  work-type icon, or edit-pencil in the same row — closes it. Independent of
+  the existing alloc/absence-editor and job-ads popovers — this one is
+  passive/read-only and doesn't gate rebuilds while open.
+  Fixed a bug where the popover, once shown, never actually closed on
+  mouseleave: `showRolePopover()` called `hideRolePopover()` internally to
+  clear any stale DOM node, but `hideRolePopover()` also reset the
+  `roleHoverResourceId` hover-tracking variable — wiping out the value
+  `onRoleHoverMove()` had just set, so the "is anything open to hide"
+  check silently no-oped from then on. Split into a DOM-only removal inside
+  `showRolePopover()` versus the full reset in `hideRolePopover()`.
+  `text-overflow: ellipsis` was moved off the shared column container onto a
+  dedicated `.resource-position-text` span around just the trailing text —
+  Chrome's ellipsis handling is unreliable when the overflowing content mixes
+  plain text with inline-block elements (chips), and could silently swallow
+  an entire chip and paint "…" in its place even though that chip's own
+  layout geometry fit.
+- **Work-type column is now an icon, not text.** New `workTypeIcons` input
+  (`{ workType, __fileContentLink }`, matched against `resource.workType`)
+  replaces the work-type name text with its icon, freeing horizontal space
+  (grid column 100px → 40px) for the skill chips. The trade name is preserved
+  as the icon's `alt`/`title` tooltip.
+- **Search now matches trade skill names** too, alongside the existing
+  name/work-type/position matching — typing e.g. "wood carving" surfaces
+  resources with that skill.
+
 ## 1.7.0 — 2026-07-03
 
 - **Job-ad ghost opens a popover instead of navigating directly.** Clicking a

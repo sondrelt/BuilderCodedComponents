@@ -142,22 +142,43 @@
 
 .resource-info {
   display: grid;
-  grid-template-columns: 150px 100px 1fr 36px;
+  grid-template-columns: 150px 40px 1fr 36px;
   align-items: stretch;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
 }
-.resource-name, .resource-worktype, .resource-position {
+.resource-name, .resource-position {
   cursor: default;
   padding: 0 12px;
-  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  overflow: hidden; white-space: nowrap;
   display: block; align-content: center;
   min-width: 0; height: 100%;
 }
+/* .resource-name holds plain text only, so its own ellipsis is safe there. */
+.resource-name { text-overflow: ellipsis; }
+/* .resource-position mixes role-tag/skill-chip inline-blocks with trailing
+   text — text-overflow:ellipsis on a box with mixed inline-block content is
+   unreliable (Chrome can swallow an entire chip and paint "…" in its place
+   even when that chip's own geometry fits). Ellipsis instead applies only to
+   this inner span wrapping the trailing position text, so plain
+   overflow:hidden cleanly (and predictably) clips anything past it. */
+.resource-position-text {
+  display: inline-block; max-width: 100%; vertical-align: middle;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.resource-worktype {
+  cursor: default;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 0; height: 100%;
+}
+.resource-worktype-icon { width: 20px; height: 20px; object-fit: contain; }
 .resource-name, .resource-worktype { border-right: 1px solid var(--border-color); }
 .resource-name { color: var(--text-dark); font-weight: 600; }
-.resource-worktype, .resource-position { color: #6b7280; }
+.resource-position { color: #6b7280; }
+/* Help-cursor affordance only when there's a role/skills popover to reveal on hover — a
+   plain stilling-only row has nothing hidden, so no misleading hover hint there. */
+.resource-position.pl-has-info { cursor: help; }
 .resource-edit-wrapper { display: flex; justify-content: center; align-items: center; cursor: pointer; }
 
 .pl-row.role-pm .pl-resource { box-shadow: inset 4px 0 0 var(--blue-500);  background: var(--blue-50); }
@@ -170,6 +191,13 @@
 }
 .role-tag-pm { background: var(--blue-600); }
 .role-tag-sm { background: var(--green-600); }
+
+.skill-chip {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  padding: 1px 6px; margin-right: 4px; border-radius: 10px;
+  background: #eef2f6; color: #374151; vertical-align: middle; white-space: nowrap;
+}
+.skill-chip-more { background: transparent; color: #6b7280; padding-left: 0; }
 
 /* ==========================================================================
    6. TIMELINE TRACK + GRIDLINES
@@ -753,4 +781,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ==========================================================================
+   15. ROLE HOVER POPOVER (Prosjektleder/Anleggsleder → skills → stilling)
+   Reuses the .pl-popover shell (section 13). Non-interactive — no rows to
+   click, just detail hidden from the row itself to save space.
+   ========================================================================== */
+.pl-popover-role { width: 240px; }
+.pl-role-skill {
+  padding: 5px 0;
+  border-top: 1px solid var(--border-color, #d1d5db);
+}
+.pl-role-skill:first-of-type { border-top: none; }
+.pl-role-skill-name { display: block; font-weight: 600; font-size: 12px; color: var(--text-dark, #374151); }
+.pl-role-skill-desc { display: block; margin-top: 1px; font-size: 11px; color: #6b7280; }
+.pl-role-position {
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--border-color, #d1d5db);
+  font-size: 12px; color: #6b7280;
 }
