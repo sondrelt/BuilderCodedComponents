@@ -483,12 +483,12 @@
 /* ==========================================================================
    10. NOW MARKER
    ========================================================================== */
-/* Spans from the very top (z-index above the header, .pl-header is 30) so it
-   runs straight through into the current-week cell's underline — no gap, and
-   no header-height measurement that could go stale on a web-font swap. */
+/* top and height are set inline (JS) from the first title row's and last
+   resource row's actual offsets — the line only covers the project/resource
+   rows, not the sticky calendar header above or the summary rows below. */
 .pl-nowline {
-  position: absolute; top: 0; bottom: 0;
-  width: 2px; z-index: 32;
+  position: absolute;
+  width: 2px; z-index: 5;
   background: var(--amber-600);
   pointer-events: none;
 }

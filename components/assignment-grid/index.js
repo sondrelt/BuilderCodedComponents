@@ -688,16 +688,24 @@ function buildSummary(inner, filtered) {
     });
 }
 
-// Spans the full height (top:0) and sits above the header in stacking order
-// (CSS z-index), so it runs straight through into the current-week cell's
-// underline with no gap — no header-height measurement to get stale if a
-// web font swaps in after this runs and shifts row heights by a pixel.
+// Spans from 2px above the first project title row to the bottom of the last
+// resource row — not the sticky calendar header above it, not the summary
+// rows below it. Both boundary rows are already in the DOM (called after
+// frag + buildSummary are appended), so this reads real offsets rather than
+// guessing a fixed height.
 function renderNowLine(inner) {
     const today = new Date();
     if (today < rangeStart || today > rangeEnd) return;
+    const firstTitle = inner.querySelector('.pl-grouphead') || inner.querySelector('.pl-row:not(.pl-summary)');
+    const resourceRows = inner.querySelectorAll('.pl-row:not(.pl-summary)');
+    const lastRow = resourceRows[resourceRows.length - 1];
+    if (!firstTitle || !lastRow) return;
+    const top = firstTitle.offsetTop - 2;
     const line = document.createElement('div');
     line.className = 'pl-nowline';
-    line.style.left = (STICKY_W + xForDate(today)) + 'px';
+    line.style.left   = (STICKY_W + xForDate(today)) + 'px';
+    line.style.top    = top + 'px';
+    line.style.height = (lastRow.offsetTop + lastRow.offsetHeight - top) + 'px';
     inner.appendChild(line);
 }
 
