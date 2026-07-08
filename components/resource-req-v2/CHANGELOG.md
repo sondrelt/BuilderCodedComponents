@@ -1,5 +1,12 @@
 # Changelog — resource-req-v2
 
+## 1.21.4 — 2026-07-08
+
+- **Current-week header cell toned down**, matching assignment-grid: replaced
+  the box-shadow ring + bold-800 fill with just a soft tint + bottom
+  underline — marks "this week" without boxing the cell in on all sides,
+  since the now-line below already pinpoints the exact day.
+
 ## 1.21.3 — 2026-07-08
 
 - **Now-line scoped to project/work-type/source rows, visible over the title
