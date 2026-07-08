@@ -1,5 +1,14 @@
 # Changelog — resource-req-v2
 
+## 1.21.0 — 2026-07-08
+
+- **Week gridlines on the work-type gap band.** The coverage band track was
+  explicitly hiding the column gridlines (`background-image: none`); removed so
+  the week lines run through every row, not just the source detail rows below it.
+- **Project tint on the title row now spans the full row**, not just the sticky
+  label chip — the muted project-colour tint reads as a title band across the
+  whole timeline width, matching the full-width `.rp-group-sep` line beneath it.
+
 ## 1.20.0 — 2026-07-03
 
 - **Anonymized "probable capacity" signals in the ads popover.** New

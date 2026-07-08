@@ -137,6 +137,9 @@
   position: sticky;
   left: 0;
   z-index: 20;
+  /* Muted tint of the project colour, across the whole row (not just the sticky
+     label) — reads as a title band over the full timeline, not just the panel. */
+  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
 }
 
 .rp-group-label {
@@ -151,10 +154,6 @@
   box-sizing: border-box;
   position: sticky;
   left: 0;
-  /* Muted tint of the project colour (was a full saturated fill that clashed with
-     the Egne-green / Innleide-amber source bands); the saturated colour lives in
-     the left accent stripe + bottom line instead. */
-  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
   color: var(--rp-text);
   /* Stripe first so it paints over the bottom separator — keeps the title row's
      left stripe continuous with the rows below (same technique as .rp-label-cell). */
@@ -311,7 +310,6 @@
    the underline + ticks colour; magnitude deepens it. The band is the one layer
    carrying signal colour — source rows below stay monochrome. */
 .rp-track-gap {
-  background-image: none;
   background-color: #faf8f4;
 }
 
