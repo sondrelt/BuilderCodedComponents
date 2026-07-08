@@ -142,6 +142,19 @@
   background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
 }
 
+/* Week gridlines over the title row's timeline portion — a separate element
+   (not the row's own background) so the pattern anchors at the timeline's
+   left edge instead of tiling back under the sticky label. */
+.rp-group-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-image: linear-gradient(to right, var(--rp-border) 0 1px, transparent 1px);
+  background-repeat: repeat-x;
+  background-position: left top;
+  pointer-events: none;
+}
+
 .rp-group-label {
   display: inline-flex;
   align-items: center;

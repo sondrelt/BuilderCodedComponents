@@ -681,6 +681,15 @@ function makeGroupHeader(project, showDetails) {
     row.style.width = (STICKY_W + gridWidth) + 'px';
     row.style.setProperty('--proj-color', color);   // left stripe + muted-tint base (CSS)
 
+    // Week gridlines over the timeline portion of the title row, so the tint
+    // reads as continuous with the gridded rows below it, not a blank band.
+    const grid = document.createElement('div');
+    grid.className = 'rp-group-grid';
+    grid.style.left           = STICKY_W + 'px';
+    grid.style.width          = gridWidth + 'px';
+    grid.style.backgroundSize = COL_W + 'px 100%';
+    row.appendChild(grid);
+
     const inner = document.createElement('div');
     inner.className = 'rp-group-label';
 
