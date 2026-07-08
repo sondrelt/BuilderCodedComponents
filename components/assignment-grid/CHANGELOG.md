@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.0 — 2026-07-08
+
+- **Project tint on the title row now spans the full row**, not just the sticky
+  label chip — the muted project-colour tint reads as a title band across the
+  whole timeline width, matching the full-width `.pl-group-sep` line beneath it.
+
 ## 1.8.0 — 2026-07-08
 
 - **Trade skills.** New `resourceTradeSkills` input (junction records:

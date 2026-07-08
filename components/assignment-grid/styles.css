@@ -409,16 +409,18 @@
 /* ==========================================================================
    8. GROUP HEADERS
    ========================================================================== */
-.pl-grouphead { height: 28px; }
+.pl-grouphead {
+  height: 28px;
+  /* Muted tint of the project colour, across the whole row (not just the sticky
+     label) — reads as a title band over the full timeline, not just the panel. */
+  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
+}
 .pl-grouphead-label {
   position: sticky; left: 0; z-index: 11;
   display: inline-block;
   font-weight: 700; font-size: 13px;
   padding: 5px 16px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
-  /* Muted tint of the project colour with a pinned left accent stripe; the
-     saturated colour reads as the stripe + the bottom line, not a heavy fill. */
-  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
   color: #374151;
   box-shadow: inset 4px 0 0 0 var(--proj-color, #94a3b8);
 }
