@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11.2 — 2026-07-08
+
+- **Now-line gap fix, properly this time.** 1.11.1's `header.offsetHeight - 2`
+  measurement left a gap in practice — it's read before web fonts finish
+  loading, so a later font swap shifts row heights and the stored offset goes
+  stale. Replaced with a structural fix: the line spans the full height again
+  (`top: 0`) and sits above the header in z-index, so it runs straight through
+  into the current-week underline with no measurement to go stale.
+
 ## 1.11.1 — 2026-07-08
 
 - **Now-line merges into the underline instead of a flag.** 1.11.0's triangle

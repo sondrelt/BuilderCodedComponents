@@ -688,17 +688,16 @@ function buildSummary(inner, filtered) {
     });
 }
 
-// Starts 2px above the header's bottom edge, so the line runs up into the
-// current-week cell's amber underline instead of stopping short of it —
-// reads as one continuous mark rather than two things that happen to touch.
+// Spans the full height (top:0) and sits above the header in stacking order
+// (CSS z-index), so it runs straight through into the current-week cell's
+// underline with no gap — no header-height measurement to get stale if a
+// web font swaps in after this runs and shifts row heights by a pixel.
 function renderNowLine(inner) {
     const today = new Date();
     if (today < rangeStart || today > rangeEnd) return;
-    const header = inner.querySelector('.pl-header');
     const line = document.createElement('div');
     line.className = 'pl-nowline';
     line.style.left = (STICKY_W + xForDate(today)) + 'px';
-    line.style.top  = (header ? header.offsetHeight - 2 : 0) + 'px';
     inner.appendChild(line);
 }
 
