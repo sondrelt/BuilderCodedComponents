@@ -554,9 +554,12 @@ function makeTrack(res) {
     return track;
 }
 
-function renderRow(res, frag, role = null) {
+function renderRow(res, frag, role = null, color = null) {
     const row = document.createElement('div');
     row.className = 'pl-row' + (role ? ` ${role.rowClass}` : '');
+    // Project-colour left stripe, continuous down every row in the group (like
+    // resource-req-v2) — role rows (Prosjektleder/Anleggsleder) override it below.
+    if (color) row.style.setProperty('--proj-color', color);
     row.appendChild(buildResourceCell(res, role));
     row.appendChild(makeTrack(res));
     frag.appendChild(row);
@@ -748,18 +751,18 @@ function buildAll() {
                 if (res._id === pmId) role = { label: 'Prosjektleder', rowClass: 'role-pm', tagClass: 'role-tag-pm' };
                 else if (res._id === smId) role = { label: 'Anleggsleder', rowClass: 'role-sm', tagClass: 'role-tag-sm' };
                 if (role) roleByResource.set(res._id, role);
-                renderRow(res, frag, role);
+                renderRow(res, frag, role, color);
             });
         });
         if (unassigned.length) {
             frag.appendChild(groupHeader('Ledig / Ikke tildelt prosjekt', '#94a3b8'));
             frag.appendChild(groupSep('#94a3b8'));
-            unassigned.forEach(res => renderRow(res, frag));
+            unassigned.forEach(res => renderRow(res, frag, null, '#94a3b8'));
         }
         if (absences.length) {
             frag.appendChild(groupHeader('Fravær / Permisjon', '#dc8a8a'));
             frag.appendChild(groupSep('#dc8a8a'));
-            absences.forEach(res => renderRow(res, frag));
+            absences.forEach(res => renderRow(res, frag, null, '#dc8a8a'));
         }
     } else {
         filtered.forEach(res => renderRow(res, frag));
