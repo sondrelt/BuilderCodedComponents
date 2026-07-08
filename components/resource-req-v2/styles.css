@@ -328,10 +328,22 @@
   box-shadow: none;
   overflow: visible;   /* let the end-ticks rise above the bottom band */
 }
+/* Gap band number sits on transparent bars (the track's tint + week gridlines
+   show through), so it gets its own tight pill background instead of the
+   base .rp-bar-count's full-width overlay — masks the gridline right behind
+   the digit without blocking it across the rest of the run. */
 .rp-gap .rp-bar-count {
+  position: absolute;
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: auto;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #faf8f4;
   font-weight: 800;
   color: var(--rp-text);
-  text-shadow: 0 0 2px #fff;   /* halo lifts the digit off the tint + band */
 }
 /* Short vertical end-ticks rising from the bottom band at each run boundary. */
 .rp-gap::before, .rp-gap::after {

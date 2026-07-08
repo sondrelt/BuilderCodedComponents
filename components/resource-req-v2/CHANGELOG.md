@@ -1,5 +1,13 @@
 # Changelog — resource-req-v2
 
+## 1.21.1 — 2026-07-08
+
+- **Gap-band number gets its own background pill** instead of the shared
+  full-width `.rp-bar-count` overlay, so the week gridline is masked only right
+  behind the digit (and its ads icon) — not blocked across the whole run like a
+  solid bar would. Replaces the old text-shadow halo, which didn't fully occlude
+  a hard-edged line crossing straight through the glyph.
+
 ## 1.21.0 — 2026-07-08
 
 - **Week gridlines on the work-type gap band.** The coverage band track was
