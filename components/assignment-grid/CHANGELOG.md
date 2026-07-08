@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.11.1 — 2026-07-08
+
+- **Now-line merges into the underline instead of a flag.** 1.11.0's triangle
+  flag read as an extra, separately-positioned shape; dropped it. The line now
+  simply starts 2px above the header's bottom edge, running up into the
+  current-week cell's amber underline so the two read as one continuous mark.
+
 ## 1.11.0 — 2026-07-08
 
 - **Today flag on the now-line.** A small triangle now sits at the header's
