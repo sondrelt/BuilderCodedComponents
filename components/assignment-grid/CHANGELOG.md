@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11.3 — 2026-07-08
+
+- **Now-line scoped to project/resource rows only.** 1.11.2 ran the line
+  through the sticky calendar header down to the very bottom of the grid
+  (including the summary rows). It now spans from 2px above the first
+  project title row to the bottom of the last resource row — reads the real
+  offsets of both boundary rows (already in the DOM when this runs) instead
+  of guessing a fixed span.
+
 ## 1.11.2 — 2026-07-08
 
 - **Now-line gap fix, properly this time.** 1.11.1's `header.offsetHeight - 2`
