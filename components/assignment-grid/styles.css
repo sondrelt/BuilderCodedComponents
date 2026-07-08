@@ -96,7 +96,7 @@
   border-right: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
 }
-.pl-axis { flex: 0 0 auto; background: var(--sticky-header-bg); position: relative; }
+.pl-axis { flex: 0 0 auto; background: var(--sticky-header-bg); }
 
 .pl-months, .pl-cols { display: flex; }
 .pl-month {
@@ -125,20 +125,6 @@
   color: var(--amber-800);
   font-weight: 700;
   box-shadow: inset 0 -3px 0 0 var(--amber-600);
-}
-
-/* Today flag — small downward-pointing triangle at the header's bottom edge,
-   tip aligned to the exact day, giving the now-line below a clear origin
-   point instead of appearing to start out of nowhere under the header. */
-.pl-now-flag {
-  position: absolute;
-  bottom: -1px;
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid var(--amber-600);
-  pointer-events: none;
 }
 
 /* ==========================================================================
@@ -497,8 +483,11 @@
 /* ==========================================================================
    10. NOW MARKER
    ========================================================================== */
+/* top is set inline (JS) to 2px above the header's bottom edge, so the line
+   runs up into the current-week cell's underline instead of stopping short
+   of it — one continuous mark, no separate flag shape. */
 .pl-nowline {
-  position: absolute; top: 0; bottom: 0;
+  position: absolute; bottom: 0;
   width: 2px; z-index: 5;
   background: var(--amber-600);
   pointer-events: none;

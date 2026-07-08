@@ -642,17 +642,6 @@ function buildHeader(inner) {
     axis.appendChild(months);
     axis.appendChild(colRow);
 
-    // Today flag — sits at the header's bottom edge, tip pointing down into the
-    // now-line below, so the line reads as pointed-to rather than starting out
-    // of nowhere right under the sticky header (which otherwise hides it, being
-    // higher z-index).
-    if (today >= rangeStart && today <= rangeEnd) {
-        const flag = document.createElement('div');
-        flag.className = 'pl-now-flag';
-        flag.style.left = xForDate(today) + 'px';
-        axis.appendChild(flag);
-    }
-
     header.appendChild(axis);
     inner.appendChild(header);
 }
@@ -699,12 +688,17 @@ function buildSummary(inner, filtered) {
     });
 }
 
+// Starts 2px above the header's bottom edge, so the line runs up into the
+// current-week cell's amber underline instead of stopping short of it —
+// reads as one continuous mark rather than two things that happen to touch.
 function renderNowLine(inner) {
     const today = new Date();
     if (today < rangeStart || today > rangeEnd) return;
+    const header = inner.querySelector('.pl-header');
     const line = document.createElement('div');
     line.className = 'pl-nowline';
     line.style.left = (STICKY_W + xForDate(today)) + 'px';
+    line.style.top  = (header ? header.offsetHeight - 2 : 0) + 'px';
     inner.appendChild(line);
 }
 
