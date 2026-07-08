@@ -152,6 +152,7 @@ let absentByCol     = [];        // column index → Set<resourceId> absent that
 let wtNameMap       = {};        // workType enum_value → enum_name
 let jobsByWT        = new Map(); // workType → [Job ad]               (lease-OUT demand; surplus weeks)
 let availByWT       = new Map(); // workType → [Resource Available ad] (lease-IN supply; deficit weeks)
+let peerFreeByWT    = new Map(); // workType → [free peer allocation]  (anonymized, unposted lease-IN signal)
 
 let activeDrag    = null;
 let liftedBar     = null;        // editable span currently lifted by lane-hover
@@ -274,8 +275,9 @@ function indexData() {
 
     // Marketplace ads, bucketed by work type so a band column can surface matching
     // availability. Each record is expected to carry a pre-computed `tier` (1/2/3).
-    jobsByWT  = bucketAdsByWT(appfarm.data.jobs);                // lease-OUT (surplus → oppdrag)
-    availByWT = bucketAdsByWT(appfarm.data.resourcesAvailable);  // lease-IN  (deficit → ledige)
+    jobsByWT     = bucketAdsByWT(appfarm.data.jobs);                // lease-OUT (surplus → oppdrag)
+    availByWT    = bucketAdsByWT(appfarm.data.resourcesAvailable);  // lease-IN  (deficit → ledige)
+    peerFreeByWT = bucketPeerFreeByWT(appfarm.data.peerAllocations);
 }
 
 // Bucket an ad data source (Job ad / Resource Available ad) by work type, dropping
@@ -293,14 +295,58 @@ function bucketAdsByWT(ds) {
     return map;
 }
 
-// Raw marketplace ads overlapping band columns ci..cj. dir 'in' = lease in (deficit →
-// Resource Available ads), 'out' = lease out (surplus → Job ads). Sorted best-tier-first.
+// Anonymized peer-org resource-time-windows — same shape as `allocation`
+// (resource, project, workType, dateFrom, dateTo), resource identity stripped.
+// Only "free" records (no project = uncommitted capacity elsewhere) are a usable
+// probable-availability signal; records with a project are committed and dropped.
+function bucketPeerFreeByWT(ds) {
+    const map = new Map();
+    safeGet(ds).forEach(p => {
+        if (p.project != null) return;
+        const wt = toInt(p.workType);
+        if (wt == null) return;
+        if (isNaN(+new Date(p.dateFrom)) || isNaN(+new Date(p.dateTo))) return;
+        let list = map.get(wt);
+        if (!list) map.set(wt, (list = []));
+        list.push(p);
+    });
+    return map;
+}
+
+// Marketplace ads overlapping band columns ci..cj, tagged { ad, isProbable }.
+// dir 'in' = lease in (deficit → Resource Available ads, plus anonymized peer
+// free capacity), 'out' = lease out (surplus → Job ads, no peer signal — the
+// peer feed only carries availability, not demand). Real ads always sort first
+// (tier-ascending); probable rows are a synthesized, strictly-lower-priority
+// trailing group — one row per tier, counting overlapping free peer records,
+// since those carry no identity to key individual rows by.
 function adsForRange(wt, ci, cj, dir) {
-    const list = (dir === 'in' ? availByWT : jobsByWT).get(wt) || [];
     const cs = +columns[ci].start, ce = +columns[cj].end;
-    return list
+    const real = ((dir === 'in' ? availByWT : jobsByWT).get(wt) || [])
         .filter(ad => +new Date(ad.dateEnd) >= cs && +new Date(ad.dateStart) <= ce)
-        .sort((a, b) => (toInt(a.tier) || TIER_MAX) - (toInt(b.tier) || TIER_MAX));
+        .sort((a, b) => (toInt(a.tier) || TIER_MAX) - (toInt(b.tier) || TIER_MAX))
+        .map(ad => ({ ad, isProbable: false }));
+    if (dir !== 'in') return real;
+
+    const byTier = new Map();
+    (peerFreeByWT.get(wt) || [])
+        .filter(p => +new Date(p.dateTo) >= cs && +new Date(p.dateFrom) <= ce)
+        .forEach(p => {
+            const tier = toInt(p.tier) || TIER_MAX;
+            let g = byTier.get(tier);
+            if (!g) byTier.set(tier, (g = { tier, count: 0, from: null, to: null }));
+            g.count++;
+            const from = new Date(p.dateFrom), to = new Date(p.dateTo);
+            if (!g.from || from < g.from) g.from = from;
+            if (!g.to   || to   > g.to)   g.to   = to;
+        });
+    const probable = [...byTier.values()]
+        .sort((a, b) => a.tier - b.tier)
+        .map(g => ({
+            ad: { tier: g.tier, numberOfResources: g.count, dateStart: g.from, dateEnd: g.to },
+            isProbable: true,
+        }));
+    return real.concat(probable);
 }
 
 // ═══ 6. AGGREGATES ══════════════════════════════════════════════════════════
@@ -554,8 +600,13 @@ function makeGapBandTrack(agg, wtId) {
         const dir = g.state === 'deficit' ? 'in' : g.state === 'surplus' ? 'out' : null;
         if (dir) {
             const ads = adsForRange(wtId, i, j, dir);
-            if (ads.length) {
-                bar.querySelector('.rp-bar-count').appendChild(makeAdsIndicator(ads, dir, wtId));
+            const realN = ads.filter(x => !x.isProbable).length;
+            // Badge/indicator counts real (postable, navigable) ads only — probable
+            // peer-capacity signals stay inside the popover so the badge never
+            // promises a number the user can't act on. A gap with only probable
+            // signals and zero real ads gets no indicator at all (v1).
+            if (realN) {
+                bar.querySelector('.rp-bar-count').appendChild(makeAdsIndicator(ads, realN, dir, wtId));
                 // The whole run bar is a click target too — the icon is the affordance hint.
                 bar.classList.add('rp-gap-has-ads');
                 bar.addEventListener('click', (e) => {
@@ -571,12 +622,13 @@ function makeGapBandTrack(agg, wtId) {
 }
 
 // Icon next to the gap number: click opens the ads popover for this run.
-function makeAdsIndicator(ads, dir, wtId) {
+// `realN` (not ads.length) drives the visible count — probable rows don't count.
+function makeAdsIndicator(ads, realN, dir, wtId) {
     const el = document.createElement('button');
     el.type = 'button';
     el.className = 'rp-ads-btn rp-ads-btn-' + dir;
     el.innerHTML = ICONS.info;                      // direction lives in the title + popover
-    el.title = adsVerb(dir) + ' (' + ads.length + ')';
+    el.title = adsVerb(dir) + ' (' + realN + ')';
     el.addEventListener('click', (e) => {
         e.stopPropagation();
         showAdsPopover({ anchorX: e.clientX, anchorY: e.clientY, ads, dir, wtId });
@@ -981,15 +1033,25 @@ function showAdsPopover(opts) {
     popoverEl.innerHTML =
         '<div class="rp-popover-title">' + escapeHtml(adsVerb(opts.dir) + ' · ' + wtName) + '</div>';
 
-    opts.ads.forEach(ad => {
+    let dividerShown = false;
+    opts.ads.forEach(({ ad, isProbable }) => {
+        if (isProbable && !dividerShown) {
+            dividerShown = true;
+            const divider = document.createElement('div');
+            divider.className = 'rp-ads-divider';
+            divider.textContent = 'Sannsynlig kapasitet';
+            popoverEl.appendChild(divider);
+        }
         const tier = toInt(ad.tier) || TIER_MAX;
-        const name = ad.companyName || refName(ad.company) || 'Ukjent selskap';
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'rp-ads-row';
+        const row = document.createElement(isProbable ? 'div' : 'button');
+        if (!isProbable) row.type = 'button';
+        row.className = 'rp-ads-row' + (isProbable ? ' rp-ads-row-probable' : '');
+        const name = isProbable
+            ? 'Sannsynlig'
+            : escapeHtml(ad.companyName || refName(ad.company) || 'Ukjent selskap');
         row.innerHTML =
             '<span class="rp-ads-main">' +
-                '<span class="rp-ads-company">' + escapeHtml(name) + '</span>' +
+                '<span class="rp-ads-company">' + name + '</span>' +
                 '<span class="rp-ads-tier rp-tier-' + (tier <= 3 ? tier : 'x') + '">' +
                     (TIER_LABEL[tier] || '–') + '</span>' +
                 '<span class="rp-ads-count">' + (Number(ad.numberOfResources) || 0) + ' stk</span>' +
@@ -997,13 +1059,15 @@ function showAdsPopover(opts) {
             '<span class="rp-ads-sub">' + escapeHtml(
                 fmtDate(ad.dateStart) + '–' + fmtDate(ad.dateEnd) +
                 (ad.title ? ' · ' + ad.title : '')) + '</span>';
-        row.addEventListener('click', (e) => {
-            e.stopPropagation();
-            appfarm.actions?.goToBuilderAd?.(
-                opts.dir === 'out' ? { jobId: ad._id } : { resourceAvailableId: ad._id },
-                { event: e });
-            close();
-        });
+        if (!isProbable) {
+            row.addEventListener('click', (e) => {
+                e.stopPropagation();
+                appfarm.actions?.goToBuilderAd?.(
+                    opts.dir === 'out' ? { jobId: ad._id } : { resourceAvailableId: ad._id },
+                    { event: e });
+                close();
+            });
+        }
         popoverEl.appendChild(row);
     });
     document.body.appendChild(popoverEl);

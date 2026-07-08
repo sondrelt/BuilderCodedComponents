@@ -1,5 +1,34 @@
 # Changelog — resource-req-v2
 
+## 1.21.0 — 2026-07-08
+
+- **Week gridlines on the work-type gap band.** The coverage band track was
+  explicitly hiding the column gridlines (`background-image: none`); removed so
+  the week lines run through every row, not just the source detail rows below it.
+- **Project tint on the title row now spans the full row**, not just the sticky
+  label chip — the muted project-colour tint reads as a title band across the
+  whole timeline width, matching the full-width `.rp-group-sep` line beneath it.
+
+## 1.20.0 — 2026-07-03
+
+- **Anonymized "probable capacity" signals in the ads popover.** New
+  `peerAllocations` input (same shape as `allocation`: resource, project,
+  workType, dateFrom, dateTo — resource identity stripped) surfaces peer-org
+  capacity that was never formally posted as a Resource Available ad. Only
+  records with no `project` (uncommitted/free) count as a signal; committed
+  peer records are ignored.
+- Probable capacity appears on the lease-in (deficit) side only, below a
+  "Sannsynlig kapasitet" divider, as up to 3 rows — one per tier — each an
+  aggregate count of overlapping free peer records, not a real posting. Rows
+  are informational only: no company name, no click action, no
+  `goToBuilderAd`. Real posted ads always sort ahead of probable rows
+  regardless of tier; probable rows are internally ranked
+  internt → partner → alle same as real ads.
+- **Ads indicator badge counts real ads only** — probable signals are visible
+  only inside the popover, so the badge number never promises more than is
+  actually postable/navigable. A gap with only probable capacity and zero real
+  ads shows no indicator (v1).
+
 ## 1.19.1 — 2026-07-03
 
 - **Ads popover count reads "N stk"** instead of a bare number, matching
