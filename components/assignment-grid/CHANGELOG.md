@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.1 — 2026-07-08
+
+- **Column gridlines on the title row.** The full-width project tint (1.9.0) sat
+  as a blank band with no gridlines; a new `.pl-group-grid` element draws the
+  same column lines over its timeline portion, anchored to the timeline's left
+  edge (not the row's own background, which would tile the pattern back under
+  the sticky label).
+
 ## 1.9.0 — 2026-07-08
 
 - **Project tint on the title row now spans the full row**, not just the sticky
