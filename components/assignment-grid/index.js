@@ -641,6 +641,18 @@ function buildHeader(inner) {
 
     axis.appendChild(months);
     axis.appendChild(colRow);
+
+    // Today flag — sits at the header's bottom edge, tip pointing down into the
+    // now-line below, so the line reads as pointed-to rather than starting out
+    // of nowhere right under the sticky header (which otherwise hides it, being
+    // higher z-index).
+    if (today >= rangeStart && today <= rangeEnd) {
+        const flag = document.createElement('div');
+        flag.className = 'pl-now-flag';
+        flag.style.left = xForDate(today) + 'px';
+        axis.appendChild(flag);
+    }
+
     header.appendChild(axis);
     inner.appendChild(header);
 }
