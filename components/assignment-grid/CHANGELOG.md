@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.10.0 — 2026-07-08
+
+- **Project-colour left stripe continues down every resource row**, not just
+  role rows — matches resource-req-v2's label-cell stripe running from the
+  title row through the whole group. Prosjektleder/Anleggsleder rows still
+  override it with their own blue/green accent (unchanged, just now painted
+  over a coloured base instead of a plain one). `renderRow` takes a `color`
+  param; unassigned/absence pseudo-groups pass their existing grey/red group
+  colours through too, so the stripe never breaks across the grid.
+
 ## 1.9.1 — 2026-07-08
 
 - **Column gridlines on the title row.** The full-width project tint (1.9.0) sat

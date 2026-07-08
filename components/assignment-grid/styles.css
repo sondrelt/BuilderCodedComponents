@@ -138,6 +138,10 @@
   border-bottom: 1px solid var(--border-color);
   padding: 0;
   box-sizing: border-box;
+  /* Project-colour left stripe, continuous from the title row down through every
+     resource in the group (like resource-req-v2's label-cell stripe). Role rows
+     below override it with their own accent. */
+  box-shadow: inset 4px 0 0 0 var(--proj-color, transparent);
 }
 
 .resource-info {
