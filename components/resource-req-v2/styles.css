@@ -124,11 +124,14 @@
   box-sizing: border-box;
 }
 
+/* Current week: a soft tint + bottom underline reads as "this week" without
+   boxing the cell in on all sides — the now-line below already pinpoints the
+   exact day, so this only needs to mark the week, not compete with it. */
 .rp-col.current {
   background: var(--rp-amber-50);
   color: var(--rp-amber-800);
-  font-weight: 800;
-  box-shadow: inset 0 0 0 2px var(--rp-amber-600);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 0 var(--rp-amber-600);
 }
 
 /* ── 4. PROJECT GROUP HEADER ──────────────────────────────────────────────── */
