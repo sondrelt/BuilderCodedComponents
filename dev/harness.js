@@ -10,6 +10,7 @@ const COMPONENTS = [
   'resource-req-phasingOut',
   'assignment-grid',
   'resource-req-v2',
+  'email-html-editor',
 ];
 
 // ponytail: only _set is unused today (static render); it's the round-trip hook.
