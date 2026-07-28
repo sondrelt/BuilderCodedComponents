@@ -1,0 +1,51 @@
+<!--
+  Paste into the EmailTemplate data source record's HTML body field.
+  Placeholders use {{variableName}} — Appfarm does no interpolation itself,
+  substitution happens in the sending Service. Keep variable names in sync
+  with template.json's "variables" list.
+
+  Table-based layout + inline styles throughout: email clients (Outlook in
+  particular) don't reliably support external/<style> CSS or modern layout
+  (flex/grid), so this is the standard bulletproof pattern for transactional
+  email, not a stylistic choice.
+
+  Brand tokens sourced from builder.as (2026-07-28):
+    navy   #0d3d56  — header/footer
+    orange #f59a17  — CTA button
+    cream  #fff7ee  — content panel
+    ink    #111827  — body text
+    font   Inter, falling back to system sans-serif
+-->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{previewText}}</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5efe7;padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background-color:#fff7ee;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;">
+        <tr>
+          <td style="background-color:#0d3d56;padding:24px 32px;">
+            <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">BUILDeR</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;color:#111827;font-size:16px;line-height:1.5;">
+            <p style="margin:0 0 16px;">Hei {{receiverName}},</p>
+            <p style="margin:0 0 24px;">{{body}}</p>
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:6px;background-color:#f59a17;">
+                  <a href="{{buttonUrl}}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:6px;">{{buttonText}}</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#0d3d56;padding:20px 32px;color:#d4e0ca;font-size:12px;line-height:1.5;">
+            BUILDeR — Plattformen for ressursdeling i bygg og anlegg
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

@@ -1,0 +1,9 @@
+{
+  "name": "template-name",
+  "version": "1.0.0",
+  "description": "What this email is for / when it's sent",
+  "subject": "Subject line with {{placeholders}}",
+  "variables": ["previewText", "receiverName", "body", "buttonText", "buttonUrl"],
+  "environment": "Development",
+  "lastSynced": null
+}

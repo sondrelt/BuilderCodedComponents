@@ -143,3 +143,51 @@ Example: `resource-graph: 1.1.0 — add filter persistence across re-renders`
 ## Adding a new component
 
 Copy `components/_template/` to `components/<your-component-name>/`, fill in `component.json`, write the component in `index.js`, then follow the workflow above.
+
+---
+
+## Email notification architecture
+
+Notifications run as two decoupled stages, each backed by its own data source acting as a durable outbox — an event isn't considered handled until its row says so, so a crash mid-processing is a retry, not a lost notification.
+
+**1. `NotificationRequest`** — one row per triggering event (e.g. "ad posted"), written by an App action the moment it happens. Holds what's needed to compute *who* gets notified — not the recipient list itself: fan-out criteria (e.g. `adId`), `templateKey`, shared payload fields, and `treated` (false until fan-out has run).
+
+**2. Fan-out Flow** — called directly from the same App action right after the `NotificationRequest` is written (`Run Flow`, passing the new row's id). For each matching/opted-in recipient it creates one `Notification` row (stage 3), then marks `treated = true`. Must be idempotent per recipient (e.g. a unique key on `(requestId, recipientId)`) — if it dies after creating 150 of 300 rows, re-running against the same still-`treated = false` request must not duplicate those 150.
+
+**3. `Notification`** — one row per individual email to send, the fan-out's output: `recipientEmail`, `recipientName`, `templateKey`, `payload`, `status` (Pending/Sent/Failed).
+
+**4. Sending Flow** — schedule-triggered via a cron **Schedule configured directly in the Flow's own Triggers section** (native to Flows since Appfarm release 148 — no Service involved). This is also *why* it has to be poll-based rather than called with an id: a schedule-triggered Flow action can't receive input, only what's already in storage. It `Foreach`s over `Notification` rows with `status = Pending` (capped per run), resolves the `EmailTemplate`, substitutes `{{variables}}`, calls the built-in **Send Email** action node, and updates `status`.
+
+Splitting fan-out from sending means a slow/rate-limited email provider never blocks the action that triggered the notification (e.g. posting an ad), and a crashed fan-out doesn't leave emails silently unsent with no record anything was supposed to happen.
+
+## Email templates
+
+The **Send Email** action node does no templating/interpolation of its own — it only accepts final HTML/text strings — so template content used by the sending Flow above is a hand-maintained asset, version-controlled here the same way coded components are, in a sibling top-level folder.
+
+### Folder layout
+
+```
+email-templates/
+  <template-name>/
+    template.json   ← metadata: name, version, description, subject, variables, last synced
+    body.html        ← paste into the EmailTemplate data source record's HTML body field
+    body.txt         ← plain-text fallback (required — Message (text) is mandatory), paste into the record's text body field
+    CHANGELOG.md      ← log every change before pasting into Appfarm
+```
+
+Placeholders in `body.html`, `body.txt`, and `template.json`'s `subject` use `{{variableName}}` syntax. Appfarm does not evaluate these — the sending Flow does plain string substitution before calling Send Email. `template.json`'s `variables` array is the explicit contract for which tokens a template expects; there's no compiler to catch a typo'd placeholder, so keep it in sync by hand with both the template body and whatever builds the `Notification.payload`.
+
+Email clients don't reliably support external/`<style>` CSS — use inline styles in `body.html`.
+
+### Versioning & workflow
+
+Same mechanics as components:
+
+- Git tags: `<template-name>@<semver>`, e.g. `welcome-email@1.0.0`.
+- Branches: `feat/email-<template-name>-<short-desc>` (include a short description, not just the bare template name — the same branch name gets reused across unrelated changes over time otherwise).
+- Commit format: `email-templates/<template-name>: <version> — <short description>`.
+- "Paste into Appfarm" means writing `body.html`/`body.txt`/`subject` into the `EmailTemplate` data source record, then bumping `lastSynced` in `template.json` and committing `email-templates/<template-name>: set lastSynced <date>`.
+
+### Adding a new template
+
+Copy `email-templates/_template/` to `email-templates/<your-template-name>/`, fill in `template.json` (including `variables`), write `body.html` and `body.txt`, then follow the workflow above.
