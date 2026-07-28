@@ -1,0 +1,29 @@
+<!-- Paste into the HTML Content tab in Appfarm Create. -->
+<div id="email-html-editor">
+  <div class="eht-editor">
+    <div class="eht-field" id="eht-subject-row" hidden>
+      <label for="eht-subject">Subject</label>
+      <input type="text" id="eht-subject" autocomplete="off" />
+    </div>
+
+    <div class="eht-field">
+      <label for="eht-html">HTML</label>
+      <textarea id="eht-html" spellcheck="false"></textarea>
+    </div>
+
+    <div class="eht-field" id="eht-text-row" hidden>
+      <label for="eht-text">Text</label>
+      <textarea id="eht-text" spellcheck="false"></textarea>
+    </div>
+
+    <div class="eht-actions">
+      <button type="button" id="eht-save">Save</button>
+      <button type="button" id="eht-revert">Revert</button>
+      <span id="eht-status" role="status"></span>
+    </div>
+  </div>
+
+  <div class="eht-preview">
+    <iframe id="eht-preview-frame" title="Email preview" sandbox="allow-same-origin"></iframe>
+  </div>
+</div>

@@ -1,0 +1,114 @@
+/* Paste into the CSS tab in Appfarm Create. Scoped to #email-html-editor. */
+
+#email-html-editor {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  min-height: 480px;
+  font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+#email-html-editor .eht-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 40%;
+  min-width: 320px;
+}
+
+#email-html-editor .eht-preview {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+#email-html-editor .eht-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+#email-html-editor .eht-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+}
+
+#email-html-editor .eht-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+#email-html-editor .eht-field input[type="text"] {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+#email-html-editor #eht-html {
+  flex: 2;
+  min-height: 160px;
+}
+
+#email-html-editor #eht-text-row textarea {
+  flex: 1;
+  min-height: 100px;
+}
+
+#email-html-editor .eht-field textarea {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-family: "SF Mono", Consolas, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+}
+
+#email-html-editor .eht-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#email-html-editor .eht-actions button {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#email-html-editor #eht-save {
+  background: #0d3d56;
+  color: #ffffff;
+  border-color: #0d3d56;
+}
+
+#email-html-editor #eht-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#email-html-editor #eht-status {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+#email-html-editor #eht-status[data-state="error"] {
+  color: #b91c1c;
+}
+
+#email-html-editor #eht-status[data-state="saved"] {
+  color: #15803d;
+}
