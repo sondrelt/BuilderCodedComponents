@@ -8,10 +8,8 @@
 
 window.FIXTURES = window.FIXTURES || {};
 window.FIXTURES['email-html-editor'] = {
-  id: 'contract-signed',
   html: '',
   text: 'Hei {{receiverName}},\n\n{{body}}\n\n{{buttonText}}: {{buttonUrl}}',
-  subject: 'Kontrakt signert',
   layoutHtml: `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5efe7;padding:32px 16px;">
       <tr><td align="center">

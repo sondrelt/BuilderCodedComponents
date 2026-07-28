@@ -47,13 +47,6 @@
   letter-spacing: 0.02em;
 }
 
-#email-html-editor .eht-field input[type="text"] {
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
 #email-html-editor #eht-html {
   flex: 2;
   min-height: 160px;

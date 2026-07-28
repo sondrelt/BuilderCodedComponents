@@ -14,8 +14,6 @@ const safeGet = (ds) => ds?.get?.() ?? null;
 
 /** @type {HTMLDivElement} */
 const root = /** @type {HTMLDivElement} */ (ns.element.querySelector('#email-html-editor'));
-const subjectRow = /** @type {HTMLDivElement} */ (root.querySelector('#eht-subject-row'));
-const subjectInput = /** @type {HTMLInputElement} */ (root.querySelector('#eht-subject'));
 const htmlInput = /** @type {HTMLTextAreaElement} */ (root.querySelector('#eht-html'));
 const textRow = /** @type {HTMLDivElement} */ (root.querySelector('#eht-text-row'));
 const textInput = /** @type {HTMLTextAreaElement} */ (root.querySelector('#eht-text'));
@@ -25,28 +23,22 @@ const status = /** @type {HTMLSpanElement} */ (root.querySelector('#eht-status')
 const previewFrame = /** @type {HTMLIFrameElement} */ (root.querySelector('#eht-preview-frame'));
 
 const hasText = safeGet(ns.data.text) != null;
-const hasSubject = safeGet(ns.data.subject) != null;
 
 const state = {
-    id: null,
     html: '',
     text: '',
-    subject: '',
     dirty: false,
 };
 
 let previewTimer = null;
 
 function loadFromData() {
-    state.id = safeGet(ns.data.id);
     state.html = safeGet(ns.data.html) || '';
     state.text = hasText ? (safeGet(ns.data.text) || '') : '';
-    state.subject = hasSubject ? (safeGet(ns.data.subject) || '') : '';
     state.dirty = false;
 
     htmlInput.value = state.html;
     if (hasText) textInput.value = state.text;
-    if (hasSubject) subjectInput.value = state.subject;
 }
 
 function updatePreview() {
@@ -83,9 +75,9 @@ function handleSave() {
     saveButton.disabled = true;
     setStatus('Saving…');
 
-    const payload = { id: state.id, html: state.html };
+    // No id — actions are contextual to the record this instance is placed on.
+    const payload = { html: state.html };
     if (hasText) payload.text = state.text;
-    if (hasSubject) payload.subject = state.subject;
 
     // Deliberate .then/.catch here, unlike this repo's usual fire-and-forget
     // action calls — this is an explicit user-triggered save, not an
@@ -111,7 +103,6 @@ function handleRevert() {
 }
 
 function init() {
-    subjectRow.hidden = !hasSubject;
     textRow.hidden = !hasText;
 
     loadFromData();
@@ -139,13 +130,6 @@ function init() {
             state.dirty = true;
         });
     }
-    if (hasSubject) {
-        subjectInput.addEventListener('input', () => {
-            state.subject = subjectInput.value;
-            state.dirty = true;
-        });
-    }
-
     saveButton.addEventListener('click', handleSave);
     revertButton.addEventListener('click', handleRevert);
 
@@ -155,7 +139,6 @@ function init() {
     ns.data.standardHtml?.on?.('change', scheduleUpdatePreview);
     ns.data.html?.on?.('change', () => { if (!state.dirty) loadFromData(); updatePreview(); });
     if (hasText) ns.data.text?.on?.('change', () => { if (!state.dirty) loadFromData(); });
-    if (hasSubject) ns.data.subject?.on?.('change', () => { if (!state.dirty) loadFromData(); });
 }
 
 if (document.readyState !== 'loading') {
