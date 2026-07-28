@@ -1,0 +1,8 @@
+{
+  "name": "contract-ready-for-approval",
+  "version": "1.0.0",
+  "description": "Sent when a drafted contract needs internal approval before it goes to the counterparty.",
+  "subject": "Kontrakt klar for godkjenning",
+  "environment": "Development",
+  "lastSynced": null
+}

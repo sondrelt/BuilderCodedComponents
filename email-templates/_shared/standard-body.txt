@@ -1,0 +1,13 @@
+Default plain-text fragment, shared by every template that doesn't need
+something unique. Used by the Sending Flow when an EmailTemplate row's
+text body field is left EMPTY, same fallback mechanism as standard-body.html.
+Wrapped in ../_shared/layout.txt at {{content}}. Use the same
+{{variableName}} placeholders.
+
+---
+
+Hei {{receiverName}},
+
+{{body}}
+
+{{buttonText}}: {{buttonUrl}}

@@ -1,0 +1,8 @@
+{
+  "name": "contract-ready-for-signing",
+  "version": "1.0.0",
+  "description": "Sent when an approved contract is ready for the signing authority to sign.",
+  "subject": "Kontrakt klar for signering",
+  "environment": "Development",
+  "lastSynced": null
+}

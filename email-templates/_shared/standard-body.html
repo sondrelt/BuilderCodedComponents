@@ -1,0 +1,22 @@
+<!--
+  Default content fragment, shared by every template that doesn't need
+  something unique. Paste into the Sending Flow as a fallback constant:
+  when an EmailTemplate row's HTML body field is left EMPTY, the Sending
+  Flow substitutes this fragment before wrapping it in layout.html at
+  {{content}}. A template only gets its own body.html when its content is
+  structurally different from paragraph+button (e.g. a repeated-row digest)
+  — see "Adding a new template" in CLAUDE.md.
+
+  Placeholders use {{variableName}} — Appfarm does no interpolation itself,
+  substitution happens in the sending Flow. Keep variable names in sync
+  with each template's template.json "variables" list.
+-->
+<p style="margin:0 0 16px;">Hei {{receiverName}},</p>
+<p style="margin:0 0 24px;">{{body}}</p>
+<table role="presentation" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="border-radius:6px;background-color:#f59a17;">
+      <a href="{{buttonUrl}}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:6px;">{{buttonText}}</a>
+    </td>
+  </tr>
+</table>

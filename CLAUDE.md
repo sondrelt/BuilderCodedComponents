@@ -168,26 +168,51 @@ The **Send Email** action node does no templating/interpolation of its own — i
 
 ```
 email-templates/
+  _shared/
+    layout.html         ← header/footer shell, {{content}} slot — NOT an EmailTemplate record
+    layout.txt           ← same, plain-text
+    layout.json           ← metadata + where it's pasted (a Sending Flow constant)
+    standard-body.html    ← default content fragment (paragraph + button) — the fallback for any template without its own
+    standard-body.txt      ← same, plain-text
+    standard-body.json      ← metadata + where it's pasted (a Sending Flow constant)
+    CHANGELOG.md              ← log every change before pasting into Appfarm, for all _shared assets
   <template-name>/
-    template.json   ← metadata: name, version, description, subject, variables, last synced
-    body.html        ← paste into the EmailTemplate data source record's HTML body field
-    body.txt         ← plain-text fallback (required — Message (text) is mandatory), paste into the record's text body field
-    CHANGELOG.md      ← log every change before pasting into Appfarm
+    template.json        ← metadata: name, version, description, subject, last synced. `variables` OPTIONAL — see below
+    body.html             ← OPTIONAL — only add when content differs from standard-body. Paste into the EmailTemplate row's HTML body field
+    body.txt               ← OPTIONAL, same rule — paste into the row's text body field
+    CHANGELOG.md              ← log every change before pasting into Appfarm
 ```
 
-Placeholders in `body.html`, `body.txt`, and `template.json`'s `subject` use `{{variableName}}` syntax. Appfarm does not evaluate these — the sending Flow does plain string substitution before calling Send Email. `template.json`'s `variables` array is the explicit contract for which tokens a template expects; there's no compiler to catch a typo'd placeholder, so keep it in sync by hand with both the template body and whatever builds the `Notification.payload`.
+Most templates need **only `template.json`** — no `body.html`/`body.txt` at all. Leave the corresponding `EmailTemplate` row's body fields empty at paste time, and the Sending Flow falls back to `_shared/standard-body.*`. Give a template its own `body.html`/`body.txt` only when its content is structurally different from paragraph+button (e.g. a digest listing multiple items needs a repeated-row block) — in that case populate the row's body fields normally and the fallback is skipped for that row.
 
-Email clients don't reliably support external/`<style>` CSS — use inline styles in `body.html`.
+**`variables` is not a per-type property — omit it by default.** The variable set a template needs is a function of which body it renders (`standard-body.json`'s list, plus `previewText` from `layout.json`), not of the notification type. Re-typing that same array into every template using the default body is pure duplication that can silently drift from the actual fragment. Only declare `variables` in a template's own `template.json` when it needs tokens *beyond* what its body already provides — e.g. an extra `{{contractTitle}}` placeholder used only in `subject`, or the full set when the template has its own custom `body.html`/`body.txt`.
+
+The Sending Flow resolves content, falls back to standard, then wraps in the shell, then substitutes variables:
+
+```
+body     = emailTemplate.body     || standardBody.html   // fall back when the row's body field is empty
+bodyText = emailTemplate.bodyText || standardBody.txt
+html = layout.html.replace('{{content}}', body)
+text = layout.txt.replace('{{content}}', bodyText)
+html = substituteVariables(html, notification.payload)   // then {{variableName}} substitution, as before
+text = substituteVariables(text, notification.payload)
+```
+
+`_shared/*` assets are hand-maintained, version-controlled files like everything else here, but neither pastes into an `EmailTemplate` record — there's no "layout" or "standard body" field on that data source. Paste each into its own constant in the Sending Flow once, and record where in the asset's own `.json`'s `pastedInto`.
+
+Placeholders in `body.html`, `body.txt`, `layout.html`/`layout.txt`, `standard-body.html`/`standard-body.txt`, and `template.json`'s `subject` use `{{variableName}}` syntax. Appfarm does not evaluate these — the sending Flow does plain string substitution after composing shell + fragment. Wherever a `variables` array is declared (`standard-body.json`, `layout.json`, or a template's own `template.json` for its extras), it's the explicit contract for which tokens that piece expects; there's no compiler to catch a typo'd placeholder, so keep each in sync by hand with its own file and with whatever builds the `Notification.payload`.
+
+Email clients don't reliably support external/`<style>` CSS — use inline styles in `body.html`, `layout.html`, and `standard-body.html`.
 
 ### Versioning & workflow
 
 Same mechanics as components:
 
-- Git tags: `<template-name>@<semver>`, e.g. `welcome-email@1.0.0`.
+- Git tags: `<template-name>@<semver>`, e.g. `welcome-email@1.0.0` (the shared assets tag as `layout@<semver>` / `standard-body@<semver>`).
 - Branches: `feat/email-<template-name>-<short-desc>` (include a short description, not just the bare template name — the same branch name gets reused across unrelated changes over time otherwise).
 - Commit format: `email-templates/<template-name>: <version> — <short description>`.
-- "Paste into Appfarm" means writing `body.html`/`body.txt`/`subject` into the `EmailTemplate` data source record, then bumping `lastSynced` in `template.json` and committing `email-templates/<template-name>: set lastSynced <date>`.
+- "Paste into Appfarm" means writing `subject` (and `body.html`/`body.txt` if this template has its own) into the `EmailTemplate` data source record, then bumping `lastSynced` in `template.json` and committing `email-templates/<template-name>: set lastSynced <date>`. If the template has no `body.html`/`body.txt`, leave the row's body fields empty so the Sending Flow's standard-body fallback applies.
 
 ### Adding a new template
 
-Copy `email-templates/_template/` to `email-templates/<your-template-name>/`, fill in `template.json` (including `variables`), write `body.html` and `body.txt`, then follow the workflow above.
+Copy `email-templates/_template/` to `email-templates/<your-template-name>/`, fill in `template.json` (including `variables`). If the default paragraph+button pattern fits, stop there — no `body.html`/`body.txt` needed. Only add them, starting from a copy of `_shared/standard-body.html`/`.txt`, when this type's content is structurally different. Then follow the workflow above.

@@ -1,0 +1,9 @@
+{
+  "name": "layout",
+  "version": "1.0.0",
+  "description": "Shared header/footer shell composed around every template's {{content}} fragment by the Sending Flow. Not an EmailTemplate record — paste into the Sending Flow's layout constant(s).",
+  "variables": ["previewText"],
+  "pastedInto": "Sending Flow constant (name TBD)",
+  "environment": "Development",
+  "lastSynced": null
+}

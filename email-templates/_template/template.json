@@ -2,8 +2,7 @@
   "name": "template-name",
   "version": "1.0.0",
   "description": "What this email is for / when it's sent",
-  "subject": "Subject line with {{placeholders}}",
-  "variables": ["previewText", "receiverName", "body", "buttonText", "buttonUrl"],
+  "subject": "Subject line, only use {{placeholders}} here if they're not already in standard-body/layout",
   "environment": "Development",
   "lastSynced": null
 }

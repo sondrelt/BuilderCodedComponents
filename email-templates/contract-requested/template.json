@@ -1,0 +1,8 @@
+{
+  "name": "contract-requested",
+  "version": "1.0.0",
+  "description": "Sent when a contract request is created — notifies whoever needs to draft/review it.",
+  "subject": "Ny kontraktsforespørsel",
+  "environment": "Development",
+  "lastSynced": null
+}

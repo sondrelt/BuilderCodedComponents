@@ -1,0 +1,13 @@
+Shared shell for the plain-text fallback. Not pasted into any EmailTemplate
+record directly — pasted once into a constant in the Sending Flow, composed
+the same way as layout.html:
+
+  text = layout.txt.replace('{{content}}', emailTemplate.bodyText)
+  text = substituteVariables(text, notification.payload)
+
+---
+
+{{content}}
+
+--
+BUILDeR — Plattformen for ressursdeling i bygg og anlegg

@@ -1,0 +1,8 @@
+{
+  "name": "contract-signed",
+  "version": "1.0.0",
+  "description": "Sent to both parties once a contract is fully signed — confirmation, no action required.",
+  "subject": "Kontrakt signert",
+  "environment": "Development",
+  "lastSynced": null
+}
