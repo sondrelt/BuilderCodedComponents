@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 — 2026-07-31
+
+- `save` payload always includes both `html` and `text` (unconditionally), matching the action's fixed 2-param signature — previously `text` was omitted when this instance had no text field bound.
+
 ## 1.1.0 — 2026-07-28
 
 - `save` now takes `{ html, text? }` — no `id` (actions are contextual to the record this instance is placed on).

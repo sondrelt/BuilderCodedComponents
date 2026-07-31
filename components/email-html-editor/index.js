@@ -76,8 +76,9 @@ function handleSave() {
     setStatus('Saving…');
 
     // No id — actions are contextual to the record this instance is placed on.
-    const payload = { html: state.html };
-    if (hasText) payload.text = state.text;
+    // Always both params, even when this instance has no text field bound —
+    // the action's signature is fixed at (html, text).
+    const payload = { html: state.html, text: state.text };
 
     // Deliberate .then/.catch here, unlike this repo's usual fire-and-forget
     // action calls — this is an explicit user-triggered save, not an
