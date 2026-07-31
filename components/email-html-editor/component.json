@@ -1,6 +1,6 @@
 {
   "name": "email-html-editor",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Generic HTML/text editor with a live composed preview for the email notification content classes (EmailLayout, EmailTemplateStandard, EmailTemplate). Placed once per class's detail view with different Input bindings — see CLAUDE.md's Email templates section for the layout/standard-body/template composition it mirrors. Subject is plain metadata, not HTML — edit it via Appfarm's normal field editor, not here. Action is contextual to the record this instance is placed on — no id parameter.",
   "appfarmApp": "",
   "environment": "Development",

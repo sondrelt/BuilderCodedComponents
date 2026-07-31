@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2 — 2026-07-31
+
+- Fixed: `hasText` was computed from the text data source's *current value* (`null` for any record that has never had text saved), not from whether it's bound — this silently skipped attaching the input listener, so typed text never reached `state.text`/the save payload on a first-time edit. Now based on binding presence instead.
+- Fixed CSS: `.eht-field[hidden]` rule so the text row is actually hidden when unbound, instead of `display: flex` (higher specificity than the `[hidden]` UA rule) always showing it.
+
 ## 1.1.1 — 2026-07-31
 
 - `save` payload always includes both `html` and `text` (unconditionally), matching the action's fixed 2-param signature — previously `text` was omitted when this instance had no text field bound.

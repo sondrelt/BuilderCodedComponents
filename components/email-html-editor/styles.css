@@ -39,6 +39,10 @@
   min-height: 0;
 }
 
+#email-html-editor .eht-field[hidden] {
+  display: none;
+}
+
 #email-html-editor .eht-field label {
   font-size: 12px;
   font-weight: 600;

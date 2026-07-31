@@ -22,7 +22,9 @@ const revertButton = /** @type {HTMLButtonElement} */ (root.querySelector('#eht-
 const status = /** @type {HTMLSpanElement} */ (root.querySelector('#eht-status'));
 const previewFrame = /** @type {HTMLIFrameElement} */ (root.querySelector('#eht-preview-frame'));
 
-const hasText = safeGet(ns.data.text) != null;
+// Presence of the *binding*, not its current value — a record that has
+// never had text saved yet still has ns.data.text bound, just null.
+const hasText = ns.data.text != null;
 
 const state = {
     html: '',
