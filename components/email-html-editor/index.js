@@ -18,7 +18,6 @@ const htmlInput = /** @type {HTMLTextAreaElement} */ (root.querySelector('#eht-h
 const textRow = /** @type {HTMLDivElement} */ (root.querySelector('#eht-text-row'));
 const textInput = /** @type {HTMLTextAreaElement} */ (root.querySelector('#eht-text'));
 const saveButton = /** @type {HTMLButtonElement} */ (root.querySelector('#eht-save'));
-const revertButton = /** @type {HTMLButtonElement} */ (root.querySelector('#eht-revert'));
 const status = /** @type {HTMLSpanElement} */ (root.querySelector('#eht-status'));
 const previewFrame = /** @type {HTMLIFrameElement} */ (root.querySelector('#eht-preview-frame'));
 
@@ -99,12 +98,6 @@ function handleSave() {
         });
 }
 
-function handleRevert() {
-    loadFromData();
-    setStatus('Reverted');
-    updatePreview();
-}
-
 function init() {
     textRow.hidden = !hasText;
 
@@ -134,7 +127,6 @@ function init() {
         });
     }
     saveButton.addEventListener('click', handleSave);
-    revertButton.addEventListener('click', handleRevert);
 
     // Reference data (layout/standard) always trusted live — only the
     // fields this instance itself owns are held back while dirty.

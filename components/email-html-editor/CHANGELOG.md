@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0 — 2026-07-31
+
+- Removed the Revert button and its handler — Save/reload is now the only way to discard in-progress edits.
+
 ## 1.1.2 — 2026-07-31
 
 - Fixed: `hasText` was computed from the text data source's *current value* (`null` for any record that has never had text saved), not from whether it's bound — this silently skipped attaching the input listener, so typed text never reached `state.text`/the save payload on a first-time edit. Now based on binding presence instead.
