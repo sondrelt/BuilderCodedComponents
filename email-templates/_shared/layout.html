@@ -8,7 +8,7 @@
     html = substituteVariables(html, notification.payload)
 
   {{content}} is the only placeholder this file defines. Everything else
-  ({{receiverName}}, {{body}}, {{buttonText}}, ...) belongs to the
+  ({{receiverName}}, {{mainSection}}, {{buttonText}}, ...) belongs to the
   per-template fragment that fills {{content}} and is substituted after
   composition, same as before.
 
@@ -17,22 +17,23 @@
   (flex/grid), so this is the standard bulletproof pattern for transactional
   email, not a stylistic choice.
 
-  Brand tokens sourced from builder.as (2026-07-28):
+  Brand tokens sourced from builder.as (2026-07-28, content panel updated 2026-08-06):
     navy   #0d3d56  — header/footer
     orange #f59a17  — CTA button
-    cream  #fff7ee  — content panel
+    cream  #feefdc  — outer background
+    white  #ffffff  — content panel
     ink    #111827  — body text
     font   Inter, falling back to system sans-serif
 -->
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{previewText}}</div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5efe7;padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#feefdc;padding:32px 16px;">
   <tr>
     <td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background-color:#fff7ee;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;">
         <tr>
           <td style="background-color:#0d3d56;padding:24px 32px;">
-            <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">BUILDeR</span>
+            <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">BUILDER | Varsel</span>
           </td>
         </tr>
         <tr>

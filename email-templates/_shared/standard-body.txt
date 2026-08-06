@@ -7,7 +7,8 @@ Wrapped in ../_shared/layout.txt at {{content}}. Use the same
 ---
 
 Hei {{receiverName}},
+--------------------
 
-{{body}}
+{{mainSection}}
 
 {{buttonText}}: {{buttonUrl}}
