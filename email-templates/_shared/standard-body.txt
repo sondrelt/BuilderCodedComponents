@@ -6,7 +6,7 @@ Wrapped in ../_shared/layout.txt at {{content}}. Use the same
 
 ---
 
-Hei {{receiverName}},
+Hei {{recipientName}},
 --------------------
 
 {{mainSection}}

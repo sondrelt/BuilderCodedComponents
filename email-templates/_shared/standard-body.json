@@ -2,7 +2,7 @@
   "name": "standard-body",
   "version": "1.1.0",
   "description": "Default paragraph+button content fragment, reused by any template that leaves its EmailTemplate row's body fields empty. Pasted into the Sending Flow as a fallback constant, same mechanism as layout.html/layout.txt.",
-  "variables": ["receiverName", "mainSection", "buttonText", "buttonUrl"],
+  "variables": ["recipientName", "mainSection", "buttonText", "buttonUrl"],
   "pastedInto": "Sending Flow constant (name TBD)",
   "environment": "Development",
   "lastSynced": null
