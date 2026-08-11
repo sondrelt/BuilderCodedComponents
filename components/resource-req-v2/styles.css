@@ -231,6 +231,12 @@
 
 .rp-row-summary-band .rp-wt-band-label {
   background: color-mix(in srgb, var(--rp-navy), #fff 92%);
+  /* Continues the navy stripe from .rp-summary-label down through every
+     work-type row, same layered-shadow-over-border technique as the
+     per-project --proj-color stripe (.rp-label-cell above) — marks the
+     whole section as one aggregation group, not just its header row. */
+  box-shadow: inset 4px 0 0 0 var(--rp-navy),
+              inset 0 -1px 0 0 rgba(0,0,0,0.1);
 }
 
 /* ── 5. ROWS ──────────────────────────────────────────────────────────────── */

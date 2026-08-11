@@ -1,5 +1,13 @@
 # Changelog — resource-req-v2
 
+## 1.22.2 — 2026-08-11
+
+- **Summary section left stripe extended down through every work-type row**,
+  not just the "Alle prosjekter" header — same continuous-stripe technique as
+  the per-project colour stripe, so the navy edge marks the whole aggregation
+  section as one group. Underline position unchanged (still directly under
+  the header row, from 1.22.1).
+
 ## 1.22.1 — 2026-08-11
 
 - **Summary section separator line** moved to sit directly under the "Alle
