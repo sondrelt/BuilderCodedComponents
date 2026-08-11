@@ -906,8 +906,8 @@ function buildAll() {
 
     if (globalWTIds.length) {
         frag.appendChild(makeSummaryHeadRow());
-        globalWTIds.forEach(wtId => frag.appendChild(makeSummaryBandRow(wtId, globalAgg)));
         frag.appendChild(makeSummarySepRow());
+        globalWTIds.forEach(wtId => frag.appendChild(makeSummaryBandRow(wtId, globalAgg)));
     }
 
     // Pass 2 — existing per-project render body, unchanged apart from reading
