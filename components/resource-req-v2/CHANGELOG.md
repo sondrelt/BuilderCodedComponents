@@ -1,5 +1,11 @@
 # Changelog — resource-req-v2
 
+## 1.22.1 — 2026-08-11
+
+- **Summary section separator line** moved to sit directly under the "Alle
+  prosjekter" header row (matching `.rp-group-sep`'s position under each
+  project's title row), instead of trailing after all the work-type rows.
+
 ## 1.22.0 — 2026-08-11
 
 - **New global summary section** at the top of the grid: one coverage-gap band
