@@ -1,5 +1,9 @@
 # Changelog
 
+## standard-body 1.1.0 — 2026-08-11
+
+- Renamed placeholder `{{receiverName}}` → `{{recipientName}}` (html, txt, variables list). `layout.html` comment updated to match.
+
 ## layout 1.1.0 — 2026-08-06
 
 - Content panel background changed from cream (`#fff7ee`) to white (`#ffffff`); outer background changed to `#feefdc`.
