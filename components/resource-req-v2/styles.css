@@ -198,6 +198,41 @@
   text-overflow: ellipsis;
 }
 
+/* ── 4a. GLOBAL SUMMARY (all-projects aggregate, sits above every project group) ── */
+.rp-summary-head {
+  height: 32px;
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--rp-navy), #fff 88%);
+}
+
+.rp-summary-label {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 13px;
+  min-width: var(--rp-sticky-w);
+  box-sizing: border-box;
+  position: sticky;
+  left: 0;
+  color: var(--rp-navy);
+  box-shadow: inset 4px 0 0 0 var(--rp-navy),
+              inset 0 -1px 0 0 rgba(0,0,0,0.1);
+}
+
+.rp-summary-sep {
+  flex: 0 0 auto;
+  height: 3px;
+  background: var(--rp-navy);
+}
+
+.rp-row-summary-band .rp-wt-band-label {
+  background: color-mix(in srgb, var(--rp-navy), #fff 92%);
+}
+
 /* ── 5. ROWS ──────────────────────────────────────────────────────────────── */
 .rp-row {
   display: flex;

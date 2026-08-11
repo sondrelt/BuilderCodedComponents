@@ -1,5 +1,15 @@
 # Changelog — resource-req-v2
 
+## 1.22.0 — 2026-08-11
+
+- **New global summary section** at the top of the grid: one coverage-gap band
+  row per work type that has data anywhere (planned Behov or allocated Egne,
+  across every project), summed for each visible week and classified with the
+  same deficit/surplus/covered/no-demand logic as the per-project bands — no
+  per-source breakdown at this level. Renders inside the same scrolling grid
+  as the per-project rows so its week columns stay aligned with the calendar
+  axis while scrolling horizontally.
+
 ## 1.21.4 — 2026-07-08
 
 - **Current-week header cell toned down**, matching assignment-grid: replaced

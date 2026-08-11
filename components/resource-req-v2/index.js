@@ -483,6 +483,54 @@ function computeAggregates(projectId, workTypes) {
     };
 }
 
+// Global (all-projects) summary — sums each project's own computeAggregates()
+// output rather than re-painting from raw sources. Coverage balance is linear
+// (Egne + Innleide − Behov), so global balance at a column = sum of every
+// project's own balance there; only the three raw components need summing,
+// then the same classifier below runs once.
+function arrFor(map, key, n) {
+    let a = map.get(key);
+    if (!a) map.set(key, (a = new Array(n).fill(0)));
+    return a;
+}
+
+// Folds one project's agg into the running global totals. Iterates
+// projectWTs ∪ agg.egneExtraWTs — the same union buildAll() already renders
+// per project — so a trade with only allocations (no projectWorkType record
+// anywhere) still reaches the global summary.
+function accumulateGlobal(acc, agg, projectWTs) {
+    const N = columns.length;
+    const wtsHere = [...projectWTs, ...(agg.egneExtraWTs || [])];
+    wtsHere.forEach(wt => {
+        acc.wtSet.add(wt);
+        const behov = arrFor(acc.behov, wt, N);
+        const egne  = arrFor(acc.egne,  wt, N);
+        const inn   = arrFor(acc.inn,   wt, N);
+        const pres  = arrFor(acc.pres,  wt, N);
+        for (let i = 0; i < N; i++) {
+            behov[i] += agg.detail(SRC.BEHOV, wt, i);
+            egne[i]  += agg.detail(SRC.EGNE, wt, i);
+            inn[i]   += agg.detail(SRC.INNLEIDE, wt, i);
+            if (agg.gap(wt, i).state !== 'none') pres[i] = 1;
+        }
+    });
+}
+
+// Same {gap(wt,i)} shape as computeAggregates()'s return — drop-in for makeGapBandTrack.
+function makeGlobalAgg(acc) {
+    return {
+        gap: (wt, i) => {
+            if (!acc.pres.get(wt)?.[i]) return { state: 'none', value: 0 };
+            const bal = (acc.egne.get(wt)?.[i]  || 0)
+                      + (acc.inn.get(wt)?.[i]   || 0)
+                      - (acc.behov.get(wt)?.[i] || 0);
+            if (bal < 0) return { state: 'deficit', value: bal };
+            if (bal > 0) return { state: 'surplus', value: bal };
+            return { state: 'covered', value: 0 };
+        }
+    };
+}
+
 // ═══ 7. RENDERING ═══════════════════════════════════════════════════════════
 function makeBar(rec, srcClass) {
     const from  = startOfDay(new Date(rec.dateFrom));
@@ -663,6 +711,47 @@ function makeWorkTypeBandRow(project, wtId, agg, isException) {
     return row;
 }
 
+// Global summary section — same gap-band visual language as the per-project
+// work-type band, but with no project (color stripe / exception flag) to key
+// off, so it gets its own small row shell instead of threading a "global
+// mode" flag through makeGroupHeader/makeWorkTypeBandRow.
+function makeSummaryHeadRow() {
+    const row = document.createElement('div');
+    row.className = 'rp-summary-head';
+    row.style.width = (STICKY_W + gridWidth) + 'px';
+
+    const grid = document.createElement('div');
+    grid.className = 'rp-group-grid';               // reused as-is, generic gridlines
+    grid.style.left           = STICKY_W + 'px';
+    grid.style.width          = gridWidth + 'px';
+    grid.style.backgroundSize = COL_W + 'px 100%';
+    row.appendChild(grid);
+
+    const label = document.createElement('div');
+    label.className = 'rp-summary-label';
+    label.textContent = 'Alle prosjekter';
+    row.appendChild(label);
+    return row;
+}
+
+function makeSummaryBandRow(wtId, globalAgg) {
+    const row = document.createElement('div');
+    row.className = 'rp-row rp-row-wt-band rp-row-summary-band';
+    const label = document.createElement('div');
+    label.className = 'rp-label-cell rp-wt-band-label';
+    label.textContent = wtNameMap[wtId] || String(wtId);
+    row.appendChild(label);
+    row.appendChild(makeGapBandTrack(globalAgg, wtId));   // unmodified reuse
+    return row;
+}
+
+function makeSummarySepRow() {
+    const sep = document.createElement('div');
+    sep.className = 'rp-summary-sep';
+    sep.style.width = (STICKY_W + gridWidth) + 'px';
+    return sep;
+}
+
 function makeActionButton(icon, title, onClick) {
     const btn = document.createElement('button');
     btn.className = 'rp-action-btn';
@@ -796,17 +885,37 @@ function buildAll() {
     const allWorkTypes = safeGet(appfarm.data.projectWorkType);
     const frag         = document.createDocumentFragment();
 
-    allProjects.forEach(project => {
-        const projectId   = project._id;
-        const showDetails = !!project.detailsShowBOL;
-        const projColor   = project.colorHexCode || '#d1eae0';   // left stripe + bottom line
-
+    // Pass 1 — compute computeAggregates() once per project (as before),
+    // accumulating a global cross-project total alongside, then stash each
+    // project's own agg for pass 2 instead of recomputing it there.
+    const acc = { wtSet: new Set(), behov: new Map(), egne: new Map(), inn: new Map(), pres: new Map() };
+    const projectRows = allProjects.map(project => {
+        const projectId  = project._id;
         const projectWTs = allWorkTypes
             .filter(wt => resolveId(wt.project) === projectId)
             .map(wt => toInt(wt.workType))
             .filter(wt => wt != null);
-
         const agg = computeAggregates(projectId, projectWTs);
+        accumulateGlobal(acc, agg, projectWTs);
+        return { project, projectWTs, agg };
+    });
+
+    const globalAgg   = makeGlobalAgg(acc);
+    const globalWTIds = [...acc.wtSet]
+        .sort((a, b) => (wtNameMap[a] || '').localeCompare(wtNameMap[b] || '', 'nb'));
+
+    if (globalWTIds.length) {
+        frag.appendChild(makeSummaryHeadRow());
+        globalWTIds.forEach(wtId => frag.appendChild(makeSummaryBandRow(wtId, globalAgg)));
+        frag.appendChild(makeSummarySepRow());
+    }
+
+    // Pass 2 — existing per-project render body, unchanged apart from reading
+    // {project, projectWTs, agg} from pass 1 instead of recomputing agg here.
+    projectRows.forEach(({ project, projectWTs, agg }) => {
+        const projectId   = project._id;
+        const showDetails = !!project.detailsShowBOL;
+        const projColor   = project.colorHexCode || '#d1eae0';   // left stripe + bottom line
 
         frag.appendChild(makeGroupHeader(project, showDetails));
 
