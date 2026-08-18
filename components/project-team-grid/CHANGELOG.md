@@ -34,10 +34,26 @@ of the whole company.
   updates/deletes via new actions `createProjectResourceRequest` /
   `updateProjectResourceRequest` / `deleteProjectResourceRequest`.
 - **New object class `projectResourceRequest`** — separate from
-  resource-req-v2's aggregate `projectRequirements`/"Behov": carries
-  `tradeSkillIds` (array) + `comment`, representing ad-hoc PM→HR-staffing
-  communication rather than coverage math. **This data model/action set must
-  be created in Appfarm alongside pasting this component.**
+  resource-req-v2's aggregate `projectRequirements`/"Behov": carries a
+  `comment` and a many-to-many trade-skill link, representing ad-hoc
+  PM→HR-staffing communication rather than coverage math. **This data
+  model/action set must be created in Appfarm alongside pasting this
+  component.**
+- **Trade skills are a proper many-to-many junction**, not an array field —
+  new object class `projectResourceRequestTradeSkill` (data source
+  `projectResourceRequestTradeSkills`, fields `{ projectResourceRequest,
+  tradeSkill }`, both plain id strings, not expanded by Appfarm), same
+  non-expansion pattern `assignment-grid` already uses for
+  `resourceTradeSkills`. Joined client-side in `indexData()` into
+  `skillsByRequest` (resolveId() on both ref fields, since Appfarm may hand
+  either a plain id string or an expanded object) — mirrors
+  `assignment-grid`'s `skillsByResource`/`resourceTradeSkills` join exactly.
+  This component only **reads** the junction, same as assignment-grid does
+  for `resourceTradeSkills`; the write side
+  (`createProjectResourceRequest`/`updateProjectResourceRequest`) is
+  unchanged — it still just sends a plain `tradeSkillIds` array, and
+  Appfarm's action is responsible for materializing/diffing the junction
+  rows from that array.
 - **Ported verbatim from `assignment-grid`** (renamed `pl-` → `ptg-` where
   class strings are involved): date helpers, `loadTimeAxis`/`buildColumns`/
   `xForDate`/`colIndexFromClientX` (geometry), `applyPick`/`renderDayPicker`/

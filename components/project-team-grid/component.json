@@ -16,7 +16,8 @@
     "workTypeEnum",
     "absenceColors",
     "tradeSkills",
-    "projectResourceRequests"
+    "projectResourceRequests",
+    "projectResourceRequestTradeSkills"
   ],
   "actions": [
     "allocationAbsenceSave",

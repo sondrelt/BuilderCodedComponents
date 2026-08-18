@@ -62,9 +62,15 @@ window.FIXTURES['project-team-grid'] = {
   projectResourceRequests: [
     {
       _id: 'req1', project: 'p1', workType: 190,
-      tradeSkillIds: ['sk2'], resourceCount: 2,
+      resourceCount: 2,
       comment: 'Trenger sveiser til rørarbeid før støping starter.',
       dateFrom: '2026-07-01', dateTo: '2026-07-21',
     },
+  ],
+
+  // Many-to-many junction: which trade skills req1 asks for. Both fields plain id
+  // strings, not expanded — same non-expansion pattern as resourceTradeSkills.
+  projectResourceRequestTradeSkills: [
+    { _id: 'prts1', projectResourceRequest: 'req1', tradeSkill: 'sk2' },
   ],
 };

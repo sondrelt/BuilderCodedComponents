@@ -5,7 +5,16 @@
 //                 allocation { project, workType, resource, dateFrom, dateTo },
 //                 absence { resource, dateFrom, dateTo, absenceType },
 //                 workTypeEnum, absenceColors, tradeSkills { _id, name, description },
-//                 projectResourceRequests { project, workType, tradeSkillIds, resourceCount, comment, dateFrom, dateTo }
+//                 projectResourceRequests { project, workType, resourceCount, comment, dateFrom, dateTo },
+//                 projectResourceRequestTradeSkills { projectResourceRequest, tradeSkill }  — many-to-many
+//                   junction (both fields plain id strings, not expanded by Appfarm — same
+//                   non-expansion pattern as assignment-grid's resourceTradeSkills), joined
+//                   client-side via resolveId() same as every other ref in this file. This
+//                   component only READS the junction, same as assignment-grid does for
+//                   resourceTradeSkills — the write side (createProjectResourceRequest /
+//                   updateProjectResourceRequest) still just takes a plain tradeSkillIds
+//                   array; Appfarm's action is responsible for materializing/diffing the
+//                   junction rows from that array.
 //
 //  This is a fork of `assignment-grid` (span-native timeline, drag state machine, popover/
 //  calendar widgets) scoped to ONE project's team instead of the whole company. Team
@@ -27,8 +36,9 @@
 //    deleteProjectResourceRequest { projectResourceRequestId }
 //
 //  NOTE: `projectResourceRequest` is a NEW object class, separate from resource-req-v2's
-//  aggregate `projectRequirements`/"Behov" — this one carries tradeSkillIds + a comment and
-//  represents ad-hoc PM→HR-staffing communication, not coverage math.
+//  aggregate `projectRequirements`/"Behov" — this one carries a many-to-many trade-skill
+//  link (via projectResourceRequestTradeSkill) + a comment and represents ad-hoc
+//  PM→HR-staffing communication, not coverage math.
 //
 //  Cross-component change propagation: functions ported from assignment-grid keep the SAME
 //  name here (never renamed to fit local style) and are tagged at their definition with
@@ -61,6 +71,9 @@ let absencesByResource = new Map();
 let absenceById = new Map();
 
 let tradeSkillById = new Map();      // tradeSkill id -> {name, description} — catalog for the multi-select
+let skillsByRequest = new Map();     // projectResourceRequest id -> [{_id,name,description}] — joined from
+                                      // the projectResourceRequestTradeSkills junction, same pattern as
+                                      // assignment-grid's skillsByResource/resourceTradeSkills
 
 let requestsByProject = new Map();   // projectId -> [projectResourceRequest] (sorted by dateFrom)
 let requestById = new Map();
@@ -265,9 +278,11 @@ function colIndexFromClientX(clientX, trackRect) {
 
 // ── Data indexing (groups spans, doesn't expand) ───────────────
 // Adapted from assignment-grid/index.js:275-337 — same allocation/absence indexing
-// verbatim; dropped jobsByWorkType/skillsByResource/iconByWorkType (out of scope, see
-// CHANGELOG); added tradeSkillById (catalog only, no resourceTradeSkills join needed
-// since tradeSkillIds lives directly on the request record) and requestsByProject.
+// verbatim; dropped jobsByWorkType/iconByWorkType (out of scope, see CHANGELOG); added
+// tradeSkillById (catalog), requestsByProject, and skillsByRequest (the
+// projectResourceRequestTradeSkills join — same shape/pattern as assignment-grid's
+// skillsByResource/resourceTradeSkills join, resolveId() on both ref fields since
+// Appfarm may hand either a plain id string or an expanded object).
 function indexData() {
     wtNameMap = buildWorkTypeNameMap(safeGet(appfarm.data.workTypeEnum));
     absenceTypeMap = {};
@@ -305,6 +320,16 @@ function indexData() {
     absencesByResource.forEach(list => list.sort((x, y) => +new Date(x.dateFrom) - +new Date(y.dateFrom)));
 
     tradeSkillById = new Map(safeGet(appfarm.data.tradeSkills).map(s => [s._id, s]));
+
+    skillsByRequest = new Map();
+    safeGet(appfarm.data.projectResourceRequestTradeSkills).forEach(rec => {
+        const reqId = resolveId(rec.projectResourceRequest);
+        if (!reqId) return;
+        const skill = tradeSkillById.get(resolveId(rec.tradeSkill));
+        if (!skill) return;
+        if (!skillsByRequest.has(reqId)) skillsByRequest.set(reqId, []);
+        skillsByRequest.get(reqId).push(skill);
+    });
 
     requestsByProject = new Map();
     requestById = new Map();
@@ -410,7 +435,7 @@ function makeBar(record, kind) {
 function makeRequestBar(record) {
     const wtLabel = resolveWorkTypeName(record.workType) || 'Ukjent fag';
     const count = Number(record.resourceCount) || 0;
-    const skills = (record.tradeSkillIds || []).map(id => tradeSkillById.get(id)).filter(Boolean);
+    const skills = skillsByRequest.get(record._id) || [];
     const label = `${wtLabel} × ${count}`;
 
     const recFrom = startOfDay(new Date(record.dateFrom));
@@ -898,8 +923,12 @@ function applyOptimisticAbsenceBar(opts, absenceTypeId, fromISO, toISO) {
     if (opts.bar && opts.bar.parentElement) opts.bar.replaceWith(fresh);
     else if (opts.track && opts.track.isConnected) opts.track.appendChild(fresh);
 }
-function applyOptimisticRequestBar(opts, fields) {
+function applyOptimisticRequestBar(opts, fields, tradeSkillIds) {
     const rec = Object.assign({ _id: '__optimistic__' }, fields);
+    // makeRequestBar reads skills from skillsByRequest (the junction join), not from a
+    // field on the record — seed a synthetic entry so the optimistic bar's chips/title
+    // reflect what was just picked, ahead of the persisted junction rows arriving.
+    skillsByRequest.set('__optimistic__', tradeSkillIds.map(id => tradeSkillById.get(id)).filter(Boolean));
     const fresh = makeRequestBar(rec);
     fresh.classList.add('ptg-bar-pending');
     if (opts.bar && opts.bar.parentElement) opts.bar.replaceWith(fresh);
@@ -1104,8 +1133,8 @@ function showAskPopover(opts) {
         const fromISO = from.toISOString(), toISO = to.toISOString();
         const tradeSkillIds = [...skillIds];
         applyOptimisticRequestBar(opts, {
-            workType, tradeSkillIds, resourceCount: count, comment, dateFrom: fromISO, dateTo: toISO
-        });
+            workType, resourceCount: count, comment, dateFrom: fromISO, dateTo: toISO
+        }, tradeSkillIds);
         if (opts.recordId) {
             appfarm.actions?.updateProjectResourceRequest?.({
                 projectResourceRequestId: opts.recordId, dateFrom: fromISO, dateTo: toISO,
@@ -1306,9 +1335,10 @@ function onPointerUp(e) {
         const bar = d.bar;
         if (d.kind === 'request') {
             const rec = requestById.get(d.recId);
+            const skillIds = (skillsByRequest.get(d.recId) || []).map(s => s._id);
             showAskPopover({
                 projectId: currentProjectId, recordId: d.recId,
-                workType: rec?.workType, tradeSkillIds: rec?.tradeSkillIds, count: rec?.resourceCount,
+                workType: rec?.workType, tradeSkillIds: skillIds, count: rec?.resourceCount,
                 comment: rec?.comment, dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
                 anchorX: popoverX, anchorY: popoverY, bar, onDelete: () => bar?.remove()
             });
@@ -1331,9 +1361,10 @@ function onPointerUp(e) {
 
     if (d.kind === 'request') {
         const rec = requestById.get(d.recId);
+        const skillIds = (skillsByRequest.get(d.recId) || []).map(s => s._id);
         appfarm.actions?.updateProjectResourceRequest?.({
             projectResourceRequestId: d.recId, dateFrom, dateTo,
-            count: rec?.resourceCount, tradeSkillIds: rec?.tradeSkillIds, comment: rec?.comment
+            count: rec?.resourceCount, tradeSkillIds: skillIds, comment: rec?.comment
         });
     } else {
         const rec = absenceById.get(d.recId);
@@ -1392,7 +1423,8 @@ function init() {
     });
 
     ['project', 'viewFrom', 'viewTo', 'resources', 'projects', 'allocation', 'absence',
-     'workTypeEnum', 'absenceColors', 'tradeSkills', 'projectResourceRequests']
+     'workTypeEnum', 'absenceColors', 'tradeSkills', 'projectResourceRequests',
+     'projectResourceRequestTradeSkills']
         .forEach(h => appfarm.data[h]?.on?.('change', guardedBuildAll));
 }
 
