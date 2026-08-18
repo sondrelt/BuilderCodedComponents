@@ -69,6 +69,16 @@
   background: #fff;
   max-height: 85vh;
 }
+
+/* Breakpoint (640px) must match index.js's getStickyW(). */
+@media (max-width: 640px) {
+  .ptg-corner   { flex-basis: 140px; }
+  .ptg-resource { flex: 0 0 140px; min-width: 140px; }
+  .resource-info { grid-template-columns: 1fr; }
+  .resource-position { display: none; } /* name-only on phone */
+  .ptg-controls { flex-wrap: wrap; }
+  #search-input.ptg-search { flex: 1 1 160px; }
+}
 .ptg-inner {
   position: relative;
   display: inline-block;
@@ -271,6 +281,12 @@
 }
 .ptg-bar-absence .ptg-bar-label { padding: 0 4px; }
 
+/* No :hover on touch — keep absence bars at their "expanded" tap target permanently
+   so a tap reliably lands on the bar (opens edit) instead of the empty lane beside it. */
+@media (hover: none) and (pointer: coarse) {
+  .ptg-bar-absence { height: calc(var(--row-h) - 20px); font-size: 11px; }
+}
+
 /* ── 7d. Ghost / drag preview / optimistic ──────────────────────────────── */
 .ptg-bar-ghost {
   opacity: 0.5;
@@ -388,6 +404,7 @@
   font-size: 13px;
   color: var(--text-dark, #374151);
   max-height: calc(100vh - 16px);
+  max-width: calc(100vw - 16px);
   overflow-y: auto;
 }
 .ptg-popover-wide { width: 320px; }

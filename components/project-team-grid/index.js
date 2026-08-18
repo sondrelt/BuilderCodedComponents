@@ -81,13 +81,20 @@ let requestById = new Map();
 let activeDrag = null;               // see onPointerDown for shape
 let dragTooltipEl = null;
 
+let touchTap = null;                 // see onTouchPointerDown for shape
+const TOUCH_TAP_SLOP = 10;           // px — belt-and-suspenders alongside pointercancel
+
 let popoverEl = null;                // ask/absence editor popover (in document.body)
 let activeEdit = false;              // popover open → block rebuilds
 let rebuildQueued = false;           // a change arrived while blocked → flush later
 
 let absenceTypeMap = {};             // { value: { name, color } }
 
-const STICKY_W = 380;
+// Breakpoint (640px) must match styles.css's "@media (max-width: 640px)" block.
+function getStickyW() {
+    const w = document.getElementById('team-planner')?.clientWidth || window.innerWidth;
+    return w <= 640 ? 140 : 380;
+}
 const COLW = { week: 75, day: 75 };
 const ROW_H = 34;
 
@@ -522,7 +529,7 @@ function renderNeedsRow(frag, projectId) {
 
     const sep = document.createElement('div');
     sep.className = 'ptg-needs-sep';
-    sep.style.width = (STICKY_W + gridWidth) + 'px';
+    sep.style.width = (getStickyW() + gridWidth) + 'px';
     frag.appendChild(sep);
 }
 
@@ -585,7 +592,7 @@ function renderNowLine(inner) {
     const top = firstRow.offsetTop - 2;
     const line = document.createElement('div');
     line.className = 'ptg-nowline';
-    line.style.left   = (STICKY_W + xForDate(today)) + 'px';
+    line.style.left   = (getStickyW() + xForDate(today)) + 'px';
     line.style.top    = top + 'px';
     line.style.height = (lastRow.offsetTop + lastRow.offsetHeight - top) + 'px';
     inner.appendChild(line);
@@ -1294,6 +1301,52 @@ function onPointerMove(e) {
     moveTooltip(e.clientX, e.clientY);
 }
 
+// Opens the create popover for a brand-new absence/request span. `track` carries
+// dataset.resourceId (absence) — resourceId is read straight off it for that case.
+// Shared by the mouse drag-to-create path (onPointerUp) and the touch tap path
+// (onTouchPointerUp).
+function openCreatePopover(kind, track, colS, colE, anchorX, anchorY) {
+    const s = clampIdx(colS), eIdx = clampIdx(colE);
+    const dateFrom = columns[s].start.toISOString();
+    const dateTo   = columns[eIdx].end.toISOString();
+    if (kind === 'request') {
+        showAskPopover({
+            projectId: currentProjectId, recordId: null,
+            dateFrom, dateTo,
+            anchorX, anchorY, track
+        });
+    } else {
+        showAbsencePopover({
+            resourceId: track.dataset.resourceId || null, recordId: null,
+            dateFrom, dateTo,
+            anchorX, anchorY, track
+        });
+    }
+}
+
+// Opens the edit popover for an existing absence/request bar. Shared by the
+// mouse click-without-dragging path (onPointerUp) and the touch tap path
+// (onTouchPointerUp).
+function openEditPopover(kind, recId, resourceId, bar, anchorX, anchorY) {
+    if (kind === 'request') {
+        const rec = requestById.get(recId);
+        const skillIds = (skillsByRequest.get(recId) || []).map(s => s._id);
+        showAskPopover({
+            projectId: currentProjectId, recordId: recId,
+            workType: rec?.workType, tradeSkillIds: skillIds, count: rec?.resourceCount,
+            comment: rec?.comment, dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
+            anchorX, anchorY, bar, onDelete: () => bar?.remove()
+        });
+    } else {
+        const rec = absenceById.get(recId);
+        showAbsencePopover({
+            resourceId, recordId: recId,
+            absenceType: rec?.absenceType, dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
+            anchorX, anchorY, bar, onDelete: () => bar?.remove()
+        });
+    }
+}
+
 // Adapted from assignment-grid/index.js:1440-1513 (onPointerUp) — branches on
 // `d.kind` ('absence' | 'request') to open the right popover / call the right
 // update action; the allocation branch from assignment-grid is gone entirely.
@@ -1312,44 +1365,12 @@ function onPointerUp(e) {
 
     if (d.mode === 'create') {
         d.bar.remove();
-        const s = clampIdx(d.curS ?? d.origS), eIdx = clampIdx(d.curE ?? d.origE);
-        const dateFrom = columns[s].start.toISOString();
-        const dateTo   = columns[eIdx].end.toISOString();
-        if (d.kind === 'request') {
-            showAskPopover({
-                projectId: currentProjectId, recordId: null,
-                dateFrom, dateTo,
-                anchorX: popoverX, anchorY: popoverY, track: d.track
-            });
-        } else {
-            showAbsencePopover({
-                resourceId: d.resourceId, recordId: null,
-                dateFrom, dateTo,
-                anchorX: popoverX, anchorY: popoverY, track: d.track
-            });
-        }
+        openCreatePopover(d.kind, d.track, d.curS ?? d.origS, d.curE ?? d.origE, popoverX, popoverY);
         return;
     }
 
     if (!d.moved) {
-        const bar = d.bar;
-        if (d.kind === 'request') {
-            const rec = requestById.get(d.recId);
-            const skillIds = (skillsByRequest.get(d.recId) || []).map(s => s._id);
-            showAskPopover({
-                projectId: currentProjectId, recordId: d.recId,
-                workType: rec?.workType, tradeSkillIds: skillIds, count: rec?.resourceCount,
-                comment: rec?.comment, dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
-                anchorX: popoverX, anchorY: popoverY, bar, onDelete: () => bar?.remove()
-            });
-        } else {
-            const rec = absenceById.get(d.recId);
-            showAbsencePopover({
-                resourceId: d.resourceId, recordId: d.recId,
-                absenceType: rec?.absenceType, dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
-                anchorX: popoverX, anchorY: popoverY, bar, onDelete: () => bar?.remove()
-            });
-        }
+        openEditPopover(d.kind, d.recId, d.resourceId, d.bar, popoverX, popoverY);
         return;
     }
 
@@ -1373,6 +1394,66 @@ function onPointerUp(e) {
         });
     }
     flushQueuedRebuild();
+}
+
+// Touch has no precision for drag-to-resize/move on a 75px column, and any drag on
+// the timeline competes with the scroll needed to reach other weeks — so touch taps
+// open the same create/edit popover mouse gets on a plain (non-dragged) click,
+// instead of trying to reimplement drag for touch. Never preventDefault/capture here:
+// native scroll must stay fully alive so `pointercancel` (below) is the browser's own
+// signal that a gesture became a scroll, not a tap.
+function onTouchPointerDown(e) {
+    if (e.pointerType !== 'touch') return;
+    const track = e.target.closest('.ptg-track');
+    if (!track) return;
+    const bar = e.target.closest('.ptg-bar');
+    if (bar && bar.classList.contains('ptg-bar-readonly')) return;
+
+    touchTap = {
+        pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false,
+        track, trackRect: track.getBoundingClientRect(),
+        bar, rowKind: track.dataset.rowKind
+    };
+    document.addEventListener('pointermove', onTouchPointerMove);
+    document.addEventListener('pointerup', onTouchPointerUp);
+    document.addEventListener('pointercancel', onTouchPointerCancel);
+}
+
+function onTouchPointerMove(e) {
+    if (!touchTap || e.pointerId !== touchTap.pointerId) return;
+    if (Math.hypot(e.clientX - touchTap.startX, e.clientY - touchTap.startY) > TOUCH_TAP_SLOP) {
+        touchTap.moved = true;
+    }
+}
+
+function onTouchPointerCancel(e) {
+    if (!touchTap || e.pointerId !== touchTap.pointerId) return;
+    cleanupTouchTap();
+}
+
+function onTouchPointerUp(e) {
+    if (!touchTap || e.pointerId !== touchTap.pointerId) return;
+    const t = touchTap;
+    cleanupTouchTap();
+    if (t.moved) return; // browser took it as a scroll, not a tap
+
+    const x = Math.round(e.clientX), y = Math.round(e.clientY);
+    if (t.bar) {
+        const kind = t.bar.dataset.kind;
+        const recId = kind === 'absence' ? t.bar.dataset.absenceId : t.bar.dataset.requestId;
+        if (!recId) return;
+        openEditPopover(kind, recId, t.track.dataset.resourceId || null, t.bar, x, y);
+    } else {
+        const colIdx = colIndexFromClientX(t.startX, t.trackRect);
+        openCreatePopover(t.rowKind === 'request' ? 'request' : 'absence', t.track, colIdx, colIdx, x, y);
+    }
+}
+
+function cleanupTouchTap() {
+    document.removeEventListener('pointermove', onTouchPointerMove);
+    document.removeEventListener('pointerup', onTouchPointerUp);
+    document.removeEventListener('pointercancel', onTouchPointerCancel);
+    touchTap = null;
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────
@@ -1405,9 +1486,16 @@ function init() {
 
     const inner = document.getElementById('planner-inner');
     inner?.addEventListener('mousedown', onPointerDown);
+    inner?.addEventListener('pointerdown', onTouchPointerDown);
 
     let deb;
     document.getElementById('search-input')?.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(guardedBuildAll, 150); });
+
+    // Re-lays-out the sticky column / grid when the container crosses the
+    // responsive breakpoint (see getStickyW) — e.g. on phone rotation.
+    let resizeDeb;
+    new ResizeObserver(() => { clearTimeout(resizeDeb); resizeDeb = setTimeout(guardedBuildAll, 150); })
+        .observe(document.getElementById('team-planner'));
 
     document.getElementById('granularity-toggle')?.addEventListener('click', (e) => {
         const target = /** @type {HTMLElement} */ (e.target);

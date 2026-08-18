@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.1.0 — 2026-08-18
+
+Phone + desktop support. Desktop mouse behavior is unchanged; touch gets its
+own tap-based interaction path instead of a reimplemented drag.
+
+- **Touch taps open a popover instead of dragging.** The drag-to-create/move/
+  resize lifecycle (`onPointerDown`/`onPointerMove`/`onPointerUp`) is wired to
+  raw `mousedown`/`mousemove`/`mouseup` and stays that way — untouched. A new,
+  independent `pointerdown` listener (`onTouchPointerDown`, gated to
+  `e.pointerType === 'touch'`) tracks a tap without calling `preventDefault()`
+  or capturing the pointer, so native scroll is never disturbed. `pointerup`
+  with no meaningful movement (`pointercancel`, or `>10px` of drift, means the
+  browser took it as a scroll) opens the same create/edit popover the mouse's
+  "click without dragging" path uses. Dragging a bar's edge on a 75px-wide day
+  column isn't precise enough to be usable on touch anyway, and any drag there
+  competes with the scroll needed to reach other weeks — tap-then-adjust-via-
+  the-popover's-date-fields is the more reliable interaction, not just the
+  smaller diff. Extracted `openCreatePopover`/`openEditPopover` out of
+  `onPointerUp` so both input paths share one implementation.
+- **Responsive sticky column.** `STICKY_W` (was a hardcoded `380`) is now
+  `getStickyW()`, returning `140` under a 640px container-width breakpoint —
+  on a phone viewport the fixed 380px column left 0-1 timeline columns
+  visible. CSS mirrors the same breakpoint: the resource column narrows to
+  name-only (`.resource-position` hidden), and `.ptg-controls` wraps instead
+  of overflowing. A debounced `ResizeObserver` on `#team-planner` reruns
+  `guardedBuildAll` so rotating the phone re-lays-out the grid.
+- **Popover width and absence-bar touch target.** `.ptg-popover` gets
+  `max-width: calc(100vw - 16px)` (the existing `placePopover()` already
+  clamped position, not width). `.ptg-bar-absence` — 15px tall by default,
+  only growing on `:hover` — stays permanently at its expanded height under
+  `@media (hover: none) and (pointer: coarse)`, since touch has no hover to
+  reveal it and the whole touch strategy depends on taps landing on the bar.
+- **Out of scope:** calendar nav/day/year controls (24-30px, functional,
+  `.ptg-cal-navbtn` already meets WCAG 24×24 AA) and `.ptg-handle` resize-
+  handle sizing (moot — touch never engages it) are left as-is.
+
 ## 1.0.0 — 2026-08-18
 
 Initial version. Per-project, resource-centric team timeline for project
