@@ -10,6 +10,7 @@ const COMPONENTS = [
   'resource-req-phasingOut',
   'assignment-grid',
   'resource-req-v2',
+  'project-team-grid',
   'email-html-editor',
 ];
 

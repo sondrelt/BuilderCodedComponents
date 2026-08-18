@@ -1,0 +1,582 @@
+/* ==========================================================================
+   1. ROOT VARIABLES
+   ========================================================================== */
+:root {
+  --bg-main: #fcf6e8;
+  --border-color: #d1d5db;
+  --text-dark: #374151;
+  --sticky-header-bg: #fdfbf7;
+
+  --blue-50:  #eef6fc; --blue-100: #d6eaf6; --blue-500: #1e86c4; --blue-600: #1a72a8; --blue-700: #155d89;
+  --blue-rgb: 30, 134, 196;
+  --amber-50: #fef6ea; --amber-100: #fde9c9; --amber-500: #faaf52; --amber-600: #e89a3a; --amber-700: #c8821e; --amber-800: #9a5f12;
+  --slate-500: #4d6470; --slate-600: #415560; --slate-700: #34454e;
+  --red-500: #a2332f;
+  --nav-blue: #1e3a5f; --nav-blue-rgb: 30, 58, 95;   /* header navy — calendar highlight */
+
+  /* Ressursbehov / request bar — violet, distinct from project / absence / now-line hues */
+  --request-accent: #7c5cbf;
+  --request-fill:   #ede7f9;
+
+  --row-h: 48px;
+}
+
+/* ==========================================================================
+   2. ROOT + CONTROLS
+   ========================================================================== */
+#team-planner {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-main);
+  padding: 16px;
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ptg-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+#search-input.ptg-search {
+  flex: 0 0 320px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 15px;
+  background-color: var(--bg-main);
+}
+
+.ptg-gran { display: inline-flex; border: 1px solid var(--border-color); border-radius: 20px; overflow: hidden; }
+.ptg-gran button {
+  border: none;
+  background: #fff;
+  color: var(--text-dark);
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ptg-gran button.active { background: var(--amber-500); color: #fff; font-weight: 600; }
+
+/* ==========================================================================
+   3. SCROLL FRAME
+   ========================================================================== */
+.ptg-scroll {
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  background: #fff;
+  max-height: 85vh;
+}
+.ptg-inner {
+  position: relative;
+  display: inline-block;
+  min-width: 100%;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+/* ==========================================================================
+   4. STICKY HEADER (month groups + column labels)
+   ========================================================================== */
+.ptg-header { display: flex; position: sticky; top: 0; z-index: 30; }
+.ptg-corner {
+  flex: 0 0 380px;
+  position: sticky; left: 0; z-index: 31;
+  background: var(--sticky-header-bg);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+.ptg-axis { flex: 0 0 auto; background: var(--sticky-header-bg); }
+
+.ptg-months, .ptg-cols { display: flex; }
+.ptg-month {
+  flex: 0 0 auto;
+  text-align: center;
+  font-weight: 700;
+  padding: 5px 0;
+  background: var(--sticky-header-bg);
+  border-left: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+.ptg-col {
+  flex: 0 0 auto;
+  text-align: center;
+  padding: 4px 0;
+  border-left: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+.ptg-col.current {
+  background: var(--amber-50);
+  color: var(--amber-800);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 0 var(--amber-600);
+}
+
+/* ==========================================================================
+   5. ROWS + STICKY RESOURCE COLUMN
+   ========================================================================== */
+.ptg-row { display: flex; height: var(--row-h); }
+
+.ptg-resource {
+  flex: 0 0 380px;
+  min-width: 380px;
+  position: sticky; left: 0; z-index: 10;
+  background: #fff;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.resource-info {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+.resource-name, .resource-position {
+  cursor: default;
+  padding: 0 12px;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  display: block; align-content: center;
+  min-width: 0; height: 100%;
+}
+.resource-name { border-right: 1px solid var(--border-color); color: var(--text-dark); font-weight: 600; }
+.resource-position { color: #6b7280; }
+
+/* ==========================================================================
+   6. TIMELINE TRACK + GRIDLINES
+   ========================================================================== */
+.ptg-track {
+  flex: 0 0 auto;
+  position: relative;
+  border-bottom: 1px solid var(--border-color);
+  background-image: linear-gradient(to right, var(--border-color) 0 1px, transparent 1px);
+  background-repeat: repeat-x;
+  background-position: left top;
+}
+
+.ptg-row .ptg-track { cursor: cell; }
+
+.ptg-row .ptg-track:not(:has(.ptg-bar))::before {
+  content: "Klikk og dra for å registrere fravær";
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px; font-style: italic; color: #aab0b8;
+  pointer-events: none; white-space: nowrap;
+  transition: color .15s;
+}
+.ptg-row-request .ptg-track:not(:has(.ptg-bar))::before {
+  content: "Klikk og dra for å be om flere ressurser";
+}
+.ptg-inner:not(.ptg-dragging) .ptg-row:hover .ptg-track:not(:has(.ptg-bar)) {
+  background-color: rgba(var(--blue-rgb), 0.05);
+}
+.ptg-inner:not(.ptg-dragging) .ptg-row:hover .ptg-track:not(:has(.ptg-bar))::before {
+  color: var(--slate-500);
+}
+
+/* ==========================================================================
+   7. BARS (allocation / other-project / absence / request)
+   ========================================================================== */
+
+/* ── 7a. Base bar ───────────────────────────────────────────────────────── */
+.ptg-bar {
+  position: absolute;
+  top: 4px;
+  height: calc(var(--row-h) - 14px);
+  border-radius: 4px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e293b;
+  z-index: 2;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow .15s, opacity .15s, height .15s ease;
+}
+.ptg-bar:hover { box-shadow: 0 1px 6px rgba(0,0,0,0.18); }
+.ptg-bar:active { cursor: grabbing; }
+
+.ptg-bar-label {
+  position: relative; z-index: 1;
+  flex: 1;
+  padding: 0 4px;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.ptg-handle {
+  position: relative; z-index: 2;
+  flex: 0 0 6px;
+  align-self: stretch;
+  cursor: ew-resize;
+}
+.ptg-bar:hover .ptg-handle {
+  background: rgba(255, 255, 255, 0.40);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+.ptg-handle:hover {
+  background: rgba(var(--blue-rgb), 0.85);
+  box-shadow: inset 0 0 0 1px var(--blue-700);
+}
+.ptg-handle::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 16px;
+}
+.ptg-handle[data-edge="l"]::before { left: 0; }
+.ptg-handle[data-edge="r"]::before { right: 0; }
+
+/* ── 7b. Read-only allocation bars (this-project + other-project) ───────
+   Never draggable in this view — direct assignment stays in assignment-grid. */
+.ptg-bar-readonly {
+  cursor: default;
+}
+.ptg-bar-other-project {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+  pointer-events: none;   /* inert by construction, not just guarded in JS */
+}
+
+/* ── 7c. Absence overlay band ───────────────────────────────────────────── */
+.ptg-bar-absence {
+  top: 2px;
+  height: 15px;
+  z-index: 3;
+  font-style: italic;
+  font-size: 9px;
+  opacity: 0.95;
+  transition: height .15s ease, font-size .15s ease;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255,255,255,0.45) 0 5px,
+    transparent 5px 10px);
+}
+.ptg-inner:not(.ptg-dragging) .ptg-bar-absence:hover {
+  height: calc(var(--row-h) - 20px);
+  font-size: 11px;
+}
+.ptg-bar-absence .ptg-bar-label { padding: 0 4px; }
+
+/* ── 7d. Ghost / drag preview / optimistic ──────────────────────────────── */
+.ptg-bar-ghost {
+  opacity: 0.5;
+  outline: 2px dashed var(--blue-600);
+  background: var(--blue-100);
+}
+.ptg-bar-pending { opacity: 0.6; }
+
+.ptg-inner.ptg-dragging,
+.ptg-inner.ptg-dragging * { cursor: grabbing !important; }
+
+/* ── 7e. Request bar (Ressursbehov row) ─────────────────────────────────
+   Dashed outline signals "an ask", not a committed assignment — still fully
+   interactive (create/move/resize/delete), unlike the read-only alloc bars. */
+.ptg-bar-request {
+  background: var(--request-fill);
+  color: var(--request-accent);
+  border: 1px dashed var(--request-accent);
+}
+.ptg-bar-request:hover { box-shadow: 0 1px 6px rgba(124, 92, 191, 0.35); }
+
+/* ==========================================================================
+   8. RESSURSBEHOV (NEEDS) ROW
+   ========================================================================== */
+.ptg-row-request {
+  background: color-mix(in srgb, var(--request-accent), #fff 92%);
+}
+.ptg-row-request .ptg-resource {
+  box-shadow: inset 4px 0 0 0 var(--request-accent);
+}
+.ptg-needs-label {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-weight: 700;
+  color: var(--request-accent);
+}
+
+.ptg-needs-sep {
+  flex: 0 0 auto;
+  height: 3px;
+  background: var(--request-accent);
+}
+
+/* ==========================================================================
+   9. NOW MARKER
+   ========================================================================== */
+.ptg-nowline {
+  position: absolute;
+  width: 2px; z-index: 5;
+  background: var(--amber-600);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   10. TOOLTIP (drag range)
+   ========================================================================== */
+.drag-range-tooltip {
+  position: fixed; z-index: 9999;
+  pointer-events: none; display: none;
+  background: var(--slate-700); color: #fff;
+  font: 600 12px 'Inter', sans-serif;
+  padding: 4px 8px; border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+/* ==========================================================================
+   11. EDGE CONTINUATION (chevrons for out-of-viewport spans)
+   ========================================================================== */
+.ptg-clip-r { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.ptg-clip-l { border-top-left-radius: 0;  border-bottom-left-radius: 0; }
+
+.ptg-clip-r::after,
+.ptg-clip-l::before {
+    content: '';
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    border-top: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    opacity: 0.8;
+    pointer-events: none;
+}
+.ptg-clip-r::after  {
+    right: 5px;
+    left: auto;
+    transform: translateY(-50%) rotate(45deg);
+}
+.ptg-clip-l::before {
+    left: 5px;
+    right: auto;
+    transform: translateY(-50%) rotate(-135deg);
+}
+.ptg-clip-l .ptg-bar-label { padding-left: 24px !important; }
+.ptg-clip-r .ptg-bar-label { padding-right: 24px !important; }
+
+/* ==========================================================================
+   12. POPOVER SHELL (absence editor + ask-for-more-resources)
+   Lives in document.body (not under #team-planner), so selectors are
+   self-contained. Ported from assignment-grid, re-themed with the same tokens.
+   ========================================================================== */
+.ptg-popover {
+  position: fixed;
+  z-index: 9999;
+  width: 280px;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(52, 69, 78, 0.20);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--text-dark, #374151);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+.ptg-popover-wide { width: 320px; }
+
+.ptg-popover-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: var(--nav-blue, #1e3a5f);
+}
+
+/* Søk input + flat list (single-select) / multiselect (checkbox list) */
+.ptg-select-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  font: 500 13px 'Inter', sans-serif;
+  color: var(--text-dark, #374151);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ptg-select-input:focus {
+  border-color: var(--slate-600, #415560);
+  box-shadow: 0 0 0 3px rgba(77, 100, 112, 0.12);
+}
+.ptg-pop-list.ptg-pop-invalid .ptg-list,
+.ptg-pop-worktype.ptg-pop-invalid .ptg-list {
+  border-color: var(--red-500, #a2332f);
+  box-shadow: 0 0 0 3px rgba(162, 51, 47, 0.12);
+}
+.ptg-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+.ptg-list-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+.ptg-list-opt:hover { background: var(--amber-50, #fef6ea); }
+.ptg-list-opt.sel {
+  border: 1px dashed var(--amber-600, #e89a3a);
+  background: var(--amber-50, #fef6ea);
+}
+.ptg-list-dot { flex: 0 0 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12); }
+.ptg-select-opt-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ptg-select-empty { padding: 10px 12px; font-size: 12px; font-style: italic; color: #9ca3af; }
+
+/* Multi-select (trade skills) */
+.ptg-multiselect-summary { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+.ptg-multiselect-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ptg-multiselect-opt:hover { background: var(--amber-50, #fef6ea); }
+.ptg-multiselect-opt input[type="checkbox"] { flex: 0 0 auto; }
+
+/* Count input + comment textarea */
+.ptg-popover-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  font: 600 13px 'Inter', sans-serif;
+  color: var(--text-dark, #374151);
+}
+.ptg-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 60px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  font: 400 12px 'Inter', sans-serif;
+  color: var(--text-dark, #374151);
+  resize: vertical;
+}
+
+/* Date From / Date To fields */
+.ptg-pop-datefields { display: flex; gap: 8px; margin-bottom: 10px; }
+.ptg-datefield {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: border-color .12s, box-shadow .12s;
+}
+.ptg-df-label { font-size: 10px; color: #6b7280; }
+.ptg-df-val { font-size: 13px; font-weight: 600; color: var(--text-dark, #374151); }
+.ptg-df-cal { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #6b7280; }
+.ptg-df-cal svg { width: 14px; height: 14px; display: block; }
+.ptg-datefield.active {
+  border-color: var(--nav-blue, #1e3a5f);
+  box-shadow: 0 0 0 2px rgba(var(--nav-blue-rgb, 30, 58, 95), 0.18);
+}
+
+/* Date picker panel (collapsible, under the fields) */
+.ptg-datepop { display: none; margin-bottom: 10px; }
+.ptg-datepop.open {
+  display: block;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+/* Calendar */
+.ptg-cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.ptg-cal-title {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: none; background: none; padding: 2px 4px;
+  font-size: 12px; font-weight: 700; color: var(--text-dark, #374151);
+  text-transform: capitalize; cursor: pointer;
+}
+.ptg-cal-title::after {
+  content: ''; width: 0; height: 0;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-top: 5px solid #6b7280; transition: transform .12s;
+}
+.ptg-cal-title.open::after { transform: rotate(180deg); }
+.ptg-cal-arrows { display: flex; gap: 4px; }
+.ptg-cal-navbtn {
+  width: 24px; height: 24px;
+  border: 1px solid var(--border-color, #d1d5db); border-radius: 6px;
+  background: #fff; color: var(--text-dark, #374151);
+  font-size: 14px; line-height: 1; cursor: pointer; transition: background .12s;
+}
+.ptg-cal-navbtn:hover { background: #f3f4f6; }
+.ptg-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 1px; }
+.ptg-cal-hcell {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  color: #6b7280; text-align: center; padding: 2px 0 4px;
+}
+.ptg-cal-cell { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+.ptg-cal-day { cursor: pointer; border-radius: 50%; width: 30px; margin: 0 auto; transition: background .1s; }
+.ptg-cal-day.muted { color: #c7ccd1; }
+.ptg-cal-day:hover { background: rgba(var(--nav-blue-rgb, 30, 58, 95), 0.14); }
+.ptg-cal-day.sel { background: var(--nav-blue, #1e3a5f); color: #fff; font-weight: 700; }
+.ptg-cal-yeargrid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  max-height: 200px; overflow-y: auto; padding: 4px 0;
+}
+.ptg-cal-year {
+  border: 1px solid var(--border-color, #d1d5db); border-radius: 6px;
+  background: #fff; padding: 6px 0; font-size: 12px; cursor: pointer; transition: background .12s;
+}
+.ptg-cal-year:hover { background: #f3f4f6; }
+.ptg-cal-year.sel { background: var(--nav-blue, #1e3a5f); color: #fff; font-weight: 700; border-color: var(--nav-blue, #1e3a5f); }
+
+/* Actions: orange Lagre (left/auto-right), low-emphasis Slett (right of it) */
+.ptg-pop-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.ptg-pop-confirm {
+  margin-left: auto;
+  padding: 8px 22px;
+  font: 600 13px 'Inter', sans-serif; cursor: pointer; border-radius: 999px;
+  background: var(--amber-500, #faaf52); border: 1px solid var(--amber-500, #faaf52); color: #fff;
+  transition: background .12s, border-color .12s;
+}
+.ptg-pop-confirm:hover { background: var(--amber-600, #e89a3a); border-color: var(--amber-600, #e89a3a); }
+
+.ptg-pop-delete {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: none; background: none; cursor: pointer;
+  padding: 6px 8px; border-radius: 8px;
+  font: 600 12px 'Inter', sans-serif; color: #9ca3af;
+  transition: background .12s, color .12s;
+}
+.ptg-pop-delete svg { width: 15px; height: 15px; display: block; }
+.ptg-pop-delete:hover { background: #fef2f2; color: var(--red-500, #a2332f); }
