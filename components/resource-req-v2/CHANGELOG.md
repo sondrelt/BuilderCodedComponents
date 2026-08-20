@@ -1,5 +1,12 @@
 # Changelog — resource-req-v2
 
+## 1.25.0 — 2026-08-20
+
+- **ISO week number added to the count popover's day picker.** A new muted
+  column (headed "U") sits to the left of Ma–Sø, showing each row's ISO week
+  number — informational only, not clickable. Same change applied identically
+  to assignment-grid and project-team-grid's day pickers.
+
 ## 1.24.4 — 2026-08-20
 
 - **Ads icon given an explicit z-index (22).** It had none, so it painted at
