@@ -306,8 +306,24 @@
 .rp-source-label-egne      { --src-tick: var(--rp-egne-bar); }
 .rp-source-label-innleide  { --src-tick: var(--rp-innleide-bar); }
 .rp-source-label-utleide   { --src-tick: var(--rp-utleide-bar); }
-.rp-source-label-udekt     { --src-tick: var(--rp-udekt-bar); }
-.rp-source-label-overskudd { --src-tick: var(--rp-overskudd-bar); }
+
+/* "Flere alternativer" row — offers "Legg til innleide/utleide" for whichever
+   of the two has no registered period yet (so its own row stays hidden). */
+.rp-row-more { height: 28px; }
+.rp-more-cell { padding-left: 30px; }
+.rp-more-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rp-text-muted);
+  transition: background .12s, color .12s;
+}
+.rp-more-btn:hover { background: rgba(0,0,0,0.06); color: var(--rp-text); }
 
 /* Work-type band label — the dominant grouping level: bold, lightly project-tinted
    so the trade name reads as the header above its source rows. */
@@ -512,8 +528,7 @@
 /* Source bars are monochrome ink — fill carries no category colour (that lives in
    the band + the label tick). Editable spans keep border+shadow (grabbable);
    derived rows add the diagonal hatch (rule below) to read as computed. */
-.rp-bar-behov, .rp-bar-egne, .rp-bar-innleide,
-.rp-bar-utleide, .rp-bar-udekt, .rp-bar-overskudd {
+.rp-bar-behov, .rp-bar-egne, .rp-bar-innleide, .rp-bar-utleide {
   background-color: #f8f1e1;   /* warm beige toned with the app background */
   color: var(--rp-text);
 }
@@ -776,6 +791,24 @@
   cursor: default;
 }
 .rp-ads-row-probable:hover { background: none; }
+
+/* "Flere alternativer" menu — lists only the currently-missing source(s). */
+.rp-popover-more-menu { width: 200px; padding: 6px; }
+.rp-more-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rp-navy);
+  cursor: pointer;
+}
+.rp-more-option:hover { background: #f5f7f9; }
 
 /* Fra dato / Til dato fields */
 .rp-popover-datefields {

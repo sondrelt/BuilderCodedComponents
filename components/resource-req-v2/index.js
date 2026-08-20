@@ -52,25 +52,28 @@
 // entire generated functions bundle (every function value in the app).
 
 // ═══ 1. CONFIG ════════════════════════════════════════════════════════════
-const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35, UDEKT: 40, OVERSKUDD: 50 };
+// Udekt/Overskudd (40/50) still exist as enum values on the `source` data
+// source, but are no longer a rendered row here — the work-type gap band
+// (makeGapBandTrack) shows that same number aggregated per work type, so
+// there's nothing in this file left to key off those two values.
+const SRC = { BEHOV: 10, EGNE: 20, INNLEIDE: 30, UTLEIDE: 35 };
 
 const SOURCE_CLASS = {
     [SRC.BEHOV]:     'behov',
     [SRC.EGNE]:      'egne',
     [SRC.INNLEIDE]:  'innleide',
-    [SRC.UTLEIDE]:   'utleide',
-    [SRC.UDEKT]:     'udekt',
-    [SRC.OVERSKUDD]: 'overskudd'
+    [SRC.UTLEIDE]:   'utleide'
 };
 
 const EDITABLE_SOURCES = new Set([SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE]); // user draws bars / sources stored as spans
-const STATUS_SOURCES   = new Set([SRC.UDEKT, SRC.OVERSKUDD]);             // gap rows — drive the rp-row-status styling
-// Fixed source row order under each work-type band: EDITABLE sources first
-// (Behov, Innleide, Utleide — what the user draws), then the computed/read-only
-// rows (Egne, Udekt, Overskudd). The split is the primary parse cue — the
-// editable working surface sits at the top, the recessive computed zone below
-// (see .rp-row-derived muting in the CSS). Order within each group is enum value.
-const SOURCE_ORDER = [SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE, SRC.EGNE, SRC.UDEKT, SRC.OVERSKUDD];
+// Fixed source row order under each work-type band: the two rows used daily
+// (Behov, Egne) come first. Innleide/Utleide follow, but only when they
+// already have a registered period — see buildAll()'s per-band loop, which
+// renders these two conditionally and offers a "Flere alternativer" button
+// to add the first period when hidden. Udekt/Overskudd are NOT in this list —
+// the work-type gap band (makeGapBandTrack) already shows that number
+// aggregated per work type, so a detail row here would be pure duplication.
+const SOURCE_ORDER = [SRC.BEHOV, SRC.EGNE, SRC.INNLEIDE, SRC.UTLEIDE];
 
 // Marketplace tier priority (internt → partnere → alle). Ads arrive pre-tagged with
 // `tier` (1/2/3) from Appfarm — the component never resolves partnerships itself.
@@ -162,6 +165,12 @@ let activeEdit    = false;       // popover open → block rebuilds
 let rebuildQueued = false;       // a change arrived while blocked → flush later
 
 const reqKey = (projectId, source, workType) => projectId + ':' + source + ':' + workType;
+
+// Whether this project/source/work-type has at least one registered period —
+// drives whether Innleide/Utleide get their own detail row (buildAll) or stay
+// tucked behind the "Flere alternativer" button (makeMoreOptionsRow).
+const hasReqData = (projectId, source, workType) =>
+    (reqsByKey.get(reqKey(projectId, source, workType)) || []).length > 0;
 
 // ═══ 4. TIME AXIS & GEOMETRY ════════════════════════════════════════════════
 function buildColumns() {
@@ -443,20 +452,6 @@ function computeAggregates(projectId, workTypes) {
         const egne = detailArr(SRC.EGNE, wt);
         const sets = egneSetFor(wt);
         for (let i = 0; i < N; i++) egne[i] = sets[i].size;
-    });
-
-    // Derive Udekt / Overskudd per work type per column
-    workTypes.forEach(wt => {
-        const behov = detailArr(SRC.BEHOV, wt);
-        const egne  = detailArr(SRC.EGNE, wt);
-        const inn   = detailArr(SRC.INNLEIDE, wt);
-        const udekt = detailArr(SRC.UDEKT, wt);
-        const ovsk  = detailArr(SRC.OVERSKUDD, wt);
-        for (let i = 0; i < N; i++) {
-            const diff = behov[i] - egne[i] - inn[i];
-            udekt[i] = Math.max(0, diff);
-            ovsk[i]  = Math.max(0, -diff);
-        }
     });
 
     // Coverage balance for the work-type band: bal = Egne + Innleide − Behov
@@ -870,6 +865,81 @@ function renderNowLine(inner) {
     inner.appendChild(line);
 }
 
+// One source detail row (Behov/Egne always render; Innleide/Utleide only
+// when they already have a registered period — see buildAll()'s per-band
+// loop and makeMoreOptionsRow below).
+function makeSourceRow(projectId, projColor, wtId, srcEnum, isException, agg, srcNameByEnum) {
+    const srcClass   = SOURCE_CLASS[srcEnum] || 'behov';
+    // Exception trades are read-only: the project never planned this work
+    // type, so its requirement sources can't be drawn/edited.
+    const isEditable = EDITABLE_SOURCES.has(srcEnum) && !isException;
+
+    const row = document.createElement('div');
+    row.style.setProperty('--proj-color', projColor);
+    row.className = 'rp-row rp-row-src rp-row-src-' + srcClass
+        + (isEditable ? ' rp-row-editable' : ' rp-row-derived');
+
+    const label = document.createElement('div');
+    label.className = 'rp-label-cell rp-source-label rp-source-label-' + srcClass;
+    label.textContent = srcNameByEnum[srcEnum] || srcClass;
+    row.appendChild(label);
+
+    const track = isEditable
+        ? makeEditableTrack(projectId, srcEnum, srcClass, wtId, srcNameByEnum[srcEnum])
+        : makeDerivedTrack(agg, srcEnum, wtId);
+    row.appendChild(track);
+    return row;
+}
+
+// "Flere alternativer" row — appears under a work-type band only when
+// Innleide and/or Utleide have no registered period yet (their detail row
+// stays hidden until they do). Opens a small popover offering "Legg til X"
+// for whichever source(s) are still missing; picking one opens the count
+// popover directly (showMoreOptionsPopover / showCountPopover), so the user
+// doesn't need to drag on a row they can't see.
+function makeMoreOptionsRow(projectId, projColor, wtId, missing, srcNameByEnum) {
+    const row = document.createElement('div');
+    row.className = 'rp-row rp-row-more';
+    row.style.width = (STICKY_W + gridWidth) + 'px';
+    row.style.setProperty('--proj-color', projColor);
+
+    const cell = document.createElement('div');
+    cell.className = 'rp-label-cell rp-more-cell';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'rp-more-btn';
+    btn.textContent = 'Flere alternativer';
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showMoreOptionsPopover({
+            anchorX: e.clientX,
+            anchorY: e.clientY,
+            options: missing.map(srcEnum =>
+                ({ srcEnum, label: srcNameByEnum[srcEnum] || SOURCE_CLASS[srcEnum] })),
+            onPick: (srcEnum, x, y) => {
+                const from = startOfWeekMon(new Date());
+                const to   = endOfWeekMon(from);
+                showCountPopover({
+                    anchorX: x,
+                    anchorY: y,
+                    defaultCount: 1,
+                    dateFrom: from,
+                    dateTo:   to,
+                    onConfirm: (count, fromISO, toISO) => {
+                        appfarm.actions?.createProjectRequirement?.({
+                            projectId, source: srcEnum, workType: wtId,
+                            dateFrom: fromISO, dateTo: toISO, count
+                        });
+                    }
+                });
+            }
+        });
+    });
+    cell.appendChild(btn);
+    row.appendChild(cell);
+    return row;
+}
+
 function buildAll() {
     const inner = document.getElementById('rp-inner');
     if (!inner) return;
@@ -928,7 +998,7 @@ function buildAll() {
         frag.appendChild(sep);
 
         // Work-type-first: project → role (work type) → its source rows. The gap
-        // band always renders; the six source detail rows only when expanded.
+        // band always renders; the detail rows only when expanded.
         const srcNameByEnum = {};
         allSources.forEach(s => {
             const e = toInt(s.enum_value);
@@ -941,30 +1011,22 @@ function buildAll() {
             frag.appendChild(makeWorkTypeBandRow(project, wtId, agg, isException));
             if (!showDetails) return;                        // collapsed = bands only
 
+            // Behov/Egne always render. Innleide/Utleide only render once they
+            // have a registered period — otherwise they're collected into
+            // missingSources and offered via the "Flere alternativer" row
+            // instead (skipped for exception trades: read-only, nothing to add).
+            const missingSources = [];
             SOURCE_ORDER.forEach(srcEnum => {
-                const srcClass   = SOURCE_CLASS[srcEnum] || 'behov';
-                // Exception trades are read-only: the project never planned this
-                // work type, so its requirement sources can't be drawn/edited.
-                const isEditable = EDITABLE_SOURCES.has(srcEnum) && !isException;
-                const isStatus   = STATUS_SOURCES.has(srcEnum);
-
-                const row = document.createElement('div');
-                row.style.setProperty('--proj-color', projColor);
-                row.className = 'rp-row rp-row-src rp-row-src-' + srcClass
-                    + (isEditable ? ' rp-row-editable' : ' rp-row-derived')
-                    + (isStatus ? ' rp-row-status' : '');
-
-                const label = document.createElement('div');
-                label.className = 'rp-label-cell rp-source-label rp-source-label-' + srcClass;
-                label.textContent = srcNameByEnum[srcEnum] || srcClass;
-                row.appendChild(label);
-
-                const track = isEditable
-                    ? makeEditableTrack(projectId, srcEnum, srcClass, wtId, srcNameByEnum[srcEnum])
-                    : makeDerivedTrack(agg, srcEnum, wtId);
-                row.appendChild(track);
-                frag.appendChild(row);
+                const isOptional = srcEnum === SRC.INNLEIDE || srcEnum === SRC.UTLEIDE;
+                if (isOptional && !hasReqData(projectId, srcEnum, wtId)) {
+                    if (!isException) missingSources.push(srcEnum);
+                    return;
+                }
+                frag.appendChild(makeSourceRow(projectId, projColor, wtId, srcEnum, isException, agg, srcNameByEnum));
             });
+            if (missingSources.length) {
+                frag.appendChild(makeMoreOptionsRow(projectId, projColor, wtId, missingSources, srcNameByEnum));
+            }
         });
     });
 
@@ -1227,7 +1289,62 @@ function showAdsPopover(opts) {
     }, 0);
 }
 
-// ═══ 8b. DAY PICKER (period picker inside the popover) ═══════════════════════
+// ═══ 8b. MORE OPTIONS POPOVER (Innleide/Utleide "Flere alternativer") ═══════
+//  Tiny anchored menu offering "Legg til <source>" for whichever of
+//  Innleide/Utleide has no registered period yet. Same shell/behaviour as the
+//  ads popover (cursor-anchored, Esc / click-outside closes, activeEdit
+//  blocks rebuilds). Picking an option opens the count popover directly.
+function showMoreOptionsPopover(opts) {
+    // opts: { anchorX, anchorY, options: [{ srcEnum, label }], onPick(srcEnum, x, y) }
+    removePopover();
+    activeEdit = true;
+
+    popoverEl = document.createElement('div');
+    popoverEl.className = 'rp-popover rp-popover-more-menu';
+
+    function close() {
+        document.removeEventListener('pointerdown', outsideHandler, { capture: true });
+        document.removeEventListener('keydown', keyHandler);
+        removePopover();
+    }
+    function outsideHandler(e) {
+        if (popoverEl && !popoverEl.contains(e.target)) close();
+    }
+    function keyHandler(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(); }
+    }
+
+    opts.options.forEach(({ srcEnum, label }) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rp-more-option';
+        btn.textContent = 'Legg til ' + label.toLowerCase();
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const x = e.clientX, y = e.clientY;
+            close();
+            opts.onPick(srcEnum, x, y);
+        });
+        popoverEl.appendChild(btn);
+    });
+    document.body.appendChild(popoverEl);
+
+    // Same clamp math as the count popover's placePopover (static — no calendar here).
+    const pw = popoverEl.offsetWidth || 200, ph = popoverEl.offsetHeight || 100, M = 8;
+    let left = opts.anchorX + 10;
+    if (left + pw > window.innerWidth - M) left = opts.anchorX - pw - 10;
+    let top = opts.anchorY - 16;
+    if (top + ph > window.innerHeight - M) top = window.innerHeight - ph - M;
+    popoverEl.style.left = Math.max(M, left) + 'px';
+    popoverEl.style.top  = Math.max(M, top) + 'px';
+
+    setTimeout(() => {
+        document.addEventListener('pointerdown', outsideHandler, { capture: true });
+        document.addEventListener('keydown', keyHandler);
+    }, 0);
+}
+
+// ═══ 8c. DAY PICKER (period picker inside the popover) ═══════════════════════
 //  Exact-day calendar for one end at a time. Month is stepped with ‹ ›; year is
 //  jumped via a scrollable grid opened from the title. opts:
 //    { selected: Date|null, view: Date(month shown),
