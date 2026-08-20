@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.1 — 2026-08-20
+
+- **Fixed: work-type filter dropdown always empty.** `buildFilterOptions()` read
+  `ns.data.workType`, but the component's declared input (and every other
+  reference in this file) is `workTypeEnum` — that data source doesn't exist
+  under the wrong name, so `safeGet` silently returned `[]` and the dropdown
+  never listed any work types beyond "Alle arbeidstyper". One-line rename to
+  `ns.data.workTypeEnum`.
+
 ## 1.3.0 — 2026-06-23
 
 - Migrated chart rendering from Chart.js to **ApexCharts** (same `cdn.jsdelivr.net`

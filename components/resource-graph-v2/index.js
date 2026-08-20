@@ -219,7 +219,7 @@ function buildFilterOptions() {
     });
 
     const opts = [{ value: '', label: 'Alle arbeidstyper' }];
-    safeGet(ns.data.workType).forEach(item => {
+    safeGet(ns.data.workTypeEnum).forEach(item => {
         const v = toInt(item?.enum_value);
         if (v == null || !used.has(v)) return;
         opts.push({ value: String(v), label: item.enum_name || String(v) });
