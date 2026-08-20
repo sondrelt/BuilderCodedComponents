@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 — 2026-08-20
+
+- **ISO week number added to the popover's day picker.** A new muted column
+  (headed "U") sits to the left of Ma–Sø, showing each row's ISO week number —
+  informational only, not clickable. Same change applied identically to
+  resource-req-v2 and assignment-grid's day pickers.
+
 ## 1.1.0 — 2026-08-18
 
 Phone + desktop support. Desktop mouse behavior is unchanged; touch gets its

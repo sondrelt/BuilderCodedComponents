@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.0 — 2026-08-20
+
+- **ISO week number added to the popover's day picker.** A new muted column
+  (headed "U") sits to the left of Ma–Sø, showing each row's ISO week number —
+  informational only, not clickable. Same change applied identically to
+  resource-req-v2 and project-team-grid's day pickers.
+
 ## 1.11.3 — 2026-07-08
 
 - **Now-line scoped to project/resource rows only.** 1.11.2 ran the line
