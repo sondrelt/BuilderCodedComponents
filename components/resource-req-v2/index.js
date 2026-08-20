@@ -629,19 +629,27 @@ function gapLineY(v) {
 
 // Color keeps deepening from |v|=5 to |v|=10 (then clamps) even after
 // position has pinned, so two maxed-out rows can still be told apart without
-// bringing a digit back. Reuses the existing palette: green = old covered
-// tone, mid = old deficit/surplus "mag 3" max, max = the root red/blue tokens.
+// bringing a digit back. Green is 0 only — there's a hard line into red/blue
+// the moment magnitude hits 1 (no green-tinted blend for a barely-off-zero
+// week), then it deepens smoothly from there. Reuses the existing palette:
+// green = old covered tone, "1" = old mag=1, mid = old mag=3, max = the root
+// red/blue tokens (new headroom above the old max).
 const GAP_GREEN    = [155, 203, 180];  // #9bcbb4 --rp-gap-covered
+const GAP_RED_1    = [246, 184, 176];  // #f6b8b0 old deficit mag=1
 const GAP_RED_MID  = [222, 90, 72];    // #de5a48 old deficit mag=3
 const GAP_RED_MAX  = [185, 28, 28];    // #b91c1c --rp-red-700
+const GAP_BLUE_1   = [166, 215, 227];  // #a6d7e3 old surplus mag=1
 const GAP_BLUE_MID = [56, 151, 178];   // #3897b2 old surplus mag=3
 const GAP_BLUE_MAX = [21, 93, 137];    // #155d89 --rp-blue-700
-const lerpRGB = (a, b, t) => 'rgb(' + a.map((c, i) => Math.round(c + (b[i] - c) * t)).join(',') + ')';
+const rgbStr  = (a) => 'rgb(' + a.join(',') + ')';
+const lerpRGB = (a, b, t) => rgbStr(a.map((c, i) => Math.round(c + (b[i] - c) * t)));
 function gapLineColor(v) {
     const mag = Math.min(Math.abs(v), 10);
+    if (mag === 0) return rgbStr(GAP_GREEN);
+    const one = v < 0 ? GAP_RED_1   : GAP_BLUE_1;
     const mid = v < 0 ? GAP_RED_MID : GAP_BLUE_MID;
     const max = v < 0 ? GAP_RED_MAX : GAP_BLUE_MAX;
-    return mag <= 5 ? lerpRGB(GAP_GREEN, mid, mag / 5) : lerpRGB(mid, max, (mag - 5) / 5);
+    return mag <= 5 ? lerpRGB(one, mid, (mag - 1) / 4) : lerpRGB(mid, max, (mag - 5) / 5);
 }
 
 // The work-type coverage band: a continuous gradient-colored line/area (not

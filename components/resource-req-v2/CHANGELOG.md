@@ -1,5 +1,15 @@
 # Changelog — resource-req-v2
 
+## 1.24.2 — 2026-08-20
+
+- **Gap-line color: hard line into red/blue at magnitude 1** instead of a
+  green-tinted blend. `gapLineColor` previously interpolated straight from
+  green (0) toward the mag-5 color, so a barely-off-zero week (±1) still read
+  mostly green (only a 20% blend toward red/blue). New `GAP_RED_1`/
+  `GAP_BLUE_1` anchors (reusing the old mag=1 tier colors) mean magnitude 1
+  is already a clear red/blue — green is reserved for exactly 0 — and the
+  gradient only continues to deepen smoothly from 1→5→10 from there.
+
 ## 1.24.1 — 2026-08-20
 
 - **Gap-band line: exaggerated first step off zero.** A plain linear position
