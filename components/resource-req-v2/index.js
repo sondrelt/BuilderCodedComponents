@@ -606,67 +606,165 @@ function makeDerivedTrack(agg, srcEnum, workType) {
     return makeRunBarTrack(values, SOURCE_CLASS[srcEnum] || 'behov');
 }
 
-// Magnitude bucket for the gap band's intensity ramp (CSS deepens the fill by
-// data-mag, so severity is scannable without reading the digit): 1 · 2–3 · 4+.
-const magBucket = (v) => { const a = Math.abs(v); return a <= 1 ? '1' : a <= 3 ? '2' : '3'; };
+const ROW_H = 36;   // keep in sync with CSS --rp-row-h
+const SVG_NS = 'http://www.w3.org/2000/svg';
+let gradCounter = 0;   // unique <linearGradient> id per rendered row
 
-// The work-type coverage band: one run-bar per contiguous (state,value) run.
-// Unlike makeRunBarTrack this keys on the gap STATE, so a stretch of unplanned
-// weeks ('none') renders as one continuous number-less block instead of gaps,
-// and covered/deficit/surplus never merge across a state change.
+// Position saturates at |v|=5 — a gap that severe already means "look here",
+// so the line simply pins to the row's top/bottom edge from there on.
+function gapLineY(v) {
+    const PAD = 4, half = ROW_H / 2, maxOffset = half - PAD;
+    const posClamped = Math.max(-5, Math.min(5, v));
+    return half - (posClamped / 5) * maxOffset;   // + (surplus) → up, − (deficit) → down
+}
+
+// Color keeps deepening from |v|=5 to |v|=10 (then clamps) even after
+// position has pinned, so two maxed-out rows can still be told apart without
+// bringing a digit back. Reuses the existing palette: green = old covered
+// tone, mid = old deficit/surplus "mag 3" max, max = the root red/blue tokens.
+const GAP_GREEN    = [155, 203, 180];  // #9bcbb4 --rp-gap-covered
+const GAP_RED_MID  = [222, 90, 72];    // #de5a48 old deficit mag=3
+const GAP_RED_MAX  = [185, 28, 28];    // #b91c1c --rp-red-700
+const GAP_BLUE_MID = [56, 151, 178];   // #3897b2 old surplus mag=3
+const GAP_BLUE_MAX = [21, 93, 137];    // #155d89 --rp-blue-700
+const lerpRGB = (a, b, t) => 'rgb(' + a.map((c, i) => Math.round(c + (b[i] - c) * t)).join(',') + ')';
+function gapLineColor(v) {
+    const mag = Math.min(Math.abs(v), 10);
+    const mid = v < 0 ? GAP_RED_MID : GAP_BLUE_MID;
+    const max = v < 0 ? GAP_RED_MAX : GAP_BLUE_MAX;
+    return mag <= 5 ? lerpRGB(GAP_GREEN, mid, mag / 5) : lerpRGB(mid, max, (mag - 5) / 5);
+}
+
+// The work-type coverage band: a continuous gradient-colored line/area (not
+// discrete bars), so severity reads from shape rather than a digit. Runs
+// break across 'none' weeks (no Behov registered) — the diagonal hatch baked
+// into .rp-track-gap's own background shows through wherever no line covers it.
 function makeGapBandTrack(agg, wtId) {
     const track = document.createElement('div');
     track.className = 'rp-track rp-track-agg rp-track-gap';
     track.style.width          = gridWidth + 'px';
-    track.style.backgroundSize = COL_W + 'px 100%';
+    track.style.backgroundSize = COL_W + 'px 100%, auto';   // gridline layer, hatch layer (own tile size)
 
     const states = columns.map((_, ci) => agg.gap(wtId, ci));
-    let i = 0;
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'rp-gap-svg');
+    svg.setAttribute('width', gridWidth);
+    svg.setAttribute('height', ROW_H);
+    svg.setAttribute('viewBox', '0 0 ' + gridWidth + ' ' + ROW_H);
+    svg.setAttribute('preserveAspectRatio', 'none');
+
+    const zero = document.createElementNS(SVG_NS, 'line');
+    zero.setAttribute('class', 'rp-gap-zeroline');
+    zero.setAttribute('x1', 0); zero.setAttribute('x2', gridWidth);
+    zero.setAttribute('y1', ROW_H / 2); zero.setAttribute('y2', ROW_H / 2);
+    svg.appendChild(zero);
+
+    const gradId = 'rp-gap-grad-' + (gradCounter++);
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    const grad = document.createElementNS(SVG_NS, 'linearGradient');
+    grad.setAttribute('id', gradId);
+    grad.setAttribute('gradientUnits', 'userSpaceOnUse');
+    grad.setAttribute('x1', 0); grad.setAttribute('x2', gridWidth);
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    // Runs break at 'none' weeks — the line never connects across unplanned
+    // stretches. Within a run, points sit at each week's midpoint but the
+    // path is extended flat out to the run's own left/right week boundaries.
+    let areaD = '', lineD = '', i = 0;
     while (i < states.length) {
-        const g = states[i];
+        if (states[i].state === 'none') { i++; continue; }
         let j = i;
-        while (j + 1 < states.length
-            && states[j + 1].state === g.state
-            && states[j + 1].value === g.value) j++;
-        const left = columns[i].left;
-        const bar = document.createElement('div');
-        bar.className = 'rp-bar rp-bar-agg rp-gap rp-gap-' + g.state;
-        bar.style.left  = left + 'px';
-        bar.style.width = (columns[j].left + columns[j].width - left) + 'px';
-        if (g.state === 'deficit' || g.state === 'surplus') bar.dataset.mag = magBucket(g.value);
-        if (g.state !== 'none') {                                           // 'none' = no number
-            const txt = g.value > 0 ? '+' + g.value : String(g.value);     // +N surplus, −N deficit, 0 covered
-            bar.innerHTML = '<span class="rp-bar-count">' + txt + '</span>';
+        while (j + 1 < states.length && states[j + 1].state !== 'none') j++;
+
+        const runStartX = columns[i].left, runEndX = columns[j].left + columns[j].width;
+        let d = '';
+        for (let k = i; k <= j; k++) {
+            const col = columns[k];
+            const x = col.left + col.width / 2;
+            const y = gapLineY(states[k].value);
+            d += (k === i ? 'M' + runStartX + ',' + y + ' L' : ' L') + x + ',' + y;
+            const stop = document.createElementNS(SVG_NS, 'stop');
+            stop.setAttribute('offset', x / gridWidth);
+            stop.setAttribute('stop-color', gapLineColor(states[k].value));
+            grad.appendChild(stop);
         }
-        // Marketplace indicator beside the number: deficit → lease-in supply (Resource
-        // Available ads), surplus → lease-out demand (Job ads). One icon per run bar,
-        // aggregating ads across the run's columns; per-ad date ranges live in the popover.
-        const dir = g.state === 'deficit' ? 'in' : g.state === 'surplus' ? 'out' : null;
-        if (dir) {
-            const ads = adsForRange(wtId, i, j, dir);
-            const realN = ads.filter(x => !x.isProbable).length;
-            // Badge/indicator counts real (postable, navigable) ads only — probable
-            // peer-capacity signals stay inside the popover so the badge never
-            // promises a number the user can't act on. A gap with only probable
-            // signals and zero real ads gets no indicator at all (v1).
-            if (realN) {
-                bar.querySelector('.rp-bar-count').appendChild(makeAdsIndicator(ads, realN, dir, wtId));
-                // The whole run bar is a click target too — the icon is the affordance hint.
-                bar.classList.add('rp-gap-has-ads');
-                bar.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showAdsPopover({ anchorX: e.clientX, anchorY: e.clientY, ads, dir, wtId });
-                });
-            }
-        }
-        track.appendChild(bar);
+        d += ' L' + runEndX + ',' + gapLineY(states[j].value);
+        lineD += d + ' ';
+        areaD += d + ' L' + runEndX + ',' + (ROW_H / 2) + ' L' + runStartX + ',' + (ROW_H / 2) + ' Z ';
         i = j + 1;
     }
+
+    const areaPath = document.createElementNS(SVG_NS, 'path');
+    areaPath.setAttribute('class', 'rp-gap-area');
+    areaPath.setAttribute('d', areaD);
+    areaPath.setAttribute('fill', 'url(#' + gradId + ')');
+    svg.appendChild(areaPath);
+
+    const linePath = document.createElementNS(SVG_NS, 'path');
+    linePath.setAttribute('class', 'rp-gap-line');
+    linePath.setAttribute('d', lineD);
+    linePath.setAttribute('stroke', 'url(#' + gradId + ')');
+    linePath.setAttribute('fill', 'none');
+    svg.appendChild(linePath);
+
+    track.appendChild(svg);
+
+    // Ads icon: one per deficit/surplus hump (a contiguous run of the same
+    // sign), anchored at its single most severe week — not spread across the
+    // whole run, so a long flat or bumpy stretch still gets just one marker.
+    i = 0;
+    while (i < states.length) {
+        const sign = states[i].state;
+        if (sign !== 'deficit' && sign !== 'surplus') { i++; continue; }
+        let j = i;
+        while (j + 1 < states.length && states[j + 1].state === sign) j++;
+
+        let p = i;
+        for (let k = i + 1; k <= j; k++) {
+            if (sign === 'deficit' ? states[k].value < states[p].value
+                                    : states[k].value > states[p].value) p = k;
+        }
+
+        // Marketplace indicator at the peak: deficit → lease-in supply (Resource
+        // Available ads), surplus → lease-out demand (Job ads). Aggregates ads
+        // across the whole hump's columns; per-ad date ranges live in the popover.
+        const dir = sign === 'deficit' ? 'in' : 'out';
+        const ads = adsForRange(wtId, i, j, dir);
+        const realN = ads.filter(x => !x.isProbable).length;
+        // Badge counts real (postable, navigable) ads only — probable peer-
+        // capacity signals stay inside the popover so it never promises more
+        // than is actually postable. A hump with only probable signals and
+        // zero real ads gets no icon at all.
+        if (realN) {
+            const col  = columns[p];
+            const icon = makeAdsIndicator(ads, realN, dir, wtId);
+            icon.style.left = (col.left + col.width / 2) + 'px';
+            icon.style.top  = gapLineY(states[p].value) + 'px';
+            track.appendChild(icon);
+        }
+        i = j + 1;
+    }
+
+    // Hover tooltip: the line only shows shape, so the exact value lives here.
+    track.addEventListener('mousemove', (e) => {
+        const ci = colIdxFromClientX(e.clientX, track.getBoundingClientRect());
+        const g = states[ci];
+        const label = { deficit: 'Udekt', surplus: 'Overskudd', covered: 'Dekket', none: 'Ikke planlagt' }[g.state];
+        const txt = g.state === 'none' ? label
+            : label + ' ' + (g.value > 0 ? '+' + g.value : g.value) + ' · uke ' + columns[ci].label;
+        setTooltip(txt);
+        moveTooltip(e.clientX, e.clientY);
+    });
+    track.addEventListener('mouseleave', hideTooltip);
+
     return track;
 }
 
-// Icon next to the gap number: click opens the ads popover for this run.
-// `realN` (not ads.length) drives the visible count — probable rows don't count.
+// Icon marking a deficit/surplus hump's peak week: click opens the ads
+// popover for the whole hump. `realN` (not ads.length) drives the title —
+// probable rows don't count.
 function makeAdsIndicator(ads, realN, dir, wtId) {
     const el = document.createElement('button');
     el.type = 'button';
@@ -1456,13 +1554,13 @@ function demo() {
 }
 
 // ═══ 9. DRAG INTERACTIONS (create / move / resize / click-edit) ═════════════
-function setTooltip(n) {
+function setTooltip(text) {
     if (!tooltipEl) {
         tooltipEl = document.createElement('div');
         tooltipEl.className = 'rp-tooltip';
         document.body.appendChild(tooltipEl);
     }
-    tooltipEl.textContent = n + ' uke' + (n === 1 ? '' : 'r');
+    tooltipEl.textContent = text;
     tooltipEl.style.display = 'block';
 }
 function moveTooltip(x, y) {
@@ -1556,7 +1654,8 @@ function onPointerMove(e) {
         activeDrag.curE = ed;
         activeDrag.bar.style.left  = (s * COL_W) + 'px';
         activeDrag.bar.style.width = ((ed - s + 1) * COL_W) + 'px';
-        setTooltip(ed - s + 1);
+        const n = ed - s + 1;
+        setTooltip(n + ' uke' + (n === 1 ? '' : 'r'));
         moveTooltip(e.clientX, e.clientY);
         return;
     }
@@ -1585,7 +1684,7 @@ function onPointerMove(e) {
     activeDrag.bar.style.width = Math.max(r - l, COL_W) + 'px';
 
     const weeks = Math.max(1, Math.round((+startOfDay(to) - +startOfDay(from)) / DAY_MS / 7) + 1);
-    setTooltip(weeks);
+    setTooltip(weeks + ' uke' + (weeks === 1 ? '' : 'r'));
     moveTooltip(e.clientX, e.clientY);
 }
 

@@ -1,5 +1,34 @@
 # Changelog — resource-req-v2
 
+## 1.24.0 — 2026-08-20
+
+- **Coverage-gap band redrawn as a continuous gradient line/area**, replacing
+  the discrete numbered bars. Each work-type band now shows one SVG line per
+  row, dipping below a centred 0-baseline for understaffing and rising above
+  it for surplus, so severity reads from shape instead of digits.
+  - **Position saturates at |value|=5** — a gap that severe already means
+    "look here", so the line simply pins to the row's top/bottom edge from
+    there on; exact magnitude beyond 5 no longer moves the line further.
+  - **Colour keeps deepening from 5 to 10** (then clamps) even after the
+    line has pinned, reusing the existing palette (green = old covered tone,
+    mid = old "mag 3" red/blue, max = the root `--rp-red-700`/`--rp-blue-700`
+    tokens) — so two maxed-out rows can still be told apart by saturation.
+  - Weeks with no Behov registered ('none' state) break the line entirely;
+    the diagonal hatch that used to live on a per-bar class is now baked
+    permanently into `.rp-track-gap`'s own background, so it shows through
+    unobstructed wherever no run covers it — no extra per-range styling
+    needed.
+  - Exact numbers move to a hover tooltip (`Udekt −3 · uke 34` etc.) instead
+    of being shown by default; `setTooltip` was generalized to take
+    already-formatted text (was hardcoded to "N uke(r)").
+  - **Marketplace ads icon is now peak-only**: one icon per deficit/surplus
+    hump (a contiguous run of the same sign), anchored at its single most
+    severe week, instead of one per every distinct-value sub-run — a long
+    bumpy or flat stretch now gets exactly one marker. Same click →
+    `showAdsPopover` behaviour.
+  - Removed `magBucket` and all `data-mag` styling — colour is now a
+    continuous function of the value, not a 3-step bucket.
+
 ## 1.23.0 — 2026-08-20
 
 - **Source row order reduced and reordered to cut cognitive load.** Each
