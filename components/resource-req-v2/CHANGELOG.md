@@ -1,5 +1,15 @@
 # Changelog — resource-req-v2
 
+## 1.24.4 — 2026-08-20
+
+- **Ads icon given an explicit z-index (22).** It had none, so it painted at
+  the default stacking level and could end up hidden behind anything with a
+  higher explicit z-index that geometrically overlapped it — most visibly
+  the row's own sticky label cell (10) while scrolling horizontally, and the
+  amber now-line (21) crossing the current week's column. 22 clears every
+  in-grid layer (label cells, group/summary heads, now-line) while staying
+  below the true overlays (sticky calendar header, tooltips/popovers).
+
 ## 1.24.3 — 2026-08-20
 
 - **Ads icon centred on the peak plateau, not its first week.** The peak

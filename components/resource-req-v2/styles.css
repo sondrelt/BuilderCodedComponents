@@ -421,6 +421,7 @@
    (x, y), so it needs its own backdrop to stay legible over the fill. */
 .rp-ads-btn {
   position: absolute;
+  z-index: 22;   /* beats .rp-label-cell (10), group/summary heads (20), .rp-nowline (21) */
   transform: translate(-50%, -50%);
   pointer-events: auto;   /* parent .rp-gap-svg is pointer-events: none */
   appearance: none;
