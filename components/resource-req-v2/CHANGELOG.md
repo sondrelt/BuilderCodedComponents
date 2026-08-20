@@ -12,12 +12,13 @@
   empty Innleide or Utleide row no longer clutters every band; once either has
   at least one period it renders permanently, same drag-to-create/click-to-edit
   behavior as before.
-- **New "Flere alternativer" row** appears under a band whenever Innleide
-  and/or Utleide are still hidden (skipped for exception trades — read-only,
-  nothing to add). Opens a small menu offering "Legg til innleide"/"Legg til
-  utleide" for whichever is missing; picking one opens the existing quantity
-  popover directly with a default one-week window, letting the from/to date be
-  set there instead of requiring a drag gesture on a row that isn't shown.
+- **New "Flere alternativer" icon**, next to the work-type name on the gap
+  band row, appears whenever Innleide and/or Utleide are still hidden
+  (skipped for exception trades — read-only, nothing to add). Opens a small
+  menu offering "Legg til innleide"/"Legg til utleide" for whichever is
+  missing; picking one opens the existing quantity popover directly with a
+  default one-week window, letting the from/to date be set there instead of
+  requiring a drag gesture on a row that isn't shown.
 
 ## 1.22.2 — 2026-08-11
 

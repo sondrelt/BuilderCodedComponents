@@ -94,7 +94,8 @@ const ICONS = {
     chevronUp:   '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 8l4-4 4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
     edit:        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
     graph:       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 17V13M12 17V9M16 17V13"/></svg>',
-    info:        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>'
+    info:        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    plus:        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
 };
 
 // ═══ 2. UTILITIES ═══════════════════════════════════════════════════════════
@@ -168,7 +169,7 @@ const reqKey = (projectId, source, workType) => projectId + ':' + source + ':' +
 
 // Whether this project/source/work-type has at least one registered period —
 // drives whether Innleide/Utleide get their own detail row (buildAll) or stay
-// tucked behind the "Flere alternativer" button (makeMoreOptionsRow).
+// tucked behind the "Flere alternativer" icon (makeWorkTypeBandRow).
 const hasReqData = (projectId, source, workType) =>
     (reqsByKey.get(reqKey(projectId, source, workType)) || []).length > 0;
 
@@ -691,15 +692,59 @@ function escapeHtml(s) {
 // Work-type band row — the dominant grouping level, replacing the old source
 // summary header. Carries the only saturated colour in the grid (the gap band);
 // everything beneath it is monochrome ink.
-function makeWorkTypeBandRow(project, wtId, agg, isException) {
+// `missing` (Innleide/Utleide enums with no registered period yet, empty for
+// exception trades) drives the small "+" icon next to the work-type name —
+// opens showMoreOptionsPopover to add the first period without needing to
+// expand details or drag on a row that isn't shown.
+function makeWorkTypeBandRow(project, wtId, agg, isException, missing, srcNameByEnum) {
     const row = document.createElement('div');
     row.className = 'rp-row rp-row-wt-band' + (isException ? ' rp-row-exception' : '');
     row.style.setProperty('--proj-color', project.colorHexCode || '#d1eae0');
 
     const label = document.createElement('div');
     label.className = 'rp-label-cell rp-wt-band-label';
-    label.textContent = (wtNameMap[wtId] || String(wtId)) + (isException ? ' ⚠' : '');
     if (isException) label.title = 'Ikke planlagt arbeidstype på dette prosjektet';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'rp-wt-band-name';
+    nameSpan.textContent = (wtNameMap[wtId] || String(wtId)) + (isException ? ' ⚠' : '');
+    label.appendChild(nameSpan);
+
+    if (missing && missing.length) {
+        const projectId = project._id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rp-action-btn rp-wt-more-btn';
+        btn.title = 'Flere alternativer';
+        btn.innerHTML = ICONS.plus;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showMoreOptionsPopover({
+                anchorX: e.clientX,
+                anchorY: e.clientY,
+                options: missing.map(srcEnum =>
+                    ({ srcEnum, label: srcNameByEnum[srcEnum] || SOURCE_CLASS[srcEnum] })),
+                onPick: (srcEnum, x, y) => {
+                    const from = startOfWeekMon(new Date());
+                    const to   = endOfWeekMon(from);
+                    showCountPopover({
+                        anchorX: x,
+                        anchorY: y,
+                        defaultCount: 1,
+                        dateFrom: from,
+                        dateTo:   to,
+                        onConfirm: (count, fromISO, toISO) => {
+                            appfarm.actions?.createProjectRequirement?.({
+                                projectId, source: srcEnum, workType: wtId,
+                                dateFrom: fromISO, dateTo: toISO, count
+                            });
+                        }
+                    });
+                }
+            });
+        });
+        label.appendChild(btn);
+    }
 
     row.appendChild(label);
     row.appendChild(makeGapBandTrack(agg, wtId));
@@ -867,7 +912,7 @@ function renderNowLine(inner) {
 
 // One source detail row (Behov/Egne always render; Innleide/Utleide only
 // when they already have a registered period — see buildAll()'s per-band
-// loop and makeMoreOptionsRow below).
+// loop and makeWorkTypeBandRow's "Flere alternativer" icon).
 function makeSourceRow(projectId, projColor, wtId, srcEnum, isException, agg, srcNameByEnum) {
     const srcClass   = SOURCE_CLASS[srcEnum] || 'behov';
     // Exception trades are read-only: the project never planned this work
@@ -888,55 +933,6 @@ function makeSourceRow(projectId, projColor, wtId, srcEnum, isException, agg, sr
         ? makeEditableTrack(projectId, srcEnum, srcClass, wtId, srcNameByEnum[srcEnum])
         : makeDerivedTrack(agg, srcEnum, wtId);
     row.appendChild(track);
-    return row;
-}
-
-// "Flere alternativer" row — appears under a work-type band only when
-// Innleide and/or Utleide have no registered period yet (their detail row
-// stays hidden until they do). Opens a small popover offering "Legg til X"
-// for whichever source(s) are still missing; picking one opens the count
-// popover directly (showMoreOptionsPopover / showCountPopover), so the user
-// doesn't need to drag on a row they can't see.
-function makeMoreOptionsRow(projectId, projColor, wtId, missing, srcNameByEnum) {
-    const row = document.createElement('div');
-    row.className = 'rp-row rp-row-more';
-    row.style.width = (STICKY_W + gridWidth) + 'px';
-    row.style.setProperty('--proj-color', projColor);
-
-    const cell = document.createElement('div');
-    cell.className = 'rp-label-cell rp-more-cell';
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'rp-more-btn';
-    btn.textContent = 'Flere alternativer';
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showMoreOptionsPopover({
-            anchorX: e.clientX,
-            anchorY: e.clientY,
-            options: missing.map(srcEnum =>
-                ({ srcEnum, label: srcNameByEnum[srcEnum] || SOURCE_CLASS[srcEnum] })),
-            onPick: (srcEnum, x, y) => {
-                const from = startOfWeekMon(new Date());
-                const to   = endOfWeekMon(from);
-                showCountPopover({
-                    anchorX: x,
-                    anchorY: y,
-                    defaultCount: 1,
-                    dateFrom: from,
-                    dateTo:   to,
-                    onConfirm: (count, fromISO, toISO) => {
-                        appfarm.actions?.createProjectRequirement?.({
-                            projectId, source: srcEnum, workType: wtId,
-                            dateFrom: fromISO, dateTo: toISO, count
-                        });
-                    }
-                });
-            }
-        });
-    });
-    cell.appendChild(btn);
-    row.appendChild(cell);
     return row;
 }
 
@@ -1008,25 +1004,20 @@ function buildAll() {
         const extraWTs = agg.egneExtraWTs || [];
         [...projectWTs, ...extraWTs].forEach(wtId => {
             const isException = extraWTs.includes(wtId);
-            frag.appendChild(makeWorkTypeBandRow(project, wtId, agg, isException));
+            // Innleide/Utleide with no registered period yet stay off the band's
+            // detail rows; the band row instead gets a "+" icon offering to add
+            // them (skipped for exception trades: read-only, nothing to add).
+            const missing = isException ? []
+                : [SRC.INNLEIDE, SRC.UTLEIDE].filter(s => !hasReqData(projectId, s, wtId));
+            frag.appendChild(makeWorkTypeBandRow(project, wtId, agg, isException, missing, srcNameByEnum));
             if (!showDetails) return;                        // collapsed = bands only
 
-            // Behov/Egne always render. Innleide/Utleide only render once they
-            // have a registered period — otherwise they're collected into
-            // missingSources and offered via the "Flere alternativer" row
-            // instead (skipped for exception trades: read-only, nothing to add).
-            const missingSources = [];
+            // Behov/Egne always render; Innleide/Utleide only once they have data.
             SOURCE_ORDER.forEach(srcEnum => {
                 const isOptional = srcEnum === SRC.INNLEIDE || srcEnum === SRC.UTLEIDE;
-                if (isOptional && !hasReqData(projectId, srcEnum, wtId)) {
-                    if (!isException) missingSources.push(srcEnum);
-                    return;
-                }
+                if (isOptional && !hasReqData(projectId, srcEnum, wtId)) return;
                 frag.appendChild(makeSourceRow(projectId, projColor, wtId, srcEnum, isException, agg, srcNameByEnum));
             });
-            if (missingSources.length) {
-                frag.appendChild(makeMoreOptionsRow(projectId, projColor, wtId, missingSources, srcNameByEnum));
-            }
         });
     });
 

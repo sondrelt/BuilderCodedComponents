@@ -307,24 +307,6 @@
 .rp-source-label-innleide  { --src-tick: var(--rp-innleide-bar); }
 .rp-source-label-utleide   { --src-tick: var(--rp-utleide-bar); }
 
-/* "Flere alternativer" row — offers "Legg til innleide/utleide" for whichever
-   of the two has no registered period yet (so its own row stays hidden). */
-.rp-row-more { height: 28px; }
-.rp-more-cell { padding-left: 30px; }
-.rp-more-btn {
-  border: none;
-  background: none;
-  cursor: pointer;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--rp-text-muted);
-  transition: background .12s, color .12s;
-}
-.rp-more-btn:hover { background: rgba(0,0,0,0.06); color: var(--rp-text); }
-
 /* Work-type band label — the dominant grouping level: bold, lightly project-tinted
    so the trade name reads as the header above its source rows. */
 .rp-wt-band-label {
@@ -339,6 +321,20 @@
   color: var(--rp-amber-800);
   background: var(--rp-amber-50);
 }
+
+/* Trade name text — truncates instead of pushing the "+" button (below) out
+   of the sticky label cell. */
+.rp-wt-band-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* "Flere alternativer" — small icon next to the trade name, offering "Legg
+   til innleide/utleide" for whichever of the two has no registered period
+   yet (so its own detail row stays hidden). Reuses .rp-action-btn's look. */
+.rp-wt-more-btn { flex: none; margin-left: 6px; }
 
 /* ── 6. TRACKS ────────────────────────────────────────────────────────────── */
 .rp-track {
