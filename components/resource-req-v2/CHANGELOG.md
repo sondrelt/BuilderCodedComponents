@@ -1,5 +1,14 @@
 # Changelog — resource-req-v2
 
+## 1.24.3 — 2026-08-20
+
+- **Ads icon centred on the peak plateau, not its first week.** The peak
+  search only moved the anchor on a *strictly* better value, so a flat run
+  (every week tied at the same deficit/surplus) left the icon pinned to the
+  run's left edge instead of its middle. Now tracks the full span of columns
+  tied at the peak value and centres the icon horizontally across it; the
+  vertical position is unchanged (still the peak value's own line height).
+
 ## 1.24.2 — 2026-08-20
 
 - **Gap-line color: hard line into red/blue at magnitude 1** instead of a

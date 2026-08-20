@@ -738,10 +738,15 @@ function makeGapBandTrack(agg, wtId) {
         let j = i;
         while (j + 1 < states.length && states[j + 1].state === sign) j++;
 
-        let p = i;
+        // Track the peak value's full plateau (pFirst..pLast), not just its
+        // first occurrence — a flat run (the common case) ties every column,
+        // and the icon should sit in the middle of that stretch, not at its
+        // left edge.
+        let peakVal = states[i].value, pFirst = i, pLast = i;
         for (let k = i + 1; k <= j; k++) {
-            if (sign === 'deficit' ? states[k].value < states[p].value
-                                    : states[k].value > states[p].value) p = k;
+            const better = sign === 'deficit' ? states[k].value < peakVal : states[k].value > peakVal;
+            if (better) { peakVal = states[k].value; pFirst = pLast = k; }
+            else if (states[k].value === peakVal) pLast = k;
         }
 
         // Marketplace indicator at the peak: deficit → lease-in supply (Resource
@@ -755,10 +760,10 @@ function makeGapBandTrack(agg, wtId) {
         // than is actually postable. A hump with only probable signals and
         // zero real ads gets no icon at all.
         if (realN) {
-            const col  = columns[p];
+            const midX = (columns[pFirst].left + columns[pLast].left + columns[pLast].width) / 2;
             const icon = makeAdsIndicator(ads, realN, dir, wtId);
-            icon.style.left = (col.left + col.width / 2) + 'px';
-            icon.style.top  = gapLineY(states[p].value) + 'px';
+            icon.style.left = midX + 'px';
+            icon.style.top  = gapLineY(peakVal) + 'px';
             track.appendChild(icon);
         }
         i = j + 1;
