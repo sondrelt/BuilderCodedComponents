@@ -612,10 +612,19 @@ let gradCounter = 0;   // unique <linearGradient> id per rendered row
 
 // Position saturates at |v|=5 — a gap that severe already means "look here",
 // so the line simply pins to the row's top/bottom edge from there on.
+// The very first step (0→1) jumps to GAP_MIN_FRAC of the max offset on its
+// own — a plain linear scale puts |v|=1 only 1/5 of the way off centre,
+// which reads as noise against the dashed 0-line rather than a real signal.
+// Every step after that (1→2, 2→3, …) splits the remaining distance evenly,
+// so magnitude still reads faithfully once you're already off zero.
+const GAP_MIN_FRAC = 0.35;
 function gapLineY(v) {
     const PAD = 4, half = ROW_H / 2, maxOffset = half - PAD;
     const posClamped = Math.max(-5, Math.min(5, v));
-    return half - (posClamped / 5) * maxOffset;   // + (surplus) → up, − (deficit) → down
+    if (posClamped === 0) return half;
+    const mag  = Math.abs(posClamped);
+    const frac = GAP_MIN_FRAC + (1 - GAP_MIN_FRAC) * (mag - 1) / 4;
+    return half - Math.sign(posClamped) * frac * maxOffset;   // + (surplus) → up, − (deficit) → down
 }
 
 // Color keeps deepening from |v|=5 to |v|=10 (then clamps) even after

@@ -1,5 +1,15 @@
 # Changelog — resource-req-v2
 
+## 1.24.1 — 2026-08-20
+
+- **Gap-band line: exaggerated first step off zero.** A plain linear position
+  scale put magnitude 1 only 1/5 of the way to the row edge — easy to mistake
+  for noise against the dashed 0-line. `gapLineY` now jumps to 35%
+  (`GAP_MIN_FRAC`) of the max offset on the very first unit (0→1), then
+  splits the remaining distance evenly across 1→2→3→4→5, so a value of ±1
+  reads unmistakably as "off zero" while relative magnitude above that still
+  scales faithfully.
+
 ## 1.24.0 — 2026-08-20
 
 - **Coverage-gap band redrawn as a continuous gradient line/area**, replacing
