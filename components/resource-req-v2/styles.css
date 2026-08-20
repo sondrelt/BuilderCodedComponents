@@ -373,115 +373,74 @@
    Base .rp-track supplies position:relative and the column gridlines. */
 .rp-track-agg { cursor: default; }
 
-/* Work-type coverage band — designed like the source aggregation rows in the
-   image: a faint band tint with the value as a floating underlined-number marker
-   (not a filled cell) and short vertical end-ticks marking each run. State rides
-   the underline + ticks colour; magnitude deepens it. The band is the one layer
-   carrying signal colour — source rows below stay monochrome. */
+/* Work-type coverage band — a continuous gradient line/area from a centred
+   0-baseline (not discrete numbered bars): dips below for understaffing,
+   rises above for surplus, coloured green→red / green→blue by severity. The
+   band is the one layer carrying signal colour — source rows below stay
+   monochrome. The diagonal hatch is baked permanently into this track's own
+   background (2nd background-image layer) so it shows through unobstructed
+   wherever the SVG draws no line — i.e. exactly the weeks with no Behov
+   registered ('none' state) — without any extra per-range styling. */
 .rp-track-gap {
   background-color: #faf8f4;
+  background-image:
+    linear-gradient(to right, var(--rp-border) 0 1px, transparent 1px),
+    repeating-linear-gradient(45deg, rgba(170,170,170,0.04) 0 5px, transparent 5px 10px);
+  background-repeat: repeat-x, repeat;
+  background-position: left top, left top;
 }
 
-/* The mark fills the full row height (no inset pill): a faint state tint as the
-   run's background + a solid state-coloured band along the very bottom edge, with
-   the value floating above it. Magnitude deepens the bottom band. */
-/* .rp-bar.rp-gap (specificity 0,2,0) so these beat the later .rp-bar / .rp-bar-agg
-   rules — otherwise .rp-bar's top/height/radius win and it reads as an inset pill. */
-.rp-bar.rp-gap {
-  top: 0;
-  height: 100%;
-  background: transparent;   /* no per-state fill — the track's faint band shows through */
-  border: none;
-  border-bottom: 3px solid var(--gap-line, var(--rp-text-muted));
-  border-radius: 0;
-  box-shadow: none;
-  overflow: visible;   /* let the end-ticks rise above the bottom band */
-}
-/* Gap band number sits on transparent bars (the track's tint + week gridlines
-   show through), so it gets its own tight pill background instead of the
-   base .rp-bar-count's full-width overlay — masks the gridline right behind
-   the digit without blocking it across the rest of the run. */
-.rp-gap .rp-bar-count {
+.rp-gap-svg {
   position: absolute;
-  inset: auto;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: auto;
-  padding: 1px 5px;
-  border-radius: 8px;
-  background: #faf8f4;
-  font-weight: 800;
-  color: var(--rp-text);
+  inset: 0;
+  pointer-events: none;   /* clicks/hover are handled by the track itself */
 }
-/* Short vertical end-ticks rising from the bottom band at each run boundary. */
-.rp-gap::before, .rp-gap::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  width: 2px; height: 9px;
-  background: var(--gap-line, var(--rp-text-muted));
+
+/* Faint dashed reference line marking the 0 baseline (Dekket). */
+.rp-gap-zeroline {
+  stroke: rgba(0, 0, 0, 0.15);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
 }
-.rp-gap::before { left: 0; }
-.rp-gap::after  { right: 0; }
 
-/* State colour lives only in the ticks + bottom band — clean, legible hues at
-   moderate saturation (clearly red / teal / green, never muddy). Magnitude deepens
-   within each hue. */
-/* Covered — demand met (0): light sage green. */
-.rp-gap-covered { --gap-line: #9bcbb4; }
+/* Filled area under/over the line — a translucent fill so the week gridlines
+   (and the 'none' hatch, where no run covers it) keep showing through. */
+.rp-gap-area { fill-opacity: 0.55; }
 
-/* Deficit (Udekt, −N) — light coral-red; deepens across magnitude 1·2·3. */
-.rp-gap-deficit[data-mag="1"] { --gap-line: #f6b8b0; }
-.rp-gap-deficit[data-mag="2"] { --gap-line: #ec8576; }
-.rp-gap-deficit[data-mag="3"] { --gap-line: #de5a48; }
-
-/* Surplus (Overskudd, +N) — light teal; same three-step ramp. */
-.rp-gap-surplus[data-mag="1"] { --gap-line: #a6d7e3; }
-.rp-gap-surplus[data-mag="2"] { --gap-line: #66b6cb; }
-.rp-gap-surplus[data-mag="3"] { --gap-line: #3897b2; }
-
-/* No demand — no Behov this week (project ended / not started / not filled in).
-   A faint hatch, no band / number / ticks — reads as "nothing planned" and stays
-   distinct from a confident covered-0. */
-.rp-bar.rp-gap-none {
-  background-color: transparent;
-  background-image: repeating-linear-gradient(45deg,
-    rgba(170,170,170,0.04) 0 5px, transparent 5px 10px);
-  border-bottom: none;
+.rp-gap-line {
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
-.rp-gap-none::before, .rp-gap-none::after { display: none; }
 
 /* ── Marketplace ads indicator on the coverage band ───────────────────────────
    Deficit runs surface lease-IN supply (Resource Available ads, ↓ "ledige"),
-   surplus runs surface lease-OUT demand (Job ads, ↗ "oppdrag"). A small arrow
-   beside the gap number; recessive until the row is hovered. Click → ads popover. */
+   surplus runs surface lease-OUT demand (Job ads, ↗ "oppdrag"). One icon per
+   hump, pinned at its most severe week; recessive until the row is hovered.
+   Click → ads popover. Positioned directly on the line at that week's own
+   (x, y), so it needs its own backdrop to stay legible over the fill. */
 .rp-ads-btn {
-  pointer-events: auto;   /* parent .rp-bar-count is pointer-events: none */
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;   /* parent .rp-gap-svg is pointer-events: none */
   appearance: none;
   -webkit-appearance: none;   /* kill host-app button chrome (box/border/bg) */
   display: inline-flex;
   align-items: center;
-  margin-left: 7px;
-  padding: 2px;
-  background: none;
+  justify-content: center;
+  padding: 3px;
+  background: #faf8f4;
   border: none;
-  border-radius: 4px;
+  border-radius: 50%;
   line-height: 1;
   color: var(--rp-text-muted);
   cursor: pointer;
-  opacity: 0.55;
+  opacity: 0.7;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
   transition: opacity .15s;
 }
-.rp-track-gap:hover .rp-ads-btn { opacity: 0.9; }
+.rp-track-gap:hover .rp-ads-btn { opacity: 0.95; }
 .rp-ads-btn:hover { opacity: 1; }
-
-/* The whole run bar opens the popover when it carries ads (aggregate bars are
-   otherwise pointer-events: none). Keep the generic .rp-bar grab/shadow out. */
-.rp-bar.rp-gap-has-ads { pointer-events: auto; cursor: pointer; }
-.rp-bar.rp-gap-has-ads:hover  { box-shadow: none; }
-.rp-bar.rp-gap-has-ads:active { cursor: pointer; }
-.rp-gap-has-ads:hover .rp-ads-btn { opacity: 1; }
 
 /* ── 7. BARS ──────────────────────────────────────────────────────────────── */
 .rp-bar {
