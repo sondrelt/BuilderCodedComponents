@@ -331,10 +331,22 @@
   min-width: 0;
 }
 
-/* "Flere alternativer" — small icon next to the trade name, offering "Legg
+/* "Flere alternativer" — small chip next to the trade name, offering "Legg
    til innleide/utleide" for whichever of the two has no registered period
-   yet (so its own detail row stays hidden). Reuses .rp-action-btn's look. */
-.rp-wt-more-btn { flex: none; margin-left: 6px; }
+   yet (so its own detail row stays hidden). A bordered chip at full opacity
+   (unlike the ghost .rp-action-btn default) so it reads as a standing
+   affordance against the tinted band background, not just a hover-only icon. */
+.rp-wt-more-btn {
+  flex: none;
+  margin-left: 6px;
+  width: 20px;
+  height: 20px;
+  justify-content: center;
+  opacity: 1;
+  border: 1px solid rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.7);
+}
+.rp-wt-more-btn:hover { background: #fff; border-color: rgba(0,0,0,0.35); }
 
 /* ── 6. TRACKS ────────────────────────────────────────────────────────────── */
 .rp-track {
