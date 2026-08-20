@@ -1,5 +1,25 @@
 # Changelog — resource-req-v2
 
+## 1.23.0 — 2026-08-20
+
+- **Source row order reduced and reordered to cut cognitive load.** Each
+  work-type band's detail rows are now Behov then Egne — the two used daily —
+  instead of the old fixed Behov/Innleide/Utleide/Egne/Udekt/Overskudd order.
+- **Udekt/Overskudd detail rows removed entirely.** They were pure duplication
+  of the number already shown on the always-visible work-type gap band
+  (`makeGapBandTrack`) — no new place to look, one fewer scroll of rows.
+- **Innleide/Utleide now hidden until they have a registered period.** An
+  empty Innleide or Utleide row no longer clutters every band; once either has
+  at least one period it renders permanently, same drag-to-create/click-to-edit
+  behavior as before.
+- **New "Flere alternativer" icon**, next to the work-type name on the gap
+  band row, appears whenever Innleide and/or Utleide are still hidden
+  (skipped for exception trades — read-only, nothing to add). Opens a small
+  menu offering "Legg til innleide"/"Legg til utleide" for whichever is
+  missing; picking one opens the existing quantity popover directly with a
+  default one-week window, letting the from/to date be set there instead of
+  requiring a drag gesture on a row that isn't shown.
+
 ## 1.22.2 — 2026-08-11
 
 - **Summary section left stripe extended down through every work-type row**,
