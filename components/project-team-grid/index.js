@@ -827,6 +827,10 @@ function renderDayPicker(mount, opts) {
 
         const grid = document.createElement('div');
         grid.className = 'ptg-cal-grid';
+        const wkHead = document.createElement('div');
+        wkHead.className = 'ptg-cal-hcell ptg-cal-weeknum';
+        wkHead.textContent = 'U';
+        grid.appendChild(wkHead);
         WEEKDAY_LABELS.forEach(l => {
             const h = document.createElement('div');
             h.className = 'ptg-cal-hcell';
@@ -839,6 +843,12 @@ function renderDayPicker(mount, opts) {
         let cur = startOfWeekMon(new Date(view.getFullYear(), monthIdx, 1));
         for (let i = 0; i < 42; i++) {
             const day = addDays(cur, i);
+            if (i % 7 === 0) {
+                const wk = document.createElement('div');
+                wk.className = 'ptg-cal-cell ptg-cal-weeknum';
+                wk.textContent = String(getISOWeek(day));
+                grid.appendChild(wk);
+            }
             const cell = document.createElement('div');
             cell.className = 'ptg-cal-cell ptg-cal-day';
             if (day.getMonth() !== monthIdx) cell.classList.add('muted');

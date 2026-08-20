@@ -556,11 +556,13 @@
   font-size: 14px; line-height: 1; cursor: pointer; transition: background .12s;
 }
 .ptg-cal-navbtn:hover { background: #f3f4f6; }
-.ptg-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 1px; }
+.ptg-cal-grid { display: grid; grid-template-columns: 22px repeat(7, 1fr); row-gap: 1px; }
 .ptg-cal-hcell {
   font-size: 9px; font-weight: 600; text-transform: uppercase;
   color: #6b7280; text-align: center; padding: 2px 0 4px;
 }
+/* ISO week-number column — informational only, not clickable. */
+.ptg-cal-weeknum { font-size: 9px; font-weight: 600; color: #6b7280; opacity: 0.7; }
 .ptg-cal-cell { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
 .ptg-cal-day { cursor: pointer; border-radius: 50%; width: 30px; margin: 0 auto; transition: background .1s; }
 .ptg-cal-day.muted { color: #c7ccd1; }

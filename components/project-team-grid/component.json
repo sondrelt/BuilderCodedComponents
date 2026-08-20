@@ -1,6 +1,6 @@
 {
   "name": "project-team-grid",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Per-project, resource-centric team timeline for project managers. Shows this project's team (derived from allocations), their allocation/absence bars (allocations read-only), and a synthetic 'Ressursbehov' row for ad-hoc staffing requests (work type, trade skills, count, comment).",
   "appfarmApp": "",
   "environment": "Development",
