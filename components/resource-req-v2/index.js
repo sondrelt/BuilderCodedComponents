@@ -65,6 +65,23 @@ const SOURCE_CLASS = {
     [SRC.UTLEIDE]:   'utleide'
 };
 
+// Fallback palette for projects with no explicit colorHexCode. Was a single flat
+// tint (#d1eae0) for every such project, so any two uncoloured projects rendered
+// identically and their group headers/stripes/separators were indistinguishable.
+// Cycling by a hash of _id gives each project a stable, distinct fallback instead.
+// The 8 hues are the dataviz skill's validated default categorical palette (fixed
+// order, CVD-checked) — confirmed via validate_palette.js against this component's
+// own --rp-bg surface (#fcf6e8). Past 8 concurrent projects hues repeat; identity
+// beyond that relies on the typographic hierarchy / framing border / swatch, not color.
+const PROJECT_COLOR_PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
+function fallbackProjectColor(projectId) {
+    const s = String(projectId || '');
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0;
+    return PROJECT_COLOR_PALETTE[Math.abs(hash) % PROJECT_COLOR_PALETTE.length];
+}
+function projectColor(project) { return project?.colorHexCode || fallbackProjectColor(project?._id); }
+
 const EDITABLE_SOURCES = new Set([SRC.BEHOV, SRC.INNLEIDE, SRC.UTLEIDE]); // user draws bars / sources stored as spans
 // Fixed source row order under each work-type band: the two rows used daily
 // (Behov, Egne) come first. Innleide/Utleide follow, but only when they
@@ -305,7 +322,7 @@ function bucketAdsByWT(ds) {
     return map;
 }
 
-// Anonymized peer-org resource-time-windows — same shape as `allocation`
+// Anonymized peer-org resource-time-windows — same shape as `allocation`Goo
 // (resource, project, workType, dateFrom, dateTo), resource identity stripped.
 // Only "free" records (no project = uncommitted capacity elsewhere) are a usable
 // probable-availability signal; records with a project are committed and dropped.
@@ -660,7 +677,7 @@ function makeGapBandTrack(agg, wtId) {
     const track = document.createElement('div');
     track.className = 'rp-track rp-track-agg rp-track-gap';
     track.style.width          = gridWidth + 'px';
-    track.style.backgroundSize = COL_W + 'px 100%, auto';   // gridline layer, hatch layer (own tile size)
+    track.style.backgroundSize = COL_W + 'px 100%';   // gridline layer
 
     const states = columns.map((_, ci) => agg.gap(wtId, ci));
 
@@ -819,7 +836,7 @@ function escapeHtml(s) {
 function makeWorkTypeBandRow(project, wtId, agg, isException, missing, srcNameByEnum) {
     const row = document.createElement('div');
     row.className = 'rp-row rp-row-wt-band' + (isException ? ' rp-row-exception' : '');
-    row.style.setProperty('--proj-color', project.colorHexCode || '#d1eae0');
+    row.style.setProperty('--proj-color', projectColor(project));
 
     const label = document.createElement('div');
     label.className = 'rp-label-cell rp-wt-band-label';
@@ -923,7 +940,7 @@ function makeActionButton(icon, title, onClick) {
 
 function makeGroupHeader(project, showDetails) {
     const projectId = project._id;
-    const color     = project.colorHexCode || '#d1eae0';
+    const color     = projectColor(project);
 
     const row = document.createElement('div');
     row.className = 'rp-group-head';
@@ -953,6 +970,10 @@ function makeGroupHeader(project, showDetails) {
         e => appfarm.actions?.editProject?.({ projectId }, { event: e })));
     inner.appendChild(makeActionButton(ICONS.graph, 'Vis graf',
         e => appfarm.actions?.openGraph?.({ projectId }, { event: e })));
+
+    const swatch = document.createElement('span');
+    swatch.className = 'rp-group-swatch';
+    inner.appendChild(swatch);
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'rp-project-name';
@@ -1101,7 +1122,7 @@ function buildAll() {
     projectRows.forEach(({ project, projectWTs, agg }) => {
         const projectId   = project._id;
         const showDetails = !!project.detailsShowBOL;
-        const projColor   = project.colorHexCode || '#d1eae0';   // left stripe + bottom line
+        const projColor   = projectColor(project);   // left stripe + bottom line
 
         frag.appendChild(makeGroupHeader(project, showDetails));
 

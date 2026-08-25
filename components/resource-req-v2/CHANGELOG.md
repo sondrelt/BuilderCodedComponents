@@ -1,5 +1,62 @@
 # Changelog — resource-req-v2
 
+## 1.27.0 — 2026-08-25
+
+- **Projects made visually distinct, not just colour-distinct.** Follow-up to
+  1.26.0 — the user clarified the complaint wasn't only about the fallback
+  colour, *all* projects were hard to tell apart, including ones with their
+  own `colorHexCode`. Root cause was structural: the colour wash was too
+  faint (20%/14% mixes), the project-name label and the work-type-band label
+  underneath it were typographically identical (both 700/13px), and the only
+  boundary mark was a bottom separator line — the left stripe ran straight
+  through from one project into the next with no top edge, so nothing
+  visually "closed" a project group.
+  - `.rp-group-head` gets a `border-top: 3px solid var(--proj-color)` —
+    pairs with the existing `.rp-group-sep` (bottom) and left stripe so a
+    project reads as a bordered block instead of a stripe that just flows
+    through into the next one. Header tint deepened 80%→65% white mix so the
+    band itself reads as clearly tinted.
+  - `.rp-group-label` (project name) bumped to 14px; `.rp-wt-band-label`
+    (trade name) demoted to 600/12px — the project name is now the visible
+    heading, the trade name a subordinate row label under it.
+  - New `.rp-group-swatch` — a small solid dot in `--proj-color` next to the
+    project name (same idiom as `.rp-source-label::before`'s tick), giving
+    colour a compact, perceptible identity role instead of only a large
+    low-opacity wash.
+  - `.rp-track-gap` (the coverage-gap graph area beside the work-type
+    label) now carries the same ~14% project tint as `.rp-wt-band-label`
+    instead of a flat `#faf8f4` — colour used to stop dead at the label
+    cell's right edge, so the graph area read as a neutral, projectless
+    zone. `--proj-color` was already set on the row, just never read there.
+    The global-summary track (all-projects aggregate, no single project) is
+    unaffected — it sets no `--proj-color`, so it keeps the neutral base.
+  - **Diagonal "unplanned week" hatch removed from `.rp-track-gap`
+    entirely** — first dropped only for the global-summary track, then
+    removed from the base rule so every per-project, per-work-type coverage
+    track loses it too (gridlines + the new project tint stay; only the 2nd
+    `background-image` hatch layer is gone). `index.js`'s
+    `track.style.backgroundSize` trimmed from the two-layer
+    `'Npx 100%, auto'` to the single remaining layer, `'Npx 100%'`.
+  - `PROJECT_COLOR_PALETTE` (added in 1.26.0) swapped from 10 hand-picked
+    hex values to the `dataviz` skill's validated 8-hue default categorical
+    palette (fixed order, CVD-checked, confirmed via `validate_palette.js`
+    against this component's own `#fcf6e8` surface). Past 8 concurrent
+    projects hues repeat — an unavoidable ceiling — so identity beyond that
+    point relies on the structural/typographic changes above, not colour.
+
+## 1.26.0 — 2026-08-25
+
+- **Distinct fallback colour per project.** Every project without an explicit
+  `colorHexCode` used to fall back to the same flat `#d1eae0` tint, so any two
+  uncoloured projects rendered with identical group-header tints, left
+  stripes, and bottom separators — indistinguishable except by their label
+  text. New `fallbackProjectColor(projectId)` hashes the project `_id` into a
+  10-colour palette (`PROJECT_COLOR_PALETTE`), giving each uncoloured project
+  a stable, distinct colour instead. `projectColor(project)` (colorHexCode ||
+  fallback) replaces the inline `project.colorHexCode || '#d1eae0'` at all
+  three call sites (`makeWorkTypeBandRow`, `makeGroupHeader`, the per-project
+  render loop). Projects with an explicit `colorHexCode` are unaffected.
+
 ## 1.25.0 — 2026-08-20
 
 - **ISO week number added to the count popover's day picker.** A new muted

@@ -137,12 +137,18 @@
 /* ── 4. PROJECT GROUP HEADER ──────────────────────────────────────────────── */
 .rp-group-head {
   height: 32px;
+  box-sizing: border-box; /* keep the new border-top inside the 32px, not added on top */
   position: sticky;
   left: 0;
   z-index: 20;
   /* Muted tint of the project colour, across the whole row (not just the sticky
      label) — reads as a title band over the full timeline, not just the panel. */
-  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
+  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 65%);
+  /* Top edge of the project's frame — pairs with .rp-group-sep (the bottom
+     edge) and the left stripe on every row below, so a project reads as a
+     bordered block instead of a stripe that just flows through into the
+     next one. */
+  border-top: 3px solid var(--proj-color, #94a3b8);
 }
 
 /* Week gridlines over the title row's timeline portion — a separate element
@@ -165,7 +171,7 @@
   height: 100%;
   padding: 0 12px;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
   min-width: var(--rp-sticky-w);
   box-sizing: border-box;
   position: sticky;
@@ -175,6 +181,18 @@
      left stripe continuous with the rows below (same technique as .rp-label-cell). */
   box-shadow: inset 4px 0 0 0 var(--proj-color, #94a3b8),
               inset 0 -1px 0 0 rgba(0,0,0,0.1);
+}
+
+/* Identity swatch — a small saturated dot beside the project name. A large
+   low-opacity wash is easy to miss at a glance; a solid mark at full colour
+   reads as identity immediately, same role as .rp-source-label::before's
+   tick but sized up for the project (the dominant) grouping level. */
+.rp-group-swatch {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--proj-color, #94a3b8);
 }
 
 .rp-action-btn {
@@ -307,11 +325,12 @@
 .rp-source-label-innleide  { --src-tick: var(--rp-innleide-bar); }
 .rp-source-label-utleide   { --src-tick: var(--rp-utleide-bar); }
 
-/* Work-type band label — the dominant grouping level: bold, lightly project-tinted
-   so the trade name reads as the header above its source rows. */
+/* Work-type band label — a header for its own source rows below it, but
+   deliberately lighter than .rp-group-label (700/14px): the project name is
+   the top-level heading, the trade name is a subordinate row label, not a peer. */
 .rp-wt-band-label {
-  font-weight: 700;
-  font-size: 13px;
+  font-weight: 600;
+  font-size: 12px;
   color: var(--rp-text);
   background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 86%);
 }
@@ -377,17 +396,17 @@
    0-baseline (not discrete numbered bars): dips below for understaffing,
    rises above for surplus, coloured green→red / green→blue by severity. The
    band is the one layer carrying signal colour — source rows below stay
-   monochrome. The diagonal hatch is baked permanently into this track's own
-   background (2nd background-image layer) so it shows through unobstructed
-   wherever the SVG draws no line — i.e. exactly the weeks with no Behov
-   registered ('none' state) — without any extra per-range styling. */
+   monochrome. */
 .rp-track-gap {
-  background-color: #faf8f4;
-  background-image:
-    linear-gradient(to right, var(--rp-border) 0 1px, transparent 1px),
-    repeating-linear-gradient(45deg, rgba(170,170,170,0.04) 0 5px, transparent 5px 10px);
-  background-repeat: repeat-x, repeat;
-  background-position: left top, left top;
+  /* Same ~14% project tint as .rp-wt-band-label (#fff 86% mix) so the row's
+     colour is continuous from the sticky label into the graph area, instead
+     of stopping dead at the label cell's right edge. Falls back to the base
+     cream (#94a3b8 default, negligibly tinting it) on the global-summary
+     track, which sets no --proj-color since it aggregates all projects. */
+  background-color: color-mix(in srgb, var(--proj-color, #94a3b8), #faf8f4 86%);
+  background-image: linear-gradient(to right, var(--rp-border) 0 1px, transparent 1px);
+  background-repeat: repeat-x;
+  background-position: left top;
 }
 
 .rp-gap-svg {
