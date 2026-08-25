@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.1 — 2026-08-25
+
+- **Fixed `saveAbsenceDates` not persisting absence type changes.** Both call
+  sites (popover edit/confirm and drag move/resize) were sending the type as
+  `abscenceType` (misspelled, extra "c") — that spelling was only ever
+  correct for the `allocationAbsenceSave` create action. `saveAbsenceDates`
+  expects the correctly-spelled `absenceType`; sending the misspelled key
+  meant swapping an existing absence's type silently failed to save while
+  dates still updated fine.
+
 ## 1.12.0 — 2026-08-20
 
 - **ISO week number added to the popover's day picker.** A new muted column

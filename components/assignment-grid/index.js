@@ -55,14 +55,10 @@ const ROW_H = 34;
 // passed; the record id param differs per kind (used for edit + delete).
 // IMPORTANT: the absence-type value is an INT enum (Absence Type), passed as a Number
 // (the type picker stringifies it via Object.entries keys — always coerce: Number(...)).
-// The Appfarm action param is MISSPELLED `abscenceType` (extra c, matching the action
-// name "CC Res V3: Abscence Save"); sending correctly-spelled `absenceType` arrives as
-// undefined and the save no-ops. Send the misspelled key; keep record.absenceType (the
-// data-model field) correctly spelled.
 const ACT = {
-    save:           'allocationAbsenceSave', // ({ resourceId, projectId|abscenceType, dateFrom, dateTo }) — CREATE only
+    save:           'allocationAbsenceSave', // ({ resourceId, projectId|absenceType, dateFrom, dateTo }) — CREATE only
     saveAllocDates: 'saveAllocationDates',   // ({ allocationId, dateFrom, dateTo, projectId }) — move/resize
-    saveAbsenceDates:'saveAbsenceDates',     // ({ absenceId, dateFrom, dateTo, abscenceType }) — move/resize
+    saveAbsenceDates:'saveAbsenceDates',     // ({ absenceId, dateFrom, dateTo, absenceType }) — move/resize
     deleteAlloc:    'deleteAllocation',      // ({ projectResourceId })
     deleteAbsence:  'deleteAbsence',         // ({ resourceAbsence })
     allocIdParam:   'projectResourceId',     // allocation record id (delete only)
@@ -1232,14 +1228,13 @@ function showAllocAbsencePopover(opts) {
                     allocationId: opts.recordId, dateFrom: fromISO, dateTo: toISO, projectId: selId
                 });
             else
-                // NB: action param is misspelled `abscenceType` (extra c) — must match.
                 appfarm.actions?.[ACT.saveAbsenceDates]?.({
-                    absenceId: opts.recordId, dateFrom: fromISO, dateTo: toISO, abscenceType: Number(selId)
+                    absenceId: opts.recordId, dateFrom: fromISO, dateTo: toISO, absenceType: Number(selId)
                 });
         } else {
             const params = { resourceId: opts.resourceId, dateFrom: fromISO, dateTo: toISO };
             // NB: action param is misspelled `abscenceType` (extra c) — must match.
-            if (kind === 'allocation') params.projectId = selId; else params.abscenceType = Number(selId);
+            if (kind === 'allocation') params.projectId = selId; else params.absenceType = Number(selId);
             appfarm.actions?.[ACT.save]?.(params);
         }
         removePopover();
@@ -1510,9 +1505,8 @@ function onPointerUp(e) {
     const rec = (d.kind === 'absence' ? absenceById : allocById).get(d.recId);
     const dateFrom = from.toISOString(), dateTo = to.toISOString();
     if (d.kind === 'absence') {
-        // NB: action param is misspelled `abscenceType` (extra c) — must match.
         appfarm.actions?.[ACT.saveAbsenceDates]?.({
-            absenceId: d.recId, dateFrom, dateTo, abscenceType: Number(rec?.absenceType)
+            absenceId: d.recId, dateFrom, dateTo, absenceType: Number(rec?.absenceType)
         });
     } else {
         appfarm.actions?.[ACT.saveAllocDates]?.({

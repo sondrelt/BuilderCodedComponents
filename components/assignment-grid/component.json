@@ -1,6 +1,6 @@
 {
   "name": "assignment-grid",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "Span-native resource planning timeline with day/week granularity. Drag to create, move, and resize allocations and absences.",
   "appfarmApp": "",
   "environment": "Development",
@@ -29,5 +29,5 @@
     "openResourceEdit",
     "goToBuilderAd"
   ],
-  "lastSynced": "2026-08-20T16:43:56+02:00"
+  "lastSynced": "2026-08-25T12:18:12+02:00"
 }
