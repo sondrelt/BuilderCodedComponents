@@ -1,5 +1,16 @@
 # Changelog — resource-req-v2
 
+## 1.27.1 — 2026-08-25
+
+- **Now-line didn't cover the "Alle prosjekter" global summary section.**
+  `renderNowLine`'s top anchor (`index.js`) looked only for `.rp-group-head`
+  (a per-project title row), so when the global summary block existed above
+  the first project, the line's top edge started at the top project's header
+  instead of at the summary section — the line visually stopped short instead
+  of stretching over the aggregate rows. Selector now matches
+  `.rp-summary-head, .rp-group-head`, picking up whichever row is actually
+  first in the DOM.
+
 ## 1.27.0 — 2026-08-25
 
 - **Projects made visually distinct, not just colour-distinct.** Follow-up to

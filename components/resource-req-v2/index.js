@@ -1031,14 +1031,15 @@ function buildHeader(inner) {
     inner.appendChild(header);
 }
 
-// Spans from 2px above the first project title row to the bottom of the last
-// row — not the sticky calendar header above it. Both boundary rows are
-// already in the DOM (called after frag is appended), so this reads real
-// offsets rather than guessing a fixed height.
+// Spans from 2px above the top title row — the global "Alle prosjekter"
+// summary head when one is rendered, otherwise the first project's group
+// head — to the bottom of the last row. Not the sticky calendar header
+// above it. Both boundary rows are already in the DOM (called after frag is
+// appended), so this reads real offsets rather than guessing a fixed height.
 function renderNowLine(inner) {
     const today = new Date();
     if (!rangeStart || !rangeEnd || today < rangeStart || today > rangeEnd) return;
-    const firstTitle = inner.querySelector('.rp-group-head') || inner.querySelector('.rp-row');
+    const firstTitle = inner.querySelector('.rp-summary-head, .rp-group-head') || inner.querySelector('.rp-row');
     const rows = inner.querySelectorAll('.rp-row');
     const lastRow = rows[rows.length - 1];
     if (!firstTitle || !lastRow) return;
