@@ -1,15 +1,13 @@
-// Mock data for project-team-grid (per-project, resource-centric team timeline).
-// One instance is bound to a single `project`; team rows are derived client-side
-// from `allocation` (not a pre-filtered `resources` list) — res3 below has no
-// allocation to p1 at all and must NOT appear as a row.
+// Mock data for project-team-grid (resource-centric team timeline, one group per
+// project). Renders every project in `projects` (p1, p2) stacked, each with its
+// own team derived client-side from `allocation` — res3 below has no allocation
+// to p1 at all and must NOT appear under p1's group (it does appear under p2's).
 window.FIXTURES = window.FIXTURES || {};
 
 window.FIXTURES['project-team-grid'] = {
   viewFrom: '2026-06-01',
   viewTo: '2026-08-09',
   viewGranularity: 'week',
-
-  project: { _id: 'p1', name: 'Nytt Sykehus', colorHexCode: '#1e86c4' },
 
   projects: [
     { _id: 'p1', name: 'Nytt Sykehus', colorHexCode: '#1e86c4' },

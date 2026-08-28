@@ -1,5 +1,44 @@
 # Changelog
 
+## 2.0.0 — 2026-08-28
+
+Breaking: drops the `project` input. It was never actually wired up in Appfarm
+Create (no per-project page exists in this deployment to bind it to), which
+surfaced as a "Property 'project' does not exist" TypeScript error in the
+Create editor — the input was dead on arrival.
+
+- **Renders every project in `projects`, stacked top-to-bottom, one group per
+  project** — instead of a single project scoped by the (non-existent) `project`
+  input. `projects` already carries every project the current PM is responsible
+  for, pre-filtered app-side; previously it was only used as an id→record lookup
+  catalog for badge colors/names, now it also drives the render loop directly.
+  Every project gets a group even with 0 current team members, so the
+  Ressursbehov row can still be used to request a project's first people.
+- **`groupHeader`/`groupSep` ported from `assignment-grid`'s `sortByProjects`
+  grouping** (dropped from this component at fork time, per the 1.0.0 entry
+  below) — reused unconditionally here rather than behind a toggle, since every
+  instance now always shows multiple projects. `pl-` → `ptg-`, `STICKY_W` →
+  `getStickyW()` (this component's existing responsive equivalent).
+- **A resource allocated to more than one of the PM's projects now appears under
+  each project's group** — with a normal bar for that group's own project and a
+  grayed `other-alloc` bar for the other(s), via the existing per-row graying
+  logic (`makeTrack`), just now exercised across groups instead of within one.
+- **Ressursbehov drag-create now reads which project it's for off the row's own
+  `dataset.projectId`** (set in `renderNeedsRow`), not a global "current
+  project" — necessary now that multiple Ressursbehov rows are on screen at
+  once, one per project group.
+- Search still narrows resource rows by name/work-type/position, now applied
+  per group; it never hides a whole group, matching the "always show every
+  project" rule above.
+- **Needs-row label changed to "Be om ressurser"** (was "Ressursbehov") — the
+  code-level naming (`renderNeedsRow`, `ptg-needs-*` classes, comments) is
+  unchanged, this is a display-text-only change.
+- **Needs-row accent recolored to Builder navy blue** (`--request-accent:
+  #0d3d56`, matching the email templates' header/footer navy) — was violet
+  (`#7c5cbf`). `--request-fill` now derives from the accent via `color-mix`
+  instead of a separately hand-picked tint, so the two can't drift out of sync
+  again.
+
 ## 1.2.0 — 2026-08-20
 
 - **ISO week number added to the popover's day picker.** A new muted column

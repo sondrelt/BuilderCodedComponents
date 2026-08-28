@@ -14,9 +14,9 @@
   --red-500: #a2332f;
   --nav-blue: #1e3a5f; --nav-blue-rgb: 30, 58, 95;   /* header navy — calendar highlight */
 
-  /* Ressursbehov / request bar — violet, distinct from project / absence / now-line hues */
-  --request-accent: #7c5cbf;
-  --request-fill:   #ede7f9;
+  /* Be om ressurser / request bar — Builder navy blue (matches email header/footer, #0d3d56) */
+  --request-accent: #0d3d56;
+  --request-fill:   color-mix(in srgb, var(--request-accent), #fff 90%);
 
   --row-h: 48px;
 }
@@ -307,6 +307,40 @@
   border: 1px dashed var(--request-accent);
 }
 .ptg-bar-request:hover { box-shadow: 0 1px 6px rgba(124, 92, 191, 0.35); }
+
+/* ==========================================================================
+   7f. PROJECT GROUPS
+   Ported from assignment-grid/index.js's sortByProjects styles (pl- → ptg-) —
+   one header/separator pair wraps each project's needs row + team rows.
+   ========================================================================== */
+.ptg-grouphead {
+  height: 28px;
+  position: relative;
+  background: color-mix(in srgb, var(--proj-color, #94a3b8), #fff 80%);
+}
+.ptg-group-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-image: linear-gradient(to right, var(--border-color) 0 1px, transparent 1px);
+  background-repeat: repeat-x;
+  background-position: left top;
+  pointer-events: none;
+}
+.ptg-grouphead-label {
+  position: sticky; left: 0; z-index: 11;
+  display: inline-block;
+  font-weight: 700; font-size: 13px;
+  padding: 5px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  color: #374151;
+  box-shadow: inset 4px 0 0 0 var(--proj-color, #94a3b8);
+}
+.ptg-group-sep {
+  flex: 0 0 auto;
+  height: 3px;
+  background: var(--proj-color, #94a3b8);
+}
 
 /* ==========================================================================
    8. RESSURSBEHOV (NEEDS) ROW

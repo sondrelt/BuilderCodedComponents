@@ -1,7 +1,9 @@
-// --- Project Team Grid — per-project, resource-centric team timeline (day / week) ---
+// --- Project Team Grid — resource-centric team timeline, one group per project (day / week) ---
 //
-//  Data source:  project { _id, ... }  (single bound record — one instance per project page)
-//  Also read:     resources { _id, fullNameFx, workType, position }, projects { _id, name, bepmnX, colorHexCode },
+//  Data source:  projects { _id, name, bepmnX, colorHexCode }  (every project the current PM
+//                is responsible for — pre-filtered app-side; this component renders ALL of
+//                them, stacked top-to-bottom, one labeled group per project)
+//  Also read:     resources { _id, fullNameFx, workType, position },
 //                 allocation { project, workType, resource, dateFrom, dateTo },
 //                 absence { resource, dateFrom, dateTo, absenceType },
 //                 workTypeEnum, absenceColors, tradeSkills { _id, name, description },
@@ -17,9 +19,11 @@
 //                   junction rows from that array.
 //
 //  This is a fork of `assignment-grid` (span-native timeline, drag state machine, popover/
-//  calendar widgets) scoped to ONE project's team instead of the whole company. Team
-//  membership is derived client-side from `allocation` (not a pre-filtered `resources`
-//  input) — see deriveTeamResourceIds(). Unlike assignment-grid, this view never lets a PM
+//  calendar widgets, and the sortByProjects grouping — groupHeader/groupSep — reused here
+//  unconditionally instead of behind a toggle) scoped to each PM's own projects rather than
+//  the whole company. Team membership per project is derived client-side from `allocation`
+//  (not a pre-filtered `resources` input) — see deriveTeamResourceIds(), called once per
+//  project. Unlike assignment-grid, this view never lets a PM
 //  directly assign a resource to the project (that stays the resource planner's job there):
 //  allocation bars are read-only display only. The two write gestures here are:
 //    • drag an empty lane on a resource's row  → report an absence
@@ -59,8 +63,6 @@ let rangeStart = null, rangeEnd = null;
 let weeksList = [];
 let weekDateRanges = {};
 let wtNameMap = {};
-
-let currentProjectId = null;         // set once per buildAll() from appfarm.data.project
 
 let projectsById = new Map();
 let resourceById = new Map();
@@ -502,6 +504,38 @@ function renderRow(res, frag, projectId) {
     frag.appendChild(row);
 }
 
+// Ported from assignment-grid/index.js:564-584 (groupHeader) — verbatim, pl- → ptg-,
+// STICKY_W → getStickyW() (project-team-grid's responsive equivalent).
+function groupHeader(label, color) {
+    const row = document.createElement('div');
+    row.className = 'ptg-grouphead';
+    row.style.width = (getStickyW() + gridWidth) + 'px';
+    row.style.setProperty('--proj-color', color);
+
+    const grid = document.createElement('div');
+    grid.className = 'ptg-group-grid';
+    grid.style.left           = getStickyW() + 'px';
+    grid.style.width          = gridWidth + 'px';
+    grid.style.backgroundSize = `${COLW[granularity]}px 100%`;
+    row.appendChild(grid);
+
+    const inner = document.createElement('div');
+    inner.className = 'ptg-grouphead-label';
+    inner.textContent = label;
+    row.appendChild(inner);
+    return row;
+}
+
+// Ported from assignment-grid/index.js:588-594 (groupSep) — verbatim, pl- → ptg-,
+// STICKY_W → getStickyW().
+function groupSep(color) {
+    const sep = document.createElement('div');
+    sep.className = 'ptg-group-sep';
+    sep.style.width = (getStickyW() + gridWidth) + 'px';
+    sep.style.setProperty('--proj-color', color);
+    return sep;
+}
+
 // New: the synthetic "Ressursbehov" (need resources) row — a single flat row (not
 // one-per-work-type like resource-req-v2's Behov lanes; this view is resource-first,
 // not work-type-first, so a second grouping axis isn't warranted at this volume).
@@ -512,13 +546,14 @@ function renderNeedsRow(frag, projectId) {
 
     const label = document.createElement('div');
     label.className = 'ptg-resource ptg-needs-label';
-    label.textContent = 'Ressursbehov';
+    label.textContent = 'Be om ressurser';
     label.title = 'Dra for å be om flere ressurser';
     row.appendChild(label);
 
     const track = document.createElement('div');
     track.className = 'ptg-track';
     track.dataset.rowKind = 'request';
+    track.dataset.projectId = projectId;  // disambiguates which project's needs row a create-drag hit
     track.style.width = gridWidth + 'px';
     const W = COLW[granularity];
     track.style.backgroundSize = `${W}px 100%`;
@@ -600,8 +635,10 @@ function renderNowLine(inner) {
 
 // ── Full build ─────────────────────────────────────────────────
 // Adapted from assignment-grid/index.js:713-788 (buildAll) — sortByProjects
-// grouping/summary rows dropped; rows are always this project's team, flat,
-// with the needs row pinned first.
+// grouping is reused here unconditionally (every PM project gets a group, always
+// visible even with zero team members, so the Ressursbehov row can still be used
+// to request a project's first people); summary rows stay dropped (company-wide
+// totals don't translate to a per-project view).
 function buildAll() {
     const inner = document.getElementById('planner-inner');
     if (!inner) return;
@@ -609,33 +646,29 @@ function buildAll() {
     indexData();
     buildColumns();
     inner.innerHTML = '';
-
-    const project = appfarm.data.project?.get?.();
-    currentProjectId = project?._id || null;
-    if (!currentProjectId) {
-        buildHeader(inner);
-        return; // nothing bound yet
-    }
-
-    let team = [...deriveTeamResourceIds(currentProjectId)]
-        .map(id => resourceById.get(id))
-        .filter(Boolean);
+    buildHeader(inner);
 
     const searchEl = document.getElementById('search-input');
     const q = (searchEl instanceof HTMLInputElement ? searchEl.value : '').toLowerCase().trim();
-    if (q) {
-        team = team.filter(res =>
-            (res.fullNameFx || '').toLowerCase().includes(q)
-            || resolveWorkTypeName(res.workType).toLowerCase().includes(q)
-            || (res.position || '').toLowerCase().includes(q));
-    }
-    team.sort((a, b) => (a.fullNameFx || '').localeCompare(b.fullNameFx || ''));
-
-    buildHeader(inner);
 
     const frag = document.createDocumentFragment();
-    renderNeedsRow(frag, currentProjectId);
-    team.forEach(res => renderRow(res, frag, currentProjectId));
+    projectsById.forEach(proj => {
+        const pid = proj._id;
+        let team = [...deriveTeamResourceIds(pid)].map(id => resourceById.get(id)).filter(Boolean);
+        if (q) {
+            team = team.filter(res =>
+                (res.fullNameFx || '').toLowerCase().includes(q)
+                || resolveWorkTypeName(res.workType).toLowerCase().includes(q)
+                || (res.position || '').toLowerCase().includes(q));
+        }
+        team.sort((a, b) => (a.fullNameFx || '').localeCompare(b.fullNameFx || ''));
+
+        const color = getBadgeColor(proj);
+        frag.appendChild(groupHeader(proj.bepmnX || proj.name || 'Prosjekt', color));
+        renderNeedsRow(frag, pid);
+        team.forEach(res => renderRow(res, frag, pid));
+        frag.appendChild(groupSep(color));
+    });
     inner.appendChild(frag);
 
     renderNowLine(inner);
@@ -1312,16 +1345,17 @@ function onPointerMove(e) {
 }
 
 // Opens the create popover for a brand-new absence/request span. `track` carries
-// dataset.resourceId (absence) — resourceId is read straight off it for that case.
-// Shared by the mouse drag-to-create path (onPointerUp) and the touch tap path
-// (onTouchPointerUp).
+// dataset.resourceId (absence) or dataset.projectId (request, since with multiple
+// stacked Ressursbehov rows there's no single "current" project to fall back on)
+// — both read straight off it. Shared by the mouse drag-to-create path
+// (onPointerUp) and the touch tap path (onTouchPointerUp).
 function openCreatePopover(kind, track, colS, colE, anchorX, anchorY) {
     const s = clampIdx(colS), eIdx = clampIdx(colE);
     const dateFrom = columns[s].start.toISOString();
     const dateTo   = columns[eIdx].end.toISOString();
     if (kind === 'request') {
         showAskPopover({
-            projectId: currentProjectId, recordId: null,
+            projectId: track.dataset.projectId || null, recordId: null,
             dateFrom, dateTo,
             anchorX, anchorY, track
         });
@@ -1342,7 +1376,7 @@ function openEditPopover(kind, recId, resourceId, bar, anchorX, anchorY) {
         const rec = requestById.get(recId);
         const skillIds = (skillsByRequest.get(recId) || []).map(s => s._id);
         showAskPopover({
-            projectId: currentProjectId, recordId: recId,
+            recordId: recId,
             workType: rec?.workType, tradeSkillIds: skillIds, count: rec?.resourceCount,
             comment: rec?.comment, dateFrom: rec?.dateFrom, dateTo: rec?.dateTo,
             anchorX, anchorY, bar, onDelete: () => bar?.remove()
@@ -1520,7 +1554,7 @@ function init() {
         applyGranularity(v);
     });
 
-    ['project', 'viewFrom', 'viewTo', 'resources', 'projects', 'allocation', 'absence',
+    ['viewFrom', 'viewTo', 'resources', 'projects', 'allocation', 'absence',
      'workTypeEnum', 'absenceColors', 'tradeSkills', 'projectResourceRequests',
      'projectResourceRequestTradeSkills']
         .forEach(h => appfarm.data[h]?.on?.('change', guardedBuildAll));
