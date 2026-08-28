@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.1.0 — 2026-08-28
+
+Mobile audit + responsive timeline columns. No data/action/input changes —
+pure layout, non-breaking.
+
+- **Timeline columns now shrink on mobile too, not just the sticky column.**
+  `COLW` (day/week column width, previously a fixed 75px regardless of
+  viewport) is now `getColW()`, returning a narrower 52px under the same
+  640px breakpoint `getStickyW()` already used — both are driven by one
+  cached `mobileMode` flag (`refreshViewportMode()`, recomputed once per
+  `buildAll()` pass) instead of two independently-tuned checks. Fixes
+  excessive horizontal scrolling on phone, where the fixed 75px columns
+  previously left only ~2-4 columns visible next to the sticky column.
+  `xForDate()`/bar positioning needed no changes — they already derive from
+  `columns[]`, which `buildColumns()` populates from `getColW()`.
+- **Fixed two latent text-overflow bugs**, made more likely to trigger by the
+  narrower mobile sticky column: `.ptg-grouphead-label` (project name) and
+  `.ptg-needs-label` ("Be om ressurser") now truncate with an ellipsis
+  instead of risking overflow past the sticky column — same
+  overflow/white-space/text-overflow pattern `.resource-name` already used.
+- `.ptg-scroll` gets `-webkit-overflow-scrolling: touch` for older iOS
+  WebView momentum-scroll compatibility.
+- `.ptg-list` (popover search-result lists) gets a shorter max-height on
+  mobile (140px vs 200px) to reduce nested-scroll fighting inside the wide
+  "Be om flere ressurser" popover on short/landscape phone viewports.
+- **Audited, left unchanged:** granularity-toggle tap targets, calendar
+  nav/handle sizing (already addressed in 1.1.0), row height and bar font
+  sizes — reviewed against the new narrower columns, no change warranted.
+
 ## 2.0.0 — 2026-08-28
 
 Breaking: drops the `project` input. It was never actually wired up in Appfarm

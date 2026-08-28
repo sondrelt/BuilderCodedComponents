@@ -65,12 +65,14 @@
    ========================================================================== */
 .ptg-scroll {
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border-color);
   background: #fff;
   max-height: 85vh;
 }
 
-/* Breakpoint (640px) must match index.js's getStickyW(). */
+/* Breakpoint (640px) must match index.js's MOBILE_BREAKPOINT (drives both
+   getStickyW() and getColW()). */
 @media (max-width: 640px) {
   .ptg-corner   { flex-basis: 140px; }
   .ptg-resource { flex: 0 0 140px; min-width: 140px; }
@@ -78,6 +80,7 @@
   .resource-position { display: none; } /* name-only on phone */
   .ptg-controls { flex-wrap: wrap; }
   #search-input.ptg-search { flex: 1 1 160px; }
+  .ptg-grouphead-label { max-width: 140px; }
 }
 .ptg-inner {
   position: relative;
@@ -335,6 +338,9 @@
   border-bottom: 1px solid rgba(0,0,0,0.08);
   color: #374151;
   box-shadow: inset 4px 0 0 0 var(--proj-color, #94a3b8);
+  max-width: 380px;
+  box-sizing: border-box;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .ptg-group-sep {
   flex: 0 0 auto;
@@ -357,6 +363,7 @@
   padding: 0 16px;
   font-weight: 700;
   color: var(--request-accent);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 
 .ptg-needs-sep {
@@ -478,6 +485,11 @@
   border: 1px solid var(--border-color, #d1d5db);
   border-radius: 8px;
   margin-bottom: 10px;
+}
+@media (max-width: 640px) {
+  /* Shorter, so the popover's own scroll (not this nested list's) does more
+     of the work on a short/landscape phone viewport. */
+  .ptg-list { max-height: 140px; }
 }
 .ptg-list-opt {
   display: flex;

@@ -92,12 +92,24 @@ let rebuildQueued = false;           // a change arrived while blocked → flush
 
 let absenceTypeMap = {};             // { value: { name, color } }
 
-// Breakpoint (640px) must match styles.css's "@media (max-width: 640px)" block.
-function getStickyW() {
+// Single breakpoint drives BOTH the sticky column width and the timeline
+// column width, so there is exactly one "mobile mode" instead of two
+// independently-tuned checks. Recomputed once per buildAll() pass (cheap
+// object read everywhere else, incl. the mouse-drag hot path) — must match
+// styles.css's "@media (max-width: 640px)" block (CSS can't read a JS const,
+// so the 640 literal is necessarily duplicated there; keep both comments
+// pointing at each other).
+const MOBILE_BREAKPOINT = 640;
+let mobileMode = false; // set by refreshViewportMode(), called at the top of buildAll()
+function refreshViewportMode() {
     const w = document.getElementById('team-planner')?.clientWidth || window.innerWidth;
-    return w <= 640 ? 140 : 380;
+    mobileMode = w <= MOBILE_BREAKPOINT;
 }
-const COLW = { week: 75, day: 75 };
+function getStickyW() { return mobileMode ? 140 : 380; }
+
+const COLW_DESKTOP = { week: 75, day: 75 };
+const COLW_MOBILE  = { week: 52, day: 52 }; // narrower columns so more than ~2-4 fit next to the sticky column on phone
+function getColW() { return mobileMode ? COLW_MOBILE : COLW_DESKTOP; }
 const ROW_H = 34;
 
 // ── Appfarm action + parameter names ───────────────────────────
@@ -221,7 +233,7 @@ function loadTimeAxis() {
 }
 
 function buildColumns() {
-    const W = COLW[granularity];
+    const W = getColW()[granularity];
     const cols = [];
 
     if (granularity === 'week') {
@@ -282,7 +294,7 @@ function xForDate(d) {
     return c.left + frac * c.width;
 }
 function colIndexFromClientX(clientX, trackRect) {
-    return clampIdx(Math.floor((clientX - trackRect.left) / COLW[granularity]));
+    return clampIdx(Math.floor((clientX - trackRect.left) / getColW()[granularity]));
 }
 
 // ── Data indexing (groups spans, doesn't expand) ───────────────
@@ -484,7 +496,7 @@ function makeTrack(res, projectId) {
     track.dataset.resourceId = resourceId;
     track.dataset.rowKind = 'resource';
     track.style.width = gridWidth + 'px';
-    const W = COLW[granularity];
+    const W = getColW()[granularity];
     track.style.backgroundSize = `${W}px 100%`;
     (allocsByResource.get(resourceId) || []).forEach(a => {
         const kind = resolveId(a.project) === projectId ? 'alloc' : 'other-alloc';
@@ -516,7 +528,7 @@ function groupHeader(label, color) {
     grid.className = 'ptg-group-grid';
     grid.style.left           = getStickyW() + 'px';
     grid.style.width          = gridWidth + 'px';
-    grid.style.backgroundSize = `${COLW[granularity]}px 100%`;
+    grid.style.backgroundSize = `${getColW()[granularity]}px 100%`;
     row.appendChild(grid);
 
     const inner = document.createElement('div');
@@ -555,7 +567,7 @@ function renderNeedsRow(frag, projectId) {
     track.dataset.rowKind = 'request';
     track.dataset.projectId = projectId;  // disambiguates which project's needs row a create-drag hit
     track.style.width = gridWidth + 'px';
-    const W = COLW[granularity];
+    const W = getColW()[granularity];
     track.style.backgroundSize = `${W}px 100%`;
     (requestsByProject.get(projectId) || []).forEach(r => track.appendChild(makeRequestBar(r)));
     row.appendChild(track);
@@ -595,7 +607,7 @@ function buildHeader(inner) {
             months.appendChild(cell);
         }
         g.n++;
-        g.el.style.width = (g.n * COLW[granularity]) + 'px';
+        g.el.style.width = (g.n * getColW()[granularity]) + 'px';
     });
 
     const colRow = document.createElement('div');
@@ -642,6 +654,7 @@ function renderNowLine(inner) {
 function buildAll() {
     const inner = document.getElementById('planner-inner');
     if (!inner) return;
+    refreshViewportMode();
     loadTimeAxis();
     indexData();
     buildColumns();
@@ -1283,10 +1296,11 @@ function onPointerDown(e) {
         bar.style.zIndex = '4';
     } else {
         const downIdx = colIndexFromClientX(e.clientX, trackRect);
+        const W = getColW()[granularity];
         const ghost = document.createElement('div');
         ghost.className = 'ptg-bar ptg-bar-ghost';
-        ghost.style.left = (downIdx * COLW[granularity]) + 'px';
-        ghost.style.width = COLW[granularity] + 'px';
+        ghost.style.left = (downIdx * W) + 'px';
+        ghost.style.width = W + 'px';
         track.appendChild(ghost);
         activeDrag = {
             mode: 'create', kind: rowKind === 'request' ? 'request' : 'absence',
@@ -1304,7 +1318,7 @@ function onPointerDown(e) {
 // drag math doesn't care whether `kind` is 'absence' or 'request'.
 function onPointerMove(e) {
     if (!activeDrag) return;
-    const W = COLW[granularity];
+    const W = getColW()[granularity];
     if (Math.abs(e.clientX - activeDrag.startClientX) > 4) activeDrag.moved = true;
 
     if (activeDrag.mode === 'create') {
