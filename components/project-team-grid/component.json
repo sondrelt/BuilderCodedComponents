@@ -1,7 +1,7 @@
 {
   "name": "project-team-grid",
   "version": "2.0.0",
-  "description": "Resource-centric team timeline for project managers, one group per project. Renders every project the current PM is responsible for, stacked top-to-bottom: each project gets a labeled group with its team (derived from allocations), their allocation/absence bars (allocations read-only), and a synthetic 'Ressursbehov' row for ad-hoc staffing requests (work type, trade skills, count, comment).",
+  "description": "Resource-centric team timeline for project managers, one group per project. Renders every project the current PM is responsible for, stacked top-to-bottom: each project gets a labeled group with its team (derived from allocations), their allocation/absence bars (allocations read-only), and a synthetic 'Be om ressurser' row for ad-hoc staffing requests (work type, trade skills, count, comment).",
   "appfarmApp": "",
   "environment": "Development",
   "inputs": [
@@ -26,5 +26,5 @@
     "updateProjectResourceRequest",
     "deleteProjectResourceRequest"
   ],
-  "lastSynced": "2026-08-20T16:43:56+02:00"
+  "lastSynced": "2026-08-28T09:22:09+02:00"
 }
