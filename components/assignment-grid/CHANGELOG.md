@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.13.0 — 2026-09-01
+
+Surfaces project-team-grid's ad-hoc resource requests here, read-only, so a
+planner doesn't have to switch components to see a project needs more people.
+
+- **New per-project request row** (`renderRequestRow`/`makeRequestBar`,
+  `.pl-row-request`/`.pl-bar-request`) — only rendered when a project has ≥1
+  open request, positioned on the timeline like an allocation bar so its date
+  range can be visually compared against the actual gaps in the team's
+  allocation bars below it. Read-only: no drag-create/resize, unlike
+  project-team-grid's always-present "Be om ressurser" row — clicking a bar
+  opens a one-button popover to mark the request resolved instead.
+- **New aggregated warning in the toolbar** (`#request-warning`,
+  `updateRequestWarning()`) — total count of open requests across every
+  project, hidden when zero. Clicking it opens a popover listing every
+  affected project; clicking a project scrolls the grid to its group header
+  (`scrollToProjectGroup`, manual `scrollTop` math since `.pl-header` is
+  `position: sticky` and would otherwise cover the target).
+- **New input `projectResourceRequests`** and new module-level
+  `requestsByProject`/`requestById` maps in `indexData()` — ported from
+  project-team-grid's identical indexing, filtering out `isResolved` requests
+  at the source (same semantics as project-team-grid 2.2.0's filter, so a
+  request resolved from either component disappears from both).
+- **New action `resolveProjectResourceRequest`** — the only write path this
+  component has into request data; create/edit/delete remain exclusive to
+  project-team-grid.
+- New group-header `data-project-id` attribute (`groupHeader`'s caller in
+  `buildAll()`) — the anchor the aggregate popover's scroll-to-project uses;
+  re-queried at click time since `#planner-inner` is fully rebuilt on every
+  `buildAll()`.
+- New `--request-accent`/`--request-fill` tokens, matching project-team-grid's
+  navy accent so the two grids read as one visual language.
+
 ## 1.12.1 — 2026-08-25
 
 - **Fixed `saveAbsenceDates` not persisting absence type changes.** Both call

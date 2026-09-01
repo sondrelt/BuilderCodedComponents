@@ -1,7 +1,7 @@
 {
   "name": "assignment-grid",
-  "version": "1.12.1",
-  "description": "Span-native resource planning timeline with day/week granularity. Drag to create, move, and resize allocations and absences.",
+  "version": "1.13.0",
+  "description": "Span-native resource planning timeline with day/week granularity. Drag to create, move, and resize allocations and absences. Surfaces open project-team-grid resource requests as a read-only highlight row per project plus an aggregated toolbar warning.",
   "appfarmApp": "",
   "environment": "Development",
   "inputs": [
@@ -18,7 +18,8 @@
     "jobs",
     "resourceTradeSkills",
     "tradeSkills",
-    "workTypeIcons"
+    "workTypeIcons",
+    "projectResourceRequests"
   ],
   "actions": [
     "allocationAbsenceSave",
@@ -27,7 +28,8 @@
     "deleteAllocation",
     "deleteAbsence",
     "openResourceEdit",
-    "goToBuilderAd"
+    "goToBuilderAd",
+    "resolveProjectResourceRequest"
   ],
   "lastSynced": "2026-08-25T12:18:12+02:00"
 }

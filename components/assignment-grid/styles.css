@@ -22,6 +22,11 @@
   --jobad-fill:   rgba(99, 102, 196, 0.10);
   --jobad-fill-hover: rgba(99, 102, 196, 0.18);
 
+  /* Request highlight row — matches project-team-grid's "Be om ressurser" accent
+     (Builder navy blue, #0d3d56) so the two grids read as one visual language. */
+  --request-accent: #0d3d56;
+  --request-fill:   color-mix(in srgb, var(--request-accent), #fff 90%);
+
   --row-h: 48px;
 }
 
@@ -63,6 +68,22 @@
   cursor: pointer;
 }
 .pl-gran button.active { background: var(--amber-500); color: #fff; font-weight: 600; }
+
+/* Aggregated open-requests warning — hidden (see updateRequestWarning()) when
+   there are none. Red, not amber, since amber already means "active/current"
+   on the granularity toggle above — this is a genuine warning. */
+.pl-request-warning {
+  margin-left: auto;
+  border: 1px solid var(--red-500);
+  background: #fff;
+  color: var(--red-500);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font: 600 13px 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.pl-request-warning:hover { background: var(--red-500); color: #fff; }
 
 .planner-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
 .btn-secondary  { background: var(--slate-600); color: #fff; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; }
@@ -453,6 +474,35 @@
 }
 
 /* ==========================================================================
+   8b. REQUEST HIGHLIGHT ROW
+   Only rendered when a project has ≥1 open request (see renderRequestRow) —
+   accent matches project-team-grid's "Be om ressurser" row for visual
+   consistency between the two grids. Read-only here: no create-drag affordance.
+   ========================================================================== */
+.pl-row-request {
+  background: color-mix(in srgb, var(--request-accent), #fff 92%);
+}
+.pl-row-request .pl-resource {
+  box-shadow: inset 4px 0 0 0 var(--request-accent);
+}
+.pl-needs-label {
+  display: flex; align-items: center; padding: 0 16px;
+  font-weight: 700; color: var(--request-accent);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.pl-row-request .pl-track { cursor: default; }
+.pl-bar-request {
+  background: var(--request-fill);
+  color: var(--request-accent);
+  border: 1px dashed var(--request-accent);
+  cursor: pointer;
+}
+.pl-bar-request:hover { box-shadow: 0 1px 6px rgba(13, 61, 86, 0.35); }
+/* Not draggable — override the base .pl-bar:active grabbing cursor, which
+   otherwise briefly wins on specificity while the mouse is held down. */
+.pl-bar-request:active { cursor: pointer; }
+
+/* ==========================================================================
    9. SUMMARY ROWS
    ========================================================================== */
 .pl-summary .pl-resource.summary-label {
@@ -743,6 +793,11 @@
   transition: background .12s, border-color .12s;
 }
 .pl-pop-confirm:hover { background: var(--amber-600, #e89a3a); border-color: var(--amber-600, #e89a3a); }
+
+/* Request resolve popover — reuses .pl-popover/.pl-popover-title/.pl-pop-actions/
+   .pl-pop-confirm above, just its own two content lines. */
+.pl-request-dates { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+.pl-request-comment { font-size: 12px; color: var(--text-dark, #374151); }
 
 /* Destructive Slett — ghost text+icon, red only on hover */
 .pl-pop-delete {

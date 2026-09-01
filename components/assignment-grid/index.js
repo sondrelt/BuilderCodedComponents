@@ -33,6 +33,9 @@ let iconByWorkType = new Map();      // workType enum value -> icon URL (workTyp
 let resourceById = new Map();        // resourceId -> Resource record (position/name lookups outside the render loop)
 let roleByResource = new Map();      // resourceId -> role {label, tagClass} — only set for PM/Anleggsleder rows
 
+let requestsByProject = new Map();   // projectId -> [projectResourceRequest] (open only, sorted by dateFrom)
+let requestById = new Map();
+
 let groupingAnchorDate = null;       // pinned once, for project grouping
 let activeDrag = null;               // see onPointerDown for shape
 let dragTooltipEl = null;
@@ -330,6 +333,21 @@ function indexData() {
     safeGet(appfarm.data.workTypeIcons).forEach(rec => {
         iconByWorkType.set(rec.workType, rec.__fileContentLink || '');
     });
+
+    // Ported from project-team-grid/index.js (indexData) — adapted: filters out
+    // isResolved requests at the source, since assignment-grid only ever shows
+    // open asks (no create/edit here, only display + resolve).
+    requestsByProject = new Map();
+    requestById = new Map();
+    safeGet(appfarm.data.projectResourceRequests).forEach(r => {
+        if (r.isResolved) return;
+        requestById.set(r._id, r);
+        const pid = resolveId(r.project);
+        if (!pid) return;
+        if (!requestsByProject.has(pid)) requestsByProject.set(pid, []);
+        requestsByProject.get(pid).push(r);
+    });
+    requestsByProject.forEach(list => list.sort((x, y) => +new Date(x.dateFrom) - +new Date(y.dateFrom)));
 }
 
 // Sub-spans of [from,to] NOT covered by any allocation or absence for this resource.
@@ -550,6 +568,65 @@ function makeTrack(res) {
     return track;
 }
 
+// Read-only bar for one open projectResourceRequest, positioned on the timeline
+// like an allocation bar so its date range can be compared against the actual
+// gaps in the resource rows below it. Ported from project-team-grid's
+// makeRequestBar — adapted: no drag handles (read-only here), click opens a
+// one-button resolve popover instead of the full create/edit popover.
+function makeRequestBar(record) {
+    const wtLabel = resolveWorkTypeName(record.workType) || 'Ukjent fag';
+    const count = Number(record.resourceCount) || 0;
+    const label = `${wtLabel} × ${count}`;
+
+    const recFrom = startOfDay(new Date(record.dateFrom));
+    const recTo   = endOfDay(new Date(record.dateTo));
+    const left  = xForDate(recFrom);
+    const right = xForDate(recTo);
+    const clipL = +recFrom < +rangeStart;
+    const clipR = +recTo   > +rangeEnd;
+
+    const bar = document.createElement('div');
+    bar.className = 'pl-bar pl-bar-request' + (clipL ? ' pl-clip-l' : '') + (clipR ? ' pl-clip-r' : '');
+    bar.style.left = left + 'px';
+    bar.style.width = Math.max(right - left, 1) + 'px';
+    bar.dataset.kind = 'request';
+    bar.dataset.requestId = record._id;
+
+    const titleLines = [label];
+    if (record.comment) titleLines.push('Kommentar: ' + record.comment);
+    bar.title = titleLines.join('\n');
+
+    bar.innerHTML = `<span class="pl-bar-label"></span>`;
+    bar.querySelector('.pl-bar-label').textContent = label;
+
+    bar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showRequestResolvePopover(record, e.clientX, e.clientY);
+    });
+    return bar;
+}
+
+// Only rendered when the project has ≥1 open request — unlike project-team-grid's
+// always-present needs row, this is a conditional highlight, not a create surface.
+function renderRequestRow(frag, projectId) {
+    const list = requestsByProject.get(projectId);
+    if (!list || !list.length) return;
+    const row = document.createElement('div');
+    row.className = 'pl-row pl-row-request';
+    const label = document.createElement('div');
+    label.className = 'pl-resource pl-needs-label';
+    label.textContent = 'Forespørsler';
+    row.appendChild(label);
+    const track = document.createElement('div');
+    track.className = 'pl-track';
+    track.style.width = gridWidth + 'px';
+    const W = COLW[granularity];
+    track.style.backgroundSize = `${W}px 100%`;
+    list.forEach(r => track.appendChild(makeRequestBar(r)));
+    row.appendChild(track);
+    frag.appendChild(row);
+}
+
 function renderRow(res, frag, role = null, color = null) {
     const row = document.createElement('div');
     row.className = 'pl-row' + (role ? ` ${role.rowClass}` : '');
@@ -715,6 +792,7 @@ function buildAll() {
     buildColumns();
     inner.innerHTML = '';
     roleByResource = new Map();
+    updateRequestWarning();
 
     const resources = safeGet(appfarm.data.resources);
     const searchEl = document.getElementById('search-input');
@@ -753,8 +831,11 @@ function buildAll() {
             const smId = resolveId(proj?.siteManager);
             const rank = r => r._id === pmId ? 0 : r._id === smId ? 1 : 2;
             list.sort((a, b) => rank(a) - rank(b));
-            frag.appendChild(groupHeader(proj?.bepmnX || proj?.name || 'Prosjekt', color));
+            const gh = groupHeader(proj?.bepmnX || proj?.name || 'Prosjekt', color);
+            gh.dataset.projectId = projId;
+            frag.appendChild(gh);
             frag.appendChild(groupSep(color));
+            renderRequestRow(frag, projId);
             list.forEach(res => {
                 let role = null;
                 if (res._id === pmId) role = { label: 'Prosjektleder', rowClass: 'role-pm', tagClass: 'role-tag-pm' };
@@ -1325,6 +1406,132 @@ function showJobAdsPopover(opts) {
     }, 0);
 }
 
+// ── Request resolve popover ─────────────────────────────────────────────────
+// Forks showJobAdsPopover's shell — one request's details plus a single
+// "Marker som løst" action. Read-only otherwise: no edit/create here.
+// opts positional: record, anchorX, anchorY
+function showRequestResolvePopover(record, anchorX, anchorY) {
+    removePopover();
+    activeEdit = true;
+
+    const wtLabel = resolveWorkTypeName(record.workType) || 'Ukjent fag';
+    const count = Number(record.resourceCount) || 0;
+
+    popoverEl = document.createElement('div');
+    popoverEl.className = 'pl-popover';
+    popoverEl.innerHTML =
+        '<div class="pl-popover-title">' + escapeHtml(wtLabel) + ' × ' + count + '</div>' +
+        '<div class="pl-request-dates">' + escapeHtml(fmtDate(record.dateFrom) + '–' + fmtDate(record.dateTo)) + '</div>' +
+        (record.comment ? '<div class="pl-request-comment">' + escapeHtml(record.comment) + '</div>' : '') +
+        '<div class="pl-pop-actions"><button type="button" class="pl-pop-confirm">Marker som løst</button></div>';
+    document.body.appendChild(popoverEl);
+
+    const pw = popoverEl.offsetWidth || 260, ph = popoverEl.offsetHeight || 140, M = 8;
+    let left = anchorX + 10;
+    if (left + pw > window.innerWidth - M) left = anchorX - pw - 10;
+    let top = anchorY - 16;
+    if (top + ph > window.innerHeight - M) top = window.innerHeight - ph - M;
+    popoverEl.style.left = Math.max(M, left) + 'px';
+    popoverEl.style.top  = Math.max(M, top) + 'px';
+
+    function close() {
+        document.removeEventListener('pointerdown', outsideHandler, { capture: true });
+        document.removeEventListener('keydown', keyHandler);
+        removePopover();
+    }
+    function outsideHandler(e) { if (popoverEl && !popoverEl.contains(e.target)) close(); }
+    function keyHandler(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
+    popoverEl.querySelector('.pl-pop-confirm').addEventListener('click', (e) => {
+        e.stopPropagation();
+        appfarm.actions?.resolveProjectResourceRequest?.({ projectResourceRequestId: record._id });
+        close();
+    });
+    setTimeout(() => {
+        document.addEventListener('pointerdown', outsideHandler, { capture: true });
+        document.addEventListener('keydown', keyHandler);
+    }, 0);
+}
+
+// ── Aggregated request warning ──────────────────────────────────────────────
+// Updates the static toolbar button built once in ensureSkeleton() — never
+// recreates it, so an open popover anchored to it survives a rebuild.
+function updateRequestWarning() {
+    const btn = document.getElementById('request-warning');
+    if (!btn) return;
+    const openByProject = [...requestsByProject.entries()]
+        .map(([pid, list]) => ({
+            pid, count: list.length,
+            label: projectsById.get(pid)?.bepmnX || projectsById.get(pid)?.name || 'Prosjekt'
+        }))
+        .filter(p => p.count);
+    const total = openByProject.reduce((sum, p) => sum + p.count, 0);
+    btn.hidden = total === 0;
+    btn.textContent = `⚠ ${total} forespørsel${total === 1 ? '' : 'er'}`;
+    btn.onclick = (e) => showRequestWarningPopover(openByProject, e.clientX, e.clientY);
+}
+
+// List of every project with ≥1 open request; clicking a row scrolls the grid
+// to that project's group header. Re-queries the header at click time since
+// #planner-inner is fully rebuilt on every buildAll() — never cache the node.
+function showRequestWarningPopover(projects, anchorX, anchorY) {
+    removePopover();
+    activeEdit = true;
+
+    popoverEl = document.createElement('div');
+    popoverEl.className = 'pl-popover pl-popover-ads';
+    popoverEl.innerHTML = '<div class="pl-popover-title">Åpne forespørsler (' +
+        projects.reduce((sum, p) => sum + p.count, 0) + ')</div>';
+
+    projects.forEach(p => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'pl-ads-row';
+        row.innerHTML =
+            '<span class="pl-ads-main">' +
+                '<span class="pl-ads-company">' + escapeHtml(p.label) + '</span>' +
+                '<span class="pl-ads-count">' + p.count + '</span>' +
+            '</span>';
+        row.addEventListener('click', (e) => {
+            e.stopPropagation();
+            scrollToProjectGroup(p.pid);
+            close();
+        });
+        popoverEl.appendChild(row);
+    });
+    document.body.appendChild(popoverEl);
+
+    const pw = popoverEl.offsetWidth || 280, ph = popoverEl.offsetHeight || 200, M = 8;
+    let left = anchorX + 10;
+    if (left + pw > window.innerWidth - M) left = anchorX - pw - 10;
+    let top = anchorY - 16;
+    if (top + ph > window.innerHeight - M) top = window.innerHeight - ph - M;
+    popoverEl.style.left = Math.max(M, left) + 'px';
+    popoverEl.style.top  = Math.max(M, top) + 'px';
+
+    function close() {
+        document.removeEventListener('pointerdown', outsideHandler, { capture: true });
+        document.removeEventListener('keydown', keyHandler);
+        removePopover();
+    }
+    function outsideHandler(e) { if (popoverEl && !popoverEl.contains(e.target)) close(); }
+    function keyHandler(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
+    setTimeout(() => {
+        document.addEventListener('pointerdown', outsideHandler, { capture: true });
+        document.addEventListener('keydown', keyHandler);
+    }, 0);
+}
+
+// Manual scrollTop math, not scrollIntoView — .pl-header is position:sticky
+// inside .pl-scroll, so scrollIntoView({block:'start'}) would land the target
+// directly under the sticky header instead of below it.
+function scrollToProjectGroup(projectId) {
+    const target = document.querySelector(`#planner-inner .pl-grouphead[data-project-id="${projectId}"]`);
+    const scroller = document.getElementById('planner-scroll');
+    if (!target || !scroller) return;
+    const headerH = document.querySelector('.pl-header')?.getBoundingClientRect().height || 0;
+    scroller.scrollTop = target.offsetTop - headerH - 8;
+}
+
 // ponytail: console-only self-check for the day-clamp logic — call demo() from the
 // browser console after pasting. Not auto-run (would log on every load).
 function demo() {
@@ -1536,6 +1743,7 @@ function ensureSkeleton() {
                 <button data-granularity="week" class="active">Uker</button>
                 <button data-granularity="day">Dager</button>
             </div>
+            <button id="request-warning" class="pl-request-warning" type="button" hidden></button>
         </div>
         <div id="planner-scroll" class="pl-scroll"><div id="planner-inner" class="pl-inner"></div></div>`;
 }
@@ -1571,7 +1779,7 @@ function init() {
     });
 
     appfarm.data.sortByProjects?.on?.('change', guardedBuildAll);
-    ['viewStart', 'viewEnd', 'resources', 'projects', 'allocation', 'absence', 'workTypeEnum', 'absenceColors', 'jobs']
+    ['viewStart', 'viewEnd', 'resources', 'projects', 'allocation', 'absence', 'workTypeEnum', 'absenceColors', 'jobs', 'projectResourceRequests']
         .forEach(h => appfarm.data[h]?.on?.('change', guardedBuildAll));
 }
 
