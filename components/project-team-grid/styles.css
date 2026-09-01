@@ -626,7 +626,7 @@
 .ptg-cal-year.sel { background: var(--nav-blue, #1e3a5f); color: #fff; font-weight: 700; border-color: var(--nav-blue, #1e3a5f); }
 
 /* Actions: orange Lagre (left/auto-right), low-emphasis Slett (right of it) */
-.ptg-pop-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.ptg-pop-actions { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 4px; }
 .ptg-pop-confirm {
   margin-left: auto;
   padding: 8px 22px;
@@ -645,3 +645,12 @@
 }
 .ptg-pop-delete svg { width: 15px; height: 15px; display: block; }
 .ptg-pop-delete:hover { background: #fef2f2; color: var(--red-500, #a2332f); }
+
+.ptg-pop-resolve {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: none; background: none; cursor: pointer;
+  padding: 6px 8px; border-radius: 8px;
+  font: 600 12px 'Inter', sans-serif; color: #9ca3af;
+  transition: background .12s, color .12s;
+}
+.ptg-pop-resolve:hover { background: var(--blue-50, #eef6fc); color: var(--blue-600, #1a72a8); }

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.2.0 — 2026-09-01
+
+Adds a way to dismiss a resource request once it's been staffed, without
+deleting the record outright.
+
+- **New `isResolved` field on `projectResourceRequest`** (added directly on
+  the object class in Appfarm Create — see the component's data-model notes).
+  `indexData()`'s `requestsByProject` bucketing now skips any request with
+  `isResolved: true`, so a resolved request stops appearing as an open ask
+  everywhere that map is used — same effect as `deleteProjectResourceRequest`
+  had, but the record is kept for history instead of being destroyed.
+- **New action `resolveProjectResourceRequest({ projectResourceRequestId })`**,
+  called from a new "Marker som løst" button in `showAskPopover`'s edit view
+  (next to the existing Slett button, edit-mode only). Uses the same
+  optimistic `bar.remove()` teardown as delete.
+- Deliberately a plain boolean, not tied to any specific allocation yet —
+  keeps the door open for a later automatic "resolved because an allocation
+  now covers this ask" flow without committing to that shape now.
+- No breaking changes to existing inputs/actions.
+
 ## 2.1.0 — 2026-08-28
 
 Mobile audit + responsive timeline columns. No data/action/input changes —

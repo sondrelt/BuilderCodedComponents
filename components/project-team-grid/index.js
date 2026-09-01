@@ -355,6 +355,7 @@ function indexData() {
     requestsByProject = new Map();
     requestById = new Map();
     safeGet(appfarm.data.projectResourceRequests).forEach(r => {
+        if (r.isResolved) return; // staffed — no longer an open ask
         requestById.set(r._id, r);
         const pid = resolveId(r.project);
         if (!pid) return;
@@ -1146,6 +1147,7 @@ function showAskPopover(opts) {
         '<div class="ptg-datepop"></div>' +
         '<div class="ptg-pop-actions">' +
             (isEdit ? '<button type="button" class="ptg-pop-delete">' + TRASH_ICON + '<span>Slett</span></button>' : '') +
+            (isEdit ? '<button type="button" class="ptg-pop-resolve"><span>Marker som løst</span></button>' : '') +
             '<button class="ptg-pop-confirm">Lagre</button>' +
         '</div>';
     document.body.appendChild(popoverEl);
@@ -1222,6 +1224,12 @@ function showAskPopover(opts) {
         removeOutsideHandler();
         appfarm.actions?.deleteProjectResourceRequest?.({ projectResourceRequestId: opts.recordId });
         opts.onDelete?.();
+        removePopover();
+    });
+    if (isEdit) popoverEl.querySelector('.ptg-pop-resolve').addEventListener('click', () => {
+        removeOutsideHandler();
+        appfarm.actions?.resolveProjectResourceRequest?.({ projectResourceRequestId: opts.recordId });
+        opts.onDelete?.(); // same optimistic removal as delete — the bar shouldn't linger
         removePopover();
     });
     popoverEl.addEventListener('keydown', e => {

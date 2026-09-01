@@ -64,6 +64,15 @@ window.FIXTURES['project-team-grid'] = {
       comment: 'Trenger sveiser til rørarbeid før støping starter.',
       dateFrom: '2026-07-01', dateTo: '2026-07-21',
     },
+    // Already staffed — must be excluded from requestsByProject (and thus from
+    // the needs row) by the isResolved filter in indexData().
+    {
+      _id: 'req2', project: 'p2', workType: 250,
+      resourceCount: 1,
+      comment: 'Løst allerede, skal ikke vises.',
+      dateFrom: '2026-06-10', dateTo: '2026-06-20',
+      isResolved: true,
+    },
   ],
 
   // Many-to-many junction: which trade skills req1 asks for. Both fields plain id
