@@ -89,4 +89,21 @@ window.FIXTURES['assignment-grid'] = {
     { _id: 'j3', workType: 250, company: { _id: 'c4', name: 'SørBygg' },          tier: 3, numberOfResources: 1, dateStart: '2026-07-13', dateEnd: '2026-07-26' },
     { _id: 'j2', workType: 190, company: { _id: 'c3', name: 'Nord Entreprenør' }, tier: 2, numberOfResources: 1, dateStart: '2026-06-01', dateEnd: '2026-06-21' },
   ],
+
+  // Requests raised in project-team-grid, surfaced here read-only. req1's
+  // window (06-01–06-14) sits in the gap before res2's p1 allocation starts
+  // (06-15) — exercises comparing the request bar against the team's actual
+  // gaps. req3 is already isResolved and must NOT appear (indexData filters
+  // it out of requestsByProject), proving the resolve flag round-trips.
+  projectResourceRequests: [
+    { _id: 'req1', project: 'p1', workType: 250, resourceCount: 1,
+      comment: 'Trenger en til tømrer før uke 25.',
+      dateFrom: '2026-06-01', dateTo: '2026-06-14' },
+    { _id: 'req2', project: 'p2', workType: 190, resourceCount: 1,
+      comment: 'Ekstra rørlegger til grunnarbeid.',
+      dateFrom: '2026-06-01', dateTo: '2026-06-21' },
+    { _id: 'req3', project: 'p1', workType: 20, resourceCount: 1,
+      comment: 'Løst allerede, skal ikke vises.',
+      dateFrom: '2026-06-01', dateTo: '2026-06-10', isResolved: true },
+  ],
 };
